@@ -2,13 +2,14 @@ package draw
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/cptaffe/automaton"
 	"github.com/cptaffe/automaton/dot"
 	"github.com/cptaffe/automaton/lex/gen"
 )
 
-func Whole(f *gen.Flat, ms []gen.Machine) []byte {
+func Whole(f *gen.Flat, ms []gen.Machine) ([]byte, error) {
 	all := make([]dot.Machine, len(ms))
 	for i, m := range ms {
 		all[i] = machine{m: m, names: f.Defs}
@@ -16,15 +17,16 @@ func Whole(f *gen.Flat, ms []gen.Machine) []byte {
 	return dot.Whole(all, f.Name)
 }
 
-func Shape(f *gen.Flat) []byte {
+func Shape(f *gen.Flat) ([]byte, error) {
 	var rs []dot.Rule
 	for i, s := range f.Scopes {
 		r := dot.Rule{Name: s.Name, Start: i == 0}
-		if s.Includes != "" {
-			r.Alts = append(r.Alts, "includes "+s.Includes)
-		}
 		for _, rule := range f.Rules {
-			if rule.Scope == s.Name {
+			switch {
+			case rule.Scope != s.Name:
+			case rule.Include != "":
+				r.Alts = append(r.Alts, "-> "+rule.Include)
+			default:
 				r.Alts = append(r.Alts, rule.Text)
 			}
 		}
@@ -53,22 +55,45 @@ func (d machine) Note() string {
 
 func (d machine) States() int { return d.m.DFA.States() }
 
-func (d machine) Starts() map[string]automaton.State {
-	return map[string]automaton.State{d.m.Scope: d.m.DFA.Start()}
+func (d machine) Starts() []dot.Start {
+	return []dot.Start{{Name: d.m.Scope, State: int(d.m.DFA.Start())}}
 }
 
-func (d machine) Classes() *automaton.Classes { return d.m.DFA.Classes() }
-
-func (d machine) Next(s automaton.State, c automaton.Class) automaton.State {
-	return d.m.DFA.Next(s, c)
+func (d machine) Moves(s int) []dot.Move {
+	by := map[automaton.State]automaton.Set{}
+	var order []automaton.State
+	c := d.m.DFA.Classes()
+	for k := automaton.Class(1); int(k) <= c.Len(); k++ {
+		to := d.m.DFA.Next(automaton.State(s), k)
+		if to == automaton.NoState {
+			continue
+		}
+		if _, ok := by[to]; !ok {
+			order = append(order, to)
+		}
+		by[to] = by[to].Union(c.Part(k))
+	}
+	sort.Slice(order, func(i, j int) bool { return order[i] < order[j] })
+	out := make([]dot.Move, len(order))
+	for i, to := range order {
+		out[i] = dot.Move{To: int(to), Label: d.label(by[to])}
+	}
+	return out
 }
 
-func (d machine) Accepts(s automaton.State) (string, bool) {
-	a := d.m.DFA.Accept(s)
+func (d machine) rule(s int) (gen.FlatRule, bool) {
+	a := d.m.DFA.Accept(automaton.State(s))
 	if a == automaton.NoMatch {
+		return gen.FlatRule{}, false
+	}
+	return d.m.Rules[a-1], true
+}
+
+func (d machine) Accepts(s int) (string, bool) {
+	r, ok := d.rule(s)
+	if !ok {
 		return "", false
 	}
-	r := d.m.Rules[a]
 	label := "-> " + r.Acts.Goto
 	switch {
 	case r.Acts.Emit != "":
@@ -85,16 +110,19 @@ func (d machine) Accepts(s automaton.State) (string, bool) {
 	return label, true
 }
 
-func (d machine) Leaves(s automaton.State) (string, bool) {
-	a := d.m.DFA.Accept(s)
-	if a == automaton.NoMatch {
-		return "", false
-	}
-	to := d.m.Rules[a].Acts.Goto
-	return to, to != "" && to != d.m.Scope
+func (d machine) Leaves(s int) (string, bool) {
+	r, ok := d.rule(s)
+	return r.Acts.Goto, ok && r.Acts.Goto != "" && r.Acts.Goto != d.m.Scope
 }
 
-func (d machine) Named(s automaton.Set) (string, bool) {
+func (d machine) label(s automaton.Set) string {
+	if got, ok := d.named(s); ok {
+		return got
+	}
+	return label(s)
+}
+
+func (d machine) named(s automaton.Set) (string, bool) {
 	best := ""
 	for _, def := range d.names {
 		got, ok := def.Expr.Single()
@@ -112,7 +140,7 @@ func (d machine) Named(s automaton.Set) (string, bool) {
 			best = say
 		}
 	}
-	if best == "" || len(best) > 24 || len(best) >= len(s.Spelled()) {
+	if best == "" || len(best) > wide || len(best) >= len(spelled(s)) {
 		return "", false
 	}
 	return best, true
@@ -124,5 +152,5 @@ func (d machine) name(s automaton.Set) string {
 			return def.Name
 		}
 	}
-	return "[" + s.Spelled() + "]"
+	return "[" + spelled(s) + "]"
 }

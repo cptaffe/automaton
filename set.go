@@ -1,7 +1,6 @@
 package automaton
 
 import (
-	"fmt"
 	"sort"
 	"strings"
 	"unicode"
@@ -94,7 +93,7 @@ func Category(t *unicode.RangeTable) Set {
 	return Of(rs...)
 }
 
-func (s Set) Ranges() []Range { return s.r }
+func (s Set) Ranges() []Range { return append([]Range(nil), s.r...) }
 
 func (s Set) Empty() bool { return len(s.r) == 0 }
 
@@ -197,63 +196,6 @@ func (s Set) String() string {
 	}
 
 	return b.String()
-}
-
-func (s Set) Label() string {
-	if s.Empty() {
-		return "nothing"
-	}
-
-	direct, whole := s.spelled()
-
-	not := s.Negate()
-
-	if not.Empty() {
-		return direct
-	}
-
-	left, all := not.spelled()
-	away := "any - [" + left + "]"
-
-	switch {
-	case whole && !all:
-		return direct
-	case all && !whole:
-		return away
-	case len(away) < len(direct):
-		return away
-	}
-
-	return direct
-}
-
-func (s Set) Spelled() string {
-	out, _ := s.spelled()
-
-	return out
-}
-
-func (s Set) spelled() (string, bool) {
-
-	const wide = 24
-
-	if whole := s.String(); len(whole) <= wide {
-		return whole, true
-	}
-
-	at := len(s.r)
-
-	for at > 1 && len(Set{r: s.r[:at]}.String()) > wide {
-		at--
-	}
-
-	n := 0
-
-	for _, x := range s.r[at:] {
-		n += int(x.Hi-x.Lo) + 1
-	}
-
-	return Set{r: s.r[:at]}.String() + fmt.Sprintf(" and %d more", n), false
 }
 
 func show(r rune) string {

@@ -3,7 +3,10 @@ fn ctl { echo $1 | 9p write acme/`{9p read acme-focused/focus}/ctl }
 %}
 %delay settle 1s
 
-acme: when app == "devdraw"
+main:
+	-> acme when app == "devdraw"
+
+acme:
 	%settles settle
 	command-s		{ ctl put }	# save
 	command-w		{ ctl del }	# close
@@ -13,4 +16,4 @@ acme: when app == "devdraw"
 
 marks:
 	m			{ ctl mark }
-	escape			{ ctl show } -> acme
+	escape			{ ctl show } -> main

@@ -1,8 +1,10 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,21 +13,47 @@ import (
 	"github.com/cptaffe/automaton/lex/gen"
 )
 
-func main() {
-	dir := flag.String("dot", "", "write Graphviz into this directory")
-	goOut := flag.String("go", "", "write the table here, as Go")
-	pkg := flag.String("package", "", "the package the table belongs to")
-	flag.Parse()
+func main() { os.Exit(run(os.Args[1:], os.Stderr)) }
 
-	for _, path := range flag.Args() {
-		if err := run(path, *dir, *goOut, *pkg); err != nil {
-			fmt.Fprintln(os.Stderr, "genlex:", err)
-			os.Exit(1)
-		}
+func run(args []string, stderr io.Writer) int {
+	fs := flag.NewFlagSet("genlex", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	dir := fs.String("dot", "", "write Graphviz drawings into this directory")
+	goOut := fs.String("go", "", "write the table here, as Go")
+	pkg := fs.String("package", "", "the package the Go table belongs to")
+	verbose := fs.Bool("v", false, "describe each scope's machine")
+	fs.Usage = func() {
+		fmt.Fprintln(stderr, "usage: genlex [-v] [-dot dir] [-go out.go -package name] file.lex...")
+		fs.PrintDefaults()
 	}
+	if err := fs.Parse(args); err != nil {
+		return 2
+	}
+
+	var err error
+	switch {
+	case fs.NArg() == 0:
+		fs.Usage()
+		return 2
+	case *goOut != "" && fs.NArg() > 1:
+		err = errors.New("-go writes one table, so it takes one file")
+	case *goOut != "" && *pkg == "":
+		err = errors.New("-go needs -package")
+	}
+	for _, path := range fs.Args() {
+		if err != nil {
+			break
+		}
+		err = one(path, *dir, *goOut, *pkg, *verbose, stderr)
+	}
+	if err != nil {
+		fmt.Fprintln(stderr, "genlex:", err)
+		return 1
+	}
+	return 0
 }
 
-func run(path, dir, goOut, pkg string) error {
+func one(path, dir, goOut, pkg string, verbose bool, stderr io.Writer) error {
 	f, err := os.Open(path)
 	if err != nil {
 		return err
@@ -45,44 +73,54 @@ func run(path, dir, goOut, pkg string) error {
 	}
 
 	for _, s := range flat.Shadowed {
-		fmt.Printf("genlex:   shadowed: %s\n", s)
+		fmt.Fprintf(stderr, "genlex: shadowed: %s\n", s)
 	}
 	for _, m := range ms {
-		fmt.Printf("genlex: %s\n", draw.Summary(m))
-		for _, c := range m.Covered {
-			fmt.Printf("genlex:   %s\n", c)
+		if verbose {
+			fmt.Fprintf(stderr, "genlex: %s\n", draw.Summary(m))
 		}
+		for _, c := range m.Covered {
+			fmt.Fprintf(stderr, "genlex: %s\n", c)
+		}
+	}
+	if len(dead) > 0 {
+		return errors.New(strings.Join(dead, "\n"))
 	}
 
 	if dir != "" {
-		if err := write(filepath.Join(dir, flat.Name+"-shape.dot"), draw.Shape(flat)); err != nil {
+		shape, err := draw.Shape(flat)
+		if err != nil {
 			return err
 		}
-		if err := write(filepath.Join(dir, flat.Name+".dot"), draw.Whole(flat, ms)); err != nil {
+		whole, err := draw.Whole(flat, ms)
+		if err != nil {
+			return err
+		}
+		if err := write(filepath.Join(dir, flat.Name+"-shape.dot"), shape); err != nil {
+			return err
+		}
+		if err := write(filepath.Join(dir, flat.Name+".dot"), whole); err != nil {
 			return err
 		}
 	}
 
-	if len(dead) > 0 {
-		return fmt.Errorf("%s", dead[0])
-	}
 	if goOut == "" {
 		return nil
 	}
-	spec, bad := gen.Spec(flat, ms)
-	if len(bad) > 0 {
-		return fmt.Errorf("%s", strings.Join(bad, "; "))
+	spec, err := gen.Spec(flat, ms)
+	if err != nil {
+		return err
 	}
-	return write(goOut, gen.Go(flat, spec, pkg))
+	src, err := gen.Go(spec, pkg, filepath.Base(path))
+	if err != nil {
+		return fmt.Errorf("%s: %w", path, err)
+	}
+	return write(goOut, src)
 }
 
 func write(path string, b []byte) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
-	if err := os.WriteFile(path, b, 0o644); err != nil {
-		return err
-	}
-	fmt.Printf("genlex:   %s\n", path)
-	return nil
+	return os.WriteFile(path, b, 0o644)
 }

@@ -139,6 +139,12 @@ func (a *NFA) Sets() []Set {
 	return out
 }
 
-func (a *NFA) Determinise(classes *Classes) *DFA {
-	return a.n.determinise(a.start, classes)
+func (a *NFA) Determinise(classes *Classes) (*DFA, error) {
+	if err := classes.refine(a.Sets()); err != nil {
+		return nil, err
+	}
+
+	return a.n.determinise(a.start, classes), nil
 }
+
+func (a *NFA) DFA() *DFA { return a.n.determinise(a.start, Partition(a.Sets())) }

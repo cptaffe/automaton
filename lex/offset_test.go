@@ -1,6 +1,7 @@
 package lex_test
 
 import (
+	"errors"
 	"io"
 	"strings"
 	"testing"
@@ -49,9 +50,10 @@ func spec(t *testing.T) *lex.Spec {
 	if err != nil {
 		t.Fatal(err)
 	}
-	s, bad := gen.Spec(flat, ms)
-	if len(bad) > 0 {
-		t.Fatal(bad)
+	s, err := gen.Spec(flat, ms)
+
+	if err != nil {
+		t.Fatal(err)
 	}
 	return s
 }
@@ -105,5 +107,76 @@ func TestWhereATokenIsDoesNotDependOnHowItArrived(t *testing.T) {
 		if err := l.Err(); err != nil {
 			t.Fatalf("%s: %v", c.name, err)
 		}
+	}
+}
+
+func TestALongRunOfIgnoredTextNeedsNoBuffer(t *testing.T) {
+	src := strings.Repeat("; "+strings.Repeat("x", 1000)+"\n", 3000) + "word\n"
+	l, err := lex.New(spec(t), strings.NewReader(src), "start")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var kinds []string
+
+	for {
+		tok, ok := l.Next()
+
+		if !ok {
+			break
+		}
+
+		if tok.Text != "\n" {
+			kinds = append(kinds, tok.Text)
+		}
+
+		if tok.Text == "word" && src[tok.Start:tok.End] != "word" {
+			t.Errorf("the word is at %d:%d, which reads %q", tok.Start, tok.End, src[tok.Start:tok.End])
+		}
+	}
+
+	if err := l.Err(); err != nil {
+		t.Fatalf("three megabytes of comment: %v", err)
+	}
+
+	if strings.Join(kinds, " ") != "word" {
+		t.Errorf("the tokens are %v; want only the word", kinds)
+	}
+}
+
+func TestATokenNamesItsKind(t *testing.T) {
+	s := spec(t)
+
+	if s.Token(0) != "" {
+		t.Errorf("kind 0 is %q; it is no token", s.Token(0))
+	}
+
+	if s.Token(1) != s.Tokens[0] || s.Token(len(s.Tokens)+1) != "" {
+		t.Error("kinds count from 1, and none lies past the last")
+	}
+}
+
+func TestAnErrorCarriesItsPlace(t *testing.T) {
+	r, err := lex.Open(spec(t), strings.NewReader("word\n!\n"), "start", "dir/t.lex", 0)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for {
+		if _, ok := r.Next(); !ok {
+			break
+		}
+	}
+
+	var e *lex.Error
+
+	if !errors.As(r.Err(), &e) || e.File != "dir/t.lex" || e.Line != 2 {
+		t.Errorf("the error is %v; want dir/t.lex line 2", r.Err())
+	}
+
+	if r.Name() != "t" || r.Source(2) != "!" || r.Source(9) != "" {
+		t.Errorf("Name %q, Source(2) %q, Source(9) %q", r.Name(), r.Source(2), r.Source(9))
 	}
 }

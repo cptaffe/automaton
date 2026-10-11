@@ -17,8 +17,17 @@ func TestTheExampleCompiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	m := r.Matcher()
-	if _, fired, _ := m.Key("command-m", seq.Env{"app": "devdraw"}); len(fired) != 1 || m.Mode() != "marks" {
-		t.Errorf("command-m fired %v into mode %q", fired, m.Mode())
+	m, err := seq.NewMachine(r.Table, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	acme := seq.Env{"app": "devdraw"}
+	for _, c := range []struct {
+		key   string
+		scope string
+	}{{"command-m", "marks"}, {"escape", "main"}} {
+		if ok, _ := m.Step(r.Table.Alpha.Of(c.key), acme); !ok || m.Scope() != c.scope {
+			t.Errorf("%s took %v into %s; want %s", c.key, ok, m.Scope(), c.scope)
+		}
 	}
 }

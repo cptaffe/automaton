@@ -18,7 +18,11 @@ func TestDraw(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	out := string(draw.Draw(tab))
+	b, err := draw.Draw(tab)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := string(b)
 	for _, want := range []string{"2-8", "0-9", "<T>", "operator -> start", "short when on"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("the drawing lacks %q", want)

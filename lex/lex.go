@@ -13,21 +13,12 @@ type Range struct {
 	Class  int
 }
 
-const (
-	noClass = -1
-	noState = -1
-	noMatch = -1
-)
-
-const None = -1
-
 type Act struct {
 	Emit int
 	Do   int
 	Goto int
 	Push int
 	Pop  bool
-	Drop bool
 }
 
 type Scope struct {
@@ -42,6 +33,15 @@ type Spec struct {
 	Ranges []Range
 	Scopes []Scope
 	Tokens []string
+	Does   []string
+}
+
+func (s *Spec) Token(kind int) string {
+	if kind < 1 || kind > len(s.Tokens) {
+		return ""
+	}
+
+	return s.Tokens[kind-1]
 }
 
 type Token struct {
@@ -67,7 +67,7 @@ func (s *Spec) class(r rune) int {
 		return s.Ranges[at].Class
 	}
 
-	return noClass
+	return 0
 }
 
 type Lexer struct {
@@ -81,15 +81,15 @@ type Lexer struct {
 }
 
 func New(spec *Spec, r io.Reader, scope string) (*Lexer, error) {
-	at := -1
+	at := 0
 
 	for i := range spec.Scopes {
 		if spec.Scopes[i].Name == scope {
-			at = i
+			at = i + 1
 		}
 	}
 
-	if at < 0 {
+	if at == 0 {
 		return nil, fmt.Errorf("no scope called %s", scope)
 	}
 
@@ -102,24 +102,13 @@ func New(spec *Spec, r io.Reader, scope string) (*Lexer, error) {
 }
 
 func (l *Lexer) split(data []byte, atEOF bool) (int, []byte, error) {
-	was, scope, stack := l.at, l.scope, l.stack
 	done := 0
-
-	give := func(n int, tok []byte) (int, []byte, error) {
-		l.at = was + n
-
-		return n, tok, nil
-	}
-
-	drop := func() (int, []byte, error) {
-		l.at, l.scope, l.stack = was, scope, stack
-
-		return 0, nil, nil
-	}
 
 	for {
 		if len(data) == done && atEOF {
-			return give(done, nil)
+			l.at += done
+
+			return done, nil, nil
 		}
 
 		adv, tok, err := l.one(data[done:], atEOF)
@@ -128,21 +117,20 @@ func (l *Lexer) split(data []byte, atEOF bool) (int, []byte, error) {
 			return 0, nil, err
 		}
 
-		if adv == 0 && tok == nil {
-			if done > 0 && atEOF {
-				return give(done, nil)
-			}
+		if adv == 0 {
+			l.at += done
 
-			return drop()
+			return done, nil, nil
 		}
 
 		done += adv
 
 		if tok != nil {
-			l.tok.Start += was + done - adv
-			l.tok.End += was + done - adv
+			l.tok.Start += l.at + done - adv
+			l.tok.End += l.at + done - adv
+			l.at += done
 
-			return give(done, tok)
+			return done, tok, nil
 		}
 	}
 }
@@ -152,54 +140,44 @@ func (l *Lexer) one(data []byte, atEOF bool) (int, []byte, error) {
 		return 0, nil, nil
 	}
 
-	s := &l.spec.Scopes[l.scope]
-	state, rule, back := s.Start, noMatch, 0
+	s := &l.spec.Scopes[l.scope-1]
+	state, rule, back := s.Start, 0, 0
 	read := 0
 
-	for {
-		if read == len(data) {
-			if !atEOF {
-				return 0, nil, nil
-			}
-
-			break
-		}
-
+	for read < len(data) {
 		r, w := utf8.DecodeRune(data[read:])
 
 		if r == utf8.RuneError && w <= 1 && !atEOF && len(data)-read < utf8.UTFMax {
 			return 0, nil, nil
 		}
 
-		c := l.spec.class(r)
+		state = s.Next[state][l.spec.class(r)]
 
-		if c == noClass {
+		if state == 0 {
 			break
 		}
 
-		to := s.Next[state][c]
+		read += w
 
-		if to == noState {
-			break
-		}
-
-		state, read = to, read+w
-
-		if a := s.Accept[state]; a != noMatch {
+		if a := s.Accept[state]; a != 0 {
 			rule, back = a, read
+		}
+
+		if read == len(data) && !atEOF {
+			return 0, nil, nil
 		}
 	}
 
-	if rule == noMatch {
+	if rule == 0 {
 		r, _ := utf8.DecodeRune(data)
 
 		return 0, nil, fmt.Errorf("%s: no rule reads %q", s.Name, r)
 	}
 
-	act := s.Acts[rule]
+	act := s.Acts[rule-1]
 	text := data[:back]
 
-	if act.Push != None {
+	if act.Push != 0 {
 		n := len(l.stack)
 		l.stack = append(l.stack[:n:n], act.Push)
 	}
@@ -209,17 +187,15 @@ func (l *Lexer) one(data []byte, atEOF bool) (int, []byte, error) {
 		return 0, nil, fmt.Errorf("%s: returns with nothing to return to", s.Name)
 	case act.Pop:
 		l.scope, l.stack = l.stack[n-1], l.stack[:n-1]
-	case act.Goto != None:
+	case act.Goto != 0:
 		l.scope = act.Goto
 	}
 
-	kind := act.Emit
-
-	if act.Drop || kind == None {
+	if act.Emit == 0 {
 		return back, nil, nil
 	}
 
-	l.tok = Token{Kind: kind, Do: act.Do, Text: string(text), Start: 0, End: back}
+	l.tok = Token{Kind: act.Emit, Do: act.Do, Text: string(text), Start: 0, End: back}
 
 	return back, text, nil
 }
@@ -228,7 +204,7 @@ func (l *Lexer) Next() (Token, bool) {
 	if !l.sc.Scan() {
 		l.err = l.sc.Err()
 
-		return Token{Kind: noMatch}, false
+		return Token{}, false
 	}
 
 	return l.tok, true
@@ -236,6 +212,6 @@ func (l *Lexer) Next() (Token, bool) {
 
 func (l *Lexer) Err() error { return l.err }
 
-func (l *Lexer) Scope() string { return l.spec.Scopes[l.scope].Name }
+func (l *Lexer) Scope() string { return l.spec.Scopes[l.scope-1].Name }
 
 func (l *Lexer) Depth() int { return len(l.stack) }

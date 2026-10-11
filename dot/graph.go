@@ -80,14 +80,14 @@ type Group struct {
 	Nodes []Node
 }
 
-func (g Graph) Bytes() []byte {
+func (g Graph) Bytes() ([]byte, error) {
 	var b bytes.Buffer
 
 	if err := draw.Execute(&b, g); err != nil {
-		panic(err)
+		return nil, err
 	}
 
-	return b.Bytes()
+	return b.Bytes(), nil
 }
 
 func Ident(s string) string {

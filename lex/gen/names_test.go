@@ -78,25 +78,25 @@ func TestIdentifierClassesFollowUax31(t *testing.T) {
 	start, _ := look(t, "id-start")
 	cont, _ := look(t, "id-continue")
 
-	for _, r := range []rune("aZñα漢") {
+	for _, r := range "aZñα漢" {
 		if !start.Has(r) {
 			t.Errorf("ID_Start should hold %q", r)
 		}
 	}
 
-	for _, r := range []rune("0_ -+") {
+	for _, r := range "0_ -+" {
 		if start.Has(r) {
 			t.Errorf("ID_Start should not hold %q", r)
 		}
 	}
 
-	for _, r := range []rune("0٣_a漢") {
+	for _, r := range "0٣_a漢" {
 		if !cont.Has(r) {
 			t.Errorf("ID_Continue should hold %q", r)
 		}
 	}
 
-	for _, r := range []rune(" -+") {
+	for _, r := range " -+" {
 		if cont.Has(r) {
 			t.Errorf("ID_Continue should not hold %q", r)
 		}

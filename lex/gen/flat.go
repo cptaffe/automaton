@@ -1,5 +1,7 @@
 package gen
 
+import "github.com/cptaffe/automaton"
+
 type FlatActs struct {
 	Emit string
 	Do   string
@@ -10,17 +12,17 @@ type FlatActs struct {
 }
 
 type FlatRule struct {
-	Expr  Expr
-	Acts  FlatActs
-	Scope string
-	Line  int
-	Text  string
+	Expr    automaton.Expr
+	Acts    FlatActs
+	Include string
+	Scope   string
+	Line    int
+	Text    string
 }
 
 type FlatScope struct {
-	Name     string
-	Includes string
-	Line     int
+	Name string
+	Line int
 }
 
 type Flat struct {
@@ -43,25 +45,30 @@ func (f *Flat) Scope(name string) *FlatScope {
 
 func (f *Flat) Of(name string) []FlatRule {
 	var out []FlatRule
-	seen := map[string]bool{}
 
-	for at := name; at != "" && !seen[at]; {
+	var walk func(at string, seen map[string]bool)
+
+	walk = func(at string, seen map[string]bool) {
+		if seen[at] {
+			return
+		}
+
 		seen[at] = true
 
 		for _, r := range f.Rules {
-			if r.Scope == at {
+			switch {
+			case r.Scope != at:
+			case r.Include != "":
+				walk(r.Include, seen)
+			default:
 				out = append(out, r)
 			}
 		}
 
-		s := f.Scope(at)
-
-		if s == nil {
-			break
-		}
-
-		at = s.Includes
+		delete(seen, at)
 	}
+
+	walk(name, map[string]bool{})
 
 	return out
 }

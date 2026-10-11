@@ -7,8 +7,6 @@ import (
 
 type Sym int
 
-const Dead = -1
-
 type Alphabet struct {
 	keys  int
 	names []string
@@ -16,11 +14,11 @@ type Alphabet struct {
 }
 
 func NewAlphabet(keys []string, events ...string) *Alphabet {
-	a := &Alphabet{by: map[string]Sym{}}
+	a := &Alphabet{names: []string{""}, by: map[string]Sym{}}
 	for _, k := range keys {
 		a.add(k)
 	}
-	a.keys = len(a.names)
+	a.keys = len(a.names) - 1
 	for _, e := range events {
 		a.add(e)
 	}
@@ -35,13 +33,14 @@ func (a *Alphabet) add(name string) {
 	a.names = append(a.names, name)
 }
 
-func (a *Alphabet) Size() Sym                  { return Sym(len(a.names)) }
-func (a *Alphabet) Keys() Sym                  { return Sym(a.keys) }
-func (a *Alphabet) IsKey(s Sym) bool           { return s < Sym(a.keys) }
-func (a *Alphabet) Of(name string) (Sym, bool) { s, ok := a.by[name]; return s, ok }
+func (a *Alphabet) Size() int          { return len(a.names) - 1 }
+func (a *Alphabet) Keys() int          { return a.keys }
+func (a *Alphabet) IsKey(s Sym) bool   { return s >= 1 && int(s) <= a.keys }
+func (a *Alphabet) IsEvent(s Sym) bool { return int(s) > a.keys && int(s) < len(a.names) }
+func (a *Alphabet) Of(name string) Sym { return a.by[name] }
 func (a *Alphabet) Name(s Sym) string {
-	if s < 0 || int(s) >= len(a.names) {
-		return "?"
+	if s < 1 || int(s) >= len(a.names) {
+		return ""
 	}
 	return a.names[s]
 }
@@ -86,6 +85,7 @@ type Rule struct {
 	Action  string
 	Goto    string
 	Hands   string
+	Include string
 	When    Cond
 	Label   string
 	Line    int

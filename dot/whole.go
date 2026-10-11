@@ -1,19 +1,15 @@
 package dot
 
-import (
-	"fmt"
+import "fmt"
 
-	"github.com/cptaffe/automaton"
-)
-
-func Whole(ms []Machine, name string) []byte {
+func Whole(ms []Machine, name string) ([]byte, error) {
 	g := Graph{
 		Name:     name,
 		Look:     "machine",
 		Compound: true,
 	}
 
-	skips := make([]map[automaton.State]bool, len(ms))
+	skips := make([]map[int]bool, len(ms))
 
 	for i, m := range ms {
 		skips[i] = kept(m)
@@ -22,7 +18,7 @@ func Whole(ms []Machine, name string) []byte {
 	for i, m := range ms {
 		box := Group{ID: fmt.Sprint(i), Label: m.Name()}
 
-		for s := automaton.State(0); int(s) < m.States(); s++ {
+		for s := 1; s <= m.States(); s++ {
 			if skips[i][s] {
 				continue
 			}
@@ -46,7 +42,7 @@ func Whole(ms []Machine, name string) []byte {
 
 		g.Groups = append(g.Groups, box)
 
-		for s := automaton.State(0); int(s) < m.States(); s++ {
+		for s := 1; s <= m.States(); s++ {
 			if skips[i][s] {
 				continue
 			}
@@ -55,7 +51,7 @@ func Whole(ms []Machine, name string) []byte {
 				g.Edges = append(g.Edges, Edge{
 					From:  fmt.Sprintf("%s%d", tag(i), s),
 					To:    fmt.Sprintf("%s%d", tag(i), r.to),
-					Label: " " + times(label(m, r.set), r.n) + " ",
+					Label: " " + times(r.label, r.n) + " ",
 				})
 			}
 		}
@@ -68,7 +64,7 @@ func Whole(ms []Machine, name string) []byte {
 			continue
 		}
 
-		for s := automaton.State(0); int(s) < m.States(); s++ {
+		for s := 1; s <= m.States(); s++ {
 			scope, ok := leaves.Leaves(s)
 
 			if !ok {
@@ -96,9 +92,9 @@ func Whole(ms []Machine, name string) []byte {
 
 func tag(i int) string { return fmt.Sprintf("m%d_s", i) }
 
-func start(m Machine) automaton.State {
-	for _, s := range m.Starts() {
-		return s
+func start(m Machine) int {
+	if s := m.Starts(); len(s) > 0 {
+		return s[0].State
 	}
 
 	return 0

@@ -28,7 +28,8 @@ go install github.com/cptaffe/automaton/cmd/...@latest
 ## Lexers
 
 A `.lex` file has scopes of rules; each rule matches the longest input it can
-and emits a token, ignores it, or moves to another scope. A scope that takes a
+and emits a token, ignores it, or moves to another scope. A rule that is only
+`-> scope` reads that scope's rules in where it stands. A scope that takes a
 parameter returns to whoever entered it, and may enter itself, so comments can
 nest:
 
@@ -52,7 +53,7 @@ comment(then) {
 
 l, err := lex.New(scan.Spec, r, "start")
 for tok, ok := l.Next(); ok; tok, ok = l.Next() {
-	fmt.Println(scan.Spec.Tokens[tok.Kind], tok.Text)
+	fmt.Println(scan.Spec.Token(tok.Kind), tok.Text)
 }
 ```
 
@@ -62,7 +63,11 @@ for tok, ok := l.Next(); ok; tok, ok = l.Next() {
 
 [`seq`](seq) compiles scopes of key sequences into a table, refusing two rules
 on the same keys and a rule that is also the start of a longer one unless the
-scope says how long to wait for the next key. Both dialects share it.
+scope says how long to wait for the next key. A machine starts in the first
+scope and returns to its scope's start after each match; `-> scope` after a
+rule moves it, and `-> scope when ...` on a line of its own reads another
+scope's rules in, as long as the condition holds. A key is taken only when a
+rule that holds can use it. Both dialects share it.
 
 ### Keypad
 
@@ -89,17 +94,17 @@ mailbox:
 ```go
 g, err := keypad.Parse(f, "dial.tree")
 t, err := seq.Compile(g, keypad.Alphabet(g))
-m := seq.NewMachine(t, "start")
-star, _ := t.Alpha.Of("*")
-consumed, fired := m.Step(star, seq.Env{"messages": "1"})
+m, err := seq.NewMachine(t, "")
+taken, fired := m.Step(t.Alpha.Of("*"), seq.Env{"messages": "1"})
 ```
 
 ![dial.tree as a machine](docs/dial.svg)
 
 ### Hotkeys
 
-Keyboard shortcuts, each running an rc script, with a shared prelude and a
-condition on the application the keys are headed for:
+Keyboard shortcuts, each running an rc script, with a shared prelude. `main`
+reads in `acme`'s rules only while Acme has the keyboard, and `marks` is a mode
+that `escape` leaves:
 
 ```
 %{
@@ -107,7 +112,10 @@ fn ctl { echo $1 | 9p write acme/`{9p read acme-focused/focus}/ctl }
 %}
 %delay settle 1s
 
-acme: when app == "devdraw"
+main:
+	-> acme when app == "devdraw"
+
+acme:
 	%settles settle
 	command-s		{ ctl put }	# save
 	command-w		{ ctl del }	# close
@@ -117,15 +125,19 @@ acme: when app == "devdraw"
 
 marks:
 	m			{ ctl mark }
-	escape			{ ctl show } -> acme
+	escape			{ ctl show } -> main
 ```
 
 ```go
 r, err := hotkey.Parse(f, "hotkeys", nil)
-m := r.Matcher()
-consume, fired, waits := m.Key("command-s", seq.Env{"app": "devdraw"})
+m, err := seq.NewMachine(r.Table, "")
+env := seq.Env{"app": "devdraw"}
+taken, fired := m.Step(r.Table.Alpha.Of("control-x"), env)
 for _, a := range fired {
 	exec.Command("rc", "-c", r.Prelude+"\n"+a.Action).Start()
+}
+for _, name := range m.Waits() {
+	time.AfterFunc(r.Table.Delays[name], func() { m.Step(r.Table.Alpha.Of(name), env) })
 }
 ```
 
@@ -139,7 +151,7 @@ to read it exactly:
 
 ```sh
 goyacc -o /dev/null -v y.output gram.y
-lrdot y.output parse-gram.dot
+lrdot -name gram y.output gram.dot
 ```
 
 The drawings in [docs](docs) are made by [`docs/draw.sh`](docs/draw.sh) from

@@ -33,6 +33,10 @@ func Build(rules []Rule) (*DFA, error) {
 }
 
 func BuildWith(rules []Rule, classes *Classes) (*DFA, error) {
+	if err := classes.refine(Sets(rules)); err != nil {
+		return nil, err
+	}
+
 	n := &nfa{}
 	start := n.state()
 
@@ -46,11 +50,11 @@ func BuildWith(rules []Rule, classes *Classes) (*DFA, error) {
 		}
 
 		if n.accept[end] == NoMatch {
-			n.accept[end] = Match(i)
+			n.accept[end] = Match(i + 1)
 		} else {
 			done := n.state()
 			n.eps(end, done)
-			n.accept[done] = Match(i)
+			n.accept[done] = Match(i + 1)
 		}
 	}
 
@@ -58,7 +62,7 @@ func BuildWith(rules []Rule, classes *Classes) (*DFA, error) {
 }
 
 func (n *nfa) determinise(start int, classes *Classes) *DFA {
-	d := &DFA{classes: classes}
+	d := &DFA{classes: classes, next: [][]State{make([]State, classes.Len()+1)}, accept: []Match{NoMatch}}
 	seen := map[string]int{}
 
 	var add func(of []int) State
@@ -77,11 +81,7 @@ func (n *nfa) determinise(start int, classes *Classes) *DFA {
 		d.next = append(d.next, nil)
 		d.accept = append(d.accept, NoMatch)
 
-		row := make([]State, d.classes.Len())
-
-		for c := range row {
-			row[c] = NoState
-		}
+		row := make([]State, d.classes.Len()+1)
 
 		for _, s := range set {
 			if a := n.accept[s]; a != NoMatch && (d.accept[at] == NoMatch || a < d.accept[at]) {
@@ -89,9 +89,9 @@ func (n *nfa) determinise(start int, classes *Classes) *DFA {
 			}
 		}
 
-		for c := Class(0); c < Class(d.classes.Len()); c++ {
+		for c := Class(1); int(c) <= d.classes.Len(); c++ {
 			var to []int
-			lo := d.classes.Part(c).Ranges()[0].Lo
+			lo := d.classes.Part(c).r[0].Lo
 
 			for _, s := range set {
 				for _, e := range n.out[s] {
@@ -120,7 +120,7 @@ func (n *nfa) determinise(start int, classes *Classes) *DFA {
 
 func (d *DFA) Classes() *Classes { return d.classes }
 
-func (d *DFA) States() int { return len(d.next) }
+func (d *DFA) States() int { return len(d.next) - 1 }
 
 func (d *DFA) Start() State { return d.start }
 
@@ -128,15 +128,7 @@ func (d *DFA) Next(state State, class Class) State { return d.next[state][class]
 
 func (d *DFA) Accept(state State) Match { return d.accept[state] }
 
-func (d *DFA) Step(state State, r rune) State {
-	c := d.classes.Of(r)
-
-	if c == NoClass {
-		return NoState
-	}
-
-	return d.next[state][c]
-}
+func (d *DFA) Step(state State, r rune) State { return d.next[state][d.classes.Of(r)] }
 
 func (d *DFA) Unreachable(rules []Rule) []string {
 	live := map[Match]bool{}
@@ -150,7 +142,7 @@ func (d *DFA) Unreachable(rules []Rule) []string {
 	var out []string
 
 	for i, r := range rules {
-		if !live[Match(i)] {
+		if !live[Match(i+1)] {
 			out = append(out, r.Name)
 		}
 	}
@@ -163,7 +155,7 @@ func (d *DFA) Unreachable(rules []Rule) []string {
 func (d *DFA) String() string {
 	var b strings.Builder
 
-	for s := range d.next {
+	for s := 1; s < len(d.next); s++ {
 		fmt.Fprintf(&b, "%d", s)
 
 		if a := d.accept[s]; a != NoMatch {
@@ -171,7 +163,7 @@ func (d *DFA) String() string {
 		}
 
 		for c, to := range d.next[s] {
-			if to != NoState {
+			if c > 0 && to != NoState {
 				fmt.Fprintf(&b, " %s->%d", d.classes.Part(Class(c)), to)
 			}
 		}

@@ -9,6 +9,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/cptaffe/automaton"
+	"github.com/cptaffe/automaton/lex"
 )
 
 func table(name string) (*unicode.RangeTable, bool) {
@@ -23,8 +24,8 @@ func table(name string) (*unicode.RangeTable, bool) {
 	return nil, false
 }
 
-func predefined() map[string]Expr {
-	out := map[string]Expr{"any": Lit(automaton.Span(0, utf8.MaxRune))}
+func predefined(bare bool) map[string]automaton.Expr {
+	out := map[string]automaton.Expr{"any": automaton.Lit(automaton.Span(0, utf8.MaxRune))}
 
 	if bare {
 		return out
@@ -37,7 +38,7 @@ func predefined() map[string]Expr {
 	return out
 }
 
-func given() map[string]string {
+func given(bare bool) map[string]string {
 	out := map[string]string{"any": "is built in"}
 
 	if bare {
@@ -51,12 +52,13 @@ func given() map[string]string {
 	return out
 }
 
-func (p *parser) define(name string, e Expr) {
+func (p *parser) define(w word, e automaton.Expr) {
+	name := w.text
 
 	if was := p.given[name]; was != "" {
 		p.file.Shadowed = append(p.file.Shadowed,
 			fmt.Sprintf("%s:%d: %s is defined here and %s; the definition wins",
-				p.From(), p.declLine, name, was))
+				p.From(), w.line, name, was))
 		delete(p.given, name)
 		p.named[name] = e
 		p.order = append(p.order, name)
@@ -68,7 +70,7 @@ func (p *parser) define(name string, e Expr) {
 	if _, ok := unicodeClass(name); ok {
 		p.file.Shadowed = append(p.file.Shadowed,
 			fmt.Sprintf("%s:%d: %s is defined here and is a class name already; the definition wins",
-				p.From(), p.declLine, name))
+				p.From(), w.line, name))
 		p.named[name] = e
 		p.order = append(p.order, name)
 		p.file.Defs = append(p.file.Defs, Def{Name: name, Expr: e})
@@ -77,7 +79,7 @@ func (p *parser) define(name string, e Expr) {
 	}
 
 	if _, ok := p.named[name]; ok {
-		p.FailAt(p.declLine, "%s is defined twice", name)
+		p.FailAt(w.line, "%s is defined twice", name)
 
 		return
 	}
@@ -87,41 +89,41 @@ func (p *parser) define(name string, e Expr) {
 	p.file.Defs = append(p.file.Defs, Def{Name: name, Expr: e})
 }
 
-func (p *parser) use(name string) Expr {
+func (p *parser) use(w word) automaton.Expr {
+	name := w.text
 
 	if e, ok := p.named[name]; ok {
 		return e
 	}
 
 	if s, ok := unicodeClass(name); ok {
-		return Lit(s)
+		return automaton.Lit(s)
 	}
 
 	if also := spelling(name); also != "" {
-		p.FailAt(p.Line(), "%s is written %s here", name, also)
+		p.FailAt(w.line, "%s is written %s here", name, also)
 	} else {
-		p.FailAt(p.Line(), "%s is not defined yet; there is %s", name, known())
+		p.FailAt(w.line, "%s is not defined yet; there is %s", name, known(p.bare))
 	}
 
 	return automaton.Empty()
 }
 
-func (p *parser) scope(name, param, includes string) {
-	if p.file.Scope(name) != nil {
-		p.FailAt(p.declLine, "%s is opened twice", name)
+func (p *parser) scope(w word, param string) {
+	if p.file.Scope(w.text) != nil {
+		p.FailAt(w.line, "%s is opened twice", w.text)
 
 		return
 	}
 
 	if param == "this" {
-		p.FailAt(p.declLine, "a scope cannot take a parameter called this, because this is the scope that used it")
+		p.FailAt(w.line, "a scope cannot take a parameter called this, because this is the scope that used it")
 
 		return
 	}
 
-	p.ctx = name
-	p.file.Scopes = append(p.file.Scopes,
-		Scope{Name: name, Param: param, Includes: includes, Line: p.declLine})
+	p.ctx = w.text
+	p.file.Scopes = append(p.file.Scopes, Scope{Name: w.text, Param: param, Line: w.line})
 }
 
 func (p *parser) rule(r Rule) {
@@ -131,7 +133,13 @@ func (p *parser) rule(r Rule) {
 		return
 	}
 
-	if r.Acts.Emit == "" && r.Acts.Do == "" && r.Acts.Goto == "" && !r.Acts.Drop {
+	if r.Acts.Do != "" && r.Acts.Emit == "" {
+		p.FailAt(p.Line(), "do %s with nothing emitted: a do rides on a token", r.Acts.Do)
+
+		return
+	}
+
+	if r.Include == "" && r.Acts.Emit == "" && r.Acts.Goto == "" && !r.Acts.Drop {
 		p.FailAt(p.Line(), "a rule that matches and does nothing")
 
 		return
@@ -147,11 +155,11 @@ func (p *parser) rule(r Rule) {
 	p.file.Rules = append(p.file.Rules, r)
 }
 
-func (p *parser) text(s string) Expr {
-	var e []Expr
+func (p *parser) text(s string) automaton.Expr {
+	var e []automaton.Expr
 
 	for _, r := range s {
-		e = append(e, Lit(automaton.One(r)))
+		e = append(e, automaton.Lit(automaton.One(r)))
 	}
 
 	if len(e) == 0 {
@@ -160,10 +168,10 @@ func (p *parser) text(s string) Expr {
 		return automaton.Empty()
 	}
 
-	return Cat(e...)
+	return automaton.Cat(e...)
 }
 
-func (p *parser) without(a, b Expr) Expr {
+func (p *parser) without(a, b automaton.Expr) automaton.Expr {
 	x, ok := a.Single()
 
 	if !ok {
@@ -188,14 +196,14 @@ func (p *parser) without(a, b Expr) Expr {
 		return a
 	}
 
-	return Lit(got)
+	return automaton.Lit(got)
 }
 
-func (p *parser) anycase(s string) Expr {
-	var e []Expr
+func (p *parser) anycase(s string) automaton.Expr {
+	var e []automaton.Expr
 
 	for _, r := range s {
-		e = append(e, Lit(automaton.Text(string(unicode.ToLower(r))+string(unicode.ToUpper(r)))))
+		e = append(e, automaton.Lit(automaton.Text(string(unicode.ToLower(r))+string(unicode.ToUpper(r)))))
 	}
 
 	if len(e) == 0 {
@@ -204,42 +212,42 @@ func (p *parser) anycase(s string) Expr {
 		return automaton.Empty()
 	}
 
-	return Cat(e...)
+	return automaton.Cat(e...)
 }
 
-func (p *parser) runes(s string) Set { return automaton.Text(s) }
+func (p *parser) runes(s string) automaton.Set { return automaton.Text(s) }
 
-func (p *parser) span(lo, hi string) Set {
+func (p *parser) span(lo, hi string) automaton.Set {
 	a, b := []rune(lo), []rune(hi)
 
 	if len(a) != 1 || len(b) != 1 {
 		p.FailAt(p.Line(), "a range runs between one rune and one rune, not %q and %q", lo, hi)
 
-		return Set{}
+		return automaton.Set{}
 	}
 
 	if a[0] > b[0] {
 		p.FailAt(p.Line(), "the range %q to %q runs backwards", lo, hi)
 
-		return Set{}
+		return automaton.Set{}
 	}
 
 	return automaton.Span(a[0], b[0])
 }
 
-func (p *parser) category(name string) Set {
+func (p *parser) category(name string) automaton.Set {
 	t, ok := table(name)
 
 	if !ok {
 		p.FailAt(p.Line(), "%s is not a unicode category, script or property", name)
 
-		return Set{}
+		return automaton.Set{}
 	}
 
 	return automaton.Category(t)
 }
 
-func builtinNames() []string {
+func builtinNames(bare bool) []string {
 	out := []string{"any"}
 
 	if !bare {
@@ -253,14 +261,14 @@ func builtinNames() []string {
 	return out
 }
 
-func isBuiltin(name string) bool { return name == "any" }
-
-func known() string {
-	return strings.Join(append(builtinNames(), unicodeNames()...), ", ")
+func known(bare bool) string {
+	return strings.Join(append(builtinNames(bare), unicodeNames()...), ", ")
 }
 
-func Parse(r io.Reader, from string) (*File, error) {
-	p, err := newParser(r, from)
+func Parse(r io.Reader, from string) (*File, error) { return parse(r, from, false) }
+
+func parse(r io.Reader, from string, bare bool) (*File, error) {
+	p, err := newParser(r, from, bare)
 
 	if err != nil {
 		return nil, err
@@ -274,17 +282,22 @@ func Parse(r io.Reader, from string) (*File, error) {
 		return nil, err
 	}
 
-	if len(p.file.Scopes) == 0 {
-
-		if !bare {
-			return nil, fmt.Errorf("%s: no scopes, so there is nowhere to begin", from)
-		}
+	if len(p.file.Scopes) == 0 && !bare {
+		return nil, fmt.Errorf("%s: no scopes, so there is nowhere to begin", from)
 	}
 
-	for _, s := range p.file.Scopes {
-		if s.Includes != "" && p.file.Scope(s.Includes) == nil {
-			return nil, fmt.Errorf("%s:%d: %s includes %s, and there is no such scope",
-				from, s.Line, s.Name, s.Includes)
+	for _, r := range p.file.Rules {
+		if r.Include == "" {
+			continue
+		}
+
+		s := p.file.Scope(r.Include)
+
+		switch {
+		case s == nil:
+			return nil, &lex.Error{File: from, Line: r.Line, Err: fmt.Errorf("-> %s, and there is no such scope", r.Include)}
+		case s.Param != "":
+			return nil, &lex.Error{File: from, Line: r.Line, Err: fmt.Errorf("-> %s reads %s's rules here, and %s takes a parameter", r.Include, r.Include, r.Include)}
 		}
 	}
 

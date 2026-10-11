@@ -1,6 +1,9 @@
 package automaton
 
-import "sort"
+import (
+	"fmt"
+	"sort"
+)
 
 type (
 	State int
@@ -9,9 +12,9 @@ type (
 )
 
 const (
-	NoState State = -1
-	NoClass Class = -1
-	NoMatch Match = -1
+	NoState State = 0
+	NoClass Class = 0
+	NoMatch Match = 0
 )
 
 type Classes struct {
@@ -86,12 +89,14 @@ func Partition(sets []Set) *Classes {
 		held[at] = append(held[at], a.Range)
 	}
 
+	c.parts = []Set{{}}
+
 	for _, rs := range held {
 		c.parts = append(c.parts, Of(rs...))
 	}
 
 	for i, p := range c.parts {
-		for _, x := range p.Ranges() {
+		for _, x := range p.r {
 			c.by = append(c.by, x)
 			c.at = append(c.at, Class(i))
 		}
@@ -115,9 +120,7 @@ func Partition(sets []Set) *Classes {
 	return c
 }
 
-func (c *Classes) Len() int { return len(c.parts) }
-
-func (c *Classes) Parts() []Set { return c.parts }
+func (c *Classes) Len() int { return len(c.parts) - 1 }
 
 func (c *Classes) Part(at Class) Set { return c.parts[at] }
 
@@ -134,11 +137,27 @@ func (c *Classes) Of(r rune) Class {
 func (c *Classes) Covers(s Set) []Class {
 	var out []Class
 
-	for i, p := range c.parts {
-		if !p.Intersect(s).Empty() {
+	for i := 1; i < len(c.parts); i++ {
+		if !c.parts[i].Intersect(s).Empty() {
 			out = append(out, Class(i))
 		}
 	}
 
 	return out
+}
+
+func (c *Classes) refine(sets []Set) error {
+	for _, set := range sets {
+		var got Set
+
+		for _, at := range c.Covers(set) {
+			got = got.Union(c.parts[at])
+		}
+
+		if !got.Equal(set) {
+			return fmt.Errorf("the classes split %s, so they cannot read it", set)
+		}
+	}
+
+	return nil
 }

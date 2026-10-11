@@ -21,7 +21,7 @@ func run(t *testing.T, spec *lex.Spec, src string) ([]string, int, error) {
 		if !ok {
 			break
 		}
-		out = append(out, spec.Tokens[tok.Kind]+"("+tok.Text+")")
+		out = append(out, spec.Token(tok.Kind)+"("+tok.Text+")")
 	}
 	return out, l.Depth(), l.Err()
 }

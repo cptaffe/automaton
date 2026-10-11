@@ -1,27 +1,21 @@
 package lr
 
 import (
-	"fmt"
 	"sort"
 	"strings"
 
 	"github.com/cptaffe/automaton"
 )
 
-const first = rune(0xE000)
-
 type Tokens struct {
-	name string
-	note string
-	dfa  *automaton.DFA
-	of   map[rune]string
-
-	symbols int
+	dfa   *automaton.DFA
+	words []string
+	at    map[string]rune
 }
 
-func (g *Grammar) Tokens(name string) *Tokens { return tokensOf(g.Rules, name) }
+func (g *Grammar) Tokens() *Tokens { return tokensOf(g.Rules) }
 
-func tokensOf(rs []Rule, name string) *Tokens {
+func tokensOf(rs []Rule) *Tokens {
 	is := map[string]bool{}
 
 	for _, r := range rs {
@@ -29,7 +23,7 @@ func tokensOf(rs []Rule, name string) *Tokens {
 	}
 
 	at := map[string]rune{}
-	of := map[rune]string{}
+	var words []string
 
 	for _, r := range rs {
 		for _, alt := range r.Alts {
@@ -39,14 +33,14 @@ func tokensOf(rs []Rule, name string) *Tokens {
 				}
 
 				if _, seen := at[w]; !seen {
-					r := first + rune(len(at))
-					at[w], of[r] = r, w
+					words = append(words, w)
+					at[w] = rune(len(words))
 				}
 			}
 		}
 	}
 
-	if len(at) == 0 {
+	if len(words) == 0 {
 		return nil
 	}
 
@@ -87,55 +81,37 @@ func tokensOf(rs []Rule, name string) *Tokens {
 	}
 
 	n.Start(open[rs[0].Name])
-	n.Accepts(shut[rs[0].Name], automaton.Match(0))
+	n.Accepts(shut[rs[0].Name], automaton.Match(1))
 
-	d := n.Determinise(automaton.Partition(n.Sets())).Minimise()
+	d := n.DFA().Minimise()
 
-	return &Tokens{name: name, dfa: d, of: of, symbols: len(at)}
+	return &Tokens{dfa: d, words: words, at: at}
 }
 
-func (t *Tokens) SetNote(s string)            { t.note = s }
-func (t *Tokens) Symbols() int                { return t.symbols }
-func (t *Tokens) Name() string                { return t.name }
-func (t *Tokens) Note() string                { return t.note }
-func (t *Tokens) States() int                 { return t.dfa.States() }
-func (t *Tokens) Classes() *automaton.Classes { return t.dfa.Classes() }
-func (t *Tokens) Starts() map[string]automaton.State {
-	return map[string]automaton.State{t.name: t.dfa.Start()}
-}
+func (t *Tokens) DFA() *automaton.DFA { return t.dfa }
 
-func (t *Tokens) Next(s automaton.State, c automaton.Class) automaton.State {
-	return t.dfa.Next(s, c)
-}
+func (t *Tokens) Words() []string { return append([]string(nil), t.words...) }
 
-func (t *Tokens) Accepts(s automaton.State) (string, bool) {
-	return "", t.dfa.Accept(s) != automaton.NoMatch
-}
+func (t *Tokens) Step(s automaton.State, word string) automaton.State {
+	r, ok := t.at[word]
 
-func (t *Tokens) Named(s automaton.Set) (string, bool) {
-	var out []string
-
-	for _, r := range s.Ranges() {
-		for c := r.Lo; c <= r.Hi; c++ {
-			name, ok := t.of[c]
-
-			if !ok {
-				return "", false
-			}
-
-			out = append(out, name)
-		}
+	if !ok {
+		return automaton.NoState
 	}
 
-	if len(out) == 0 {
-		return "", false
+	return t.dfa.Step(s, r)
+}
+
+func (t *Tokens) In(c automaton.Class) []string {
+	var out []string
+
+	for _, x := range t.dfa.Classes().Part(c).Ranges() {
+		for r := x.Lo; r <= x.Hi; r++ {
+			out = append(out, t.words[r-1])
+		}
 	}
 
 	sort.Strings(out)
 
-	if len(out) > 4 {
-		return fmt.Sprintf("%s and %d more", strings.Join(out[:4], " "), len(out)-4), true
-	}
-
-	return strings.Join(out, " "), true
+	return out
 }

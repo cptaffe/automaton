@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/cptaffe/automaton"
 	"github.com/cptaffe/automaton/dot"
 )
 
@@ -30,36 +31,24 @@ func grammar(rs ...[2]string) []Rule {
 func reads(t *testing.T, m *Tokens, words ...string) bool {
 	t.Helper()
 
-	at := map[string]rune{}
-
-	for r, name := range m.of {
-		at[name] = r
-	}
-
-	s := m.dfa.Start()
+	s := m.DFA().Start()
 
 	for _, w := range words {
-		r, ok := at[w]
-
-		if !ok {
+		if _, ok := m.at[w]; !ok {
 			t.Fatalf("%s is not a token of this grammar", w)
 		}
 
-		if s = m.dfa.Step(s, r); s < 0 {
-			return false
-		}
+		s = m.Step(s, w)
 	}
 
-	_, ok := m.Accepts(s)
-
-	return ok
+	return m.DFA().Accept(s) != automaton.NoMatch
 }
 
 func TestAnEmptyRuleAcceptsAtOnce(t *testing.T) {
 	m := tokensOf(grammar(
 		[2]string{"file", "lines"},
 		[2]string{"lines", "nothing| lines NEWLINE"},
-	), "file")
+	))
 
 	if m == nil {
 		t.Fatal("no machine")
@@ -83,7 +72,7 @@ func TestRightRecursionIsExact(t *testing.T) {
 		t.Fatalf("right recursion should not self-embed, got %v", nested)
 	}
 
-	m := tokensOf(rs, "list")
+	m := tokensOf(rs)
 
 	for _, want := range [][]string{
 		{"ITEM"},
@@ -109,7 +98,7 @@ func TestSelfEmbeddingReadsMore(t *testing.T) {
 		t.Fatalf("expr should self-embed, got %v", nested)
 	}
 
-	m := tokensOf(rs, "expr")
+	m := tokensOf(rs)
 
 	if !reads(t, m, "LP", "LP", "NUM", "RP", "RP") {
 		t.Error("a doubly bracketed number is an expr and is not accepted")
@@ -117,5 +106,33 @@ func TestSelfEmbeddingReadsMore(t *testing.T) {
 
 	if !reads(t, m, "LP", "LP", "NUM", "RP") {
 		t.Error("the approximation should accept unbalanced brackets")
+	}
+}
+
+func TestAClassNamesItsTokens(t *testing.T) {
+	m := tokensOf(grammar([2]string{"pair", "A B| B A"}))
+
+	if got := m.Words(); len(got) != 2 {
+		t.Fatalf("the words are %v; want A and B", got)
+	}
+
+	var seen []string
+
+	for c := automaton.Class(1); int(c) <= m.DFA().Classes().Len(); c++ {
+		seen = append(seen, m.In(c)...)
+	}
+
+	if strings.Join(seen, " ") != "A B" && strings.Join(seen, " ") != "B A" {
+		t.Errorf("the classes hold %v; want A and B once each", seen)
+	}
+
+	if m.Step(m.DFA().Start(), "C") != automaton.NoState {
+		t.Error("a word the grammar never names moves the machine")
+	}
+}
+
+func TestReadRefusesABadRuleNumber(t *testing.T) {
+	if _, err := Read(strings.NewReader("\tfile: lines (99999999999999999999)\n")); err == nil {
+		t.Error("a rule number too large for an int is read without complaint")
 	}
 }

@@ -2,103 +2,87 @@ package draw
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
-	"github.com/cptaffe/automaton"
 	"github.com/cptaffe/automaton/dot"
 	"github.com/cptaffe/automaton/seq"
 )
 
-const base = 0xE000
+func Draw(t *seq.Table) ([]byte, error) { return dot.Draw(Machine(t)) }
 
-func Draw(t *seq.Table) []byte { return dot.Draw(Machine(t)) }
+func Machine(t *seq.Table) dot.Machine { return machine{t} }
 
-func Machine(t *seq.Table) dot.Machine {
-	sets := make([]automaton.Set, t.Alpha.Size())
-	for s := range sets {
-		sets[s] = automaton.One(rune(base + s))
-	}
-	c := automaton.Partition(sets)
-	sym := make([]seq.Sym, c.Len())
-	for i := range sym {
-		sym[i] = seq.Dead
-		if rs := c.Part(automaton.Class(i)).Ranges(); len(rs) == 1 && rs[0].Lo == rs[0].Hi && rs[0].Lo >= base {
-			sym[i] = seq.Sym(rs[0].Lo - base)
-		}
-	}
-	return machine{t: t, classes: c, sym: sym}
-}
-
-type machine struct {
-	t       *seq.Table
-	classes *automaton.Classes
-	sym     []seq.Sym
-}
+type machine struct{ t *seq.Table }
 
 func (m machine) Name() string { return m.t.Name }
 
 func (m machine) Note() string {
-	return fmt.Sprintf("%s -- %s, %s", m.t.Name, dot.Plural(len(m.t.Next), "state"), dot.Plural(int(m.t.Alpha.Size()), "symbol"))
+	return fmt.Sprintf("%s -- %s, %s", m.t.Name, dot.Plural(m.States(), "state"), dot.Plural(m.t.Alpha.Size(), "symbol"))
 }
 
-func (m machine) States() int { return len(m.t.Next) }
+func (m machine) States() int { return len(m.t.Next) - 1 }
 
-func (m machine) Starts() map[string]automaton.State {
-	out := map[string]automaton.State{}
-	for scope, s := range m.t.Start {
-		out[scope] = automaton.State(s)
+func (m machine) Starts() []dot.Start {
+	out := make([]dot.Start, len(m.t.Scopes))
+	for i, scope := range m.t.Scopes {
+		out[i] = dot.Start{Name: scope, State: m.t.Start[scope]}
 	}
 	return out
 }
 
-func (m machine) Classes() *automaton.Classes { return m.classes }
-
-func (m machine) Next(s automaton.State, c automaton.Class) automaton.State {
-	sym := m.sym[c]
-	if sym == seq.Dead {
-		return automaton.NoState
+func (m machine) Moves(s int) []dot.Move {
+	by := map[int][]seq.Sym{}
+	var order []int
+	for sym, to := range m.t.Next[s] {
+		if to == 0 {
+			continue
+		}
+		if _, ok := by[to]; !ok {
+			order = append(order, to)
+		}
+		by[to] = append(by[to], seq.Sym(sym))
 	}
-	if n := m.t.Next[s][sym]; n != seq.Dead {
-		return automaton.State(n)
+	sort.Ints(order)
+	out := make([]dot.Move, len(order))
+	for i, to := range order {
+		out[i] = dot.Move{To: to, Label: m.names(by[to])}
 	}
-	return automaton.NoState
+	if settle := m.t.Settle[s]; settle != 0 {
+		out = append(out, dot.Move{To: s, Label: m.name(settle), Dashed: true, Class: "settle"})
+	}
+	return out
 }
 
-func (m machine) Accepts(s automaton.State) (string, bool) {
-	a := m.t.Accept[s]
-	if a == nil {
+func (m machine) Accepts(s int) (string, bool) {
+	as := m.t.Accept[s]
+	if len(as) == 0 {
 		return "", false
 	}
-	return Label(a), true
+	labels := make([]string, len(as))
+	for i, a := range as {
+		labels[i] = Label(a)
+	}
+	return strings.Join(labels, "\n"), true
 }
 
-func (m machine) Named(s automaton.Set) (string, bool) {
-	var syms []seq.Sym
-	for _, r := range s.Ranges() {
-		if r.Lo < base || r.Hi >= base+rune(m.t.Alpha.Size()) {
-			return "", false
-		}
-		for c := r.Lo; c <= r.Hi; c++ {
-			syms = append(syms, seq.Sym(c-base))
-		}
-	}
+func (m machine) names(syms []seq.Sym) string {
 	var parts []string
 	for i := 0; i < len(syms); {
 		j := i
 		for j+1 < len(syms) && syms[j+1] == syms[j]+1 && m.t.Alpha.IsKey(syms[j+1]) {
 			j++
 		}
-		switch {
-		case j-i >= 2:
+		if j-i >= 2 {
 			parts = append(parts, m.name(syms[i])+"-"+m.name(syms[j]))
-		default:
+		} else {
 			for k := i; k <= j; k++ {
 				parts = append(parts, m.name(syms[k]))
 			}
 		}
 		i = j + 1
 	}
-	return strings.Join(parts, " "), len(parts) > 0
+	return strings.Join(parts, " ")
 }
 
 func (m machine) name(s seq.Sym) string {

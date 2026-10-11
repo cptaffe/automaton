@@ -32,6 +32,7 @@ lines:
 	| lines header
 	| lines decl
 	| lines rule              { yylex.(*lexer).rule($2) }
+	| lines ARROW WORD when_ NEWLINE   { yylex.(*lexer).include($3, $4) }
 	| lines DOTS rule         { yylex.(*lexer).anyRule($3) }
 	;
 
@@ -40,7 +41,7 @@ text:
 	;
 
 header:
-	  WORD COLON when_ NEWLINE   { yylex.(*lexer).scope($1, $3) }
+	  WORD COLON NEWLINE   { yylex.(*lexer).scope($1) }
 	;
 
 when_:
@@ -83,19 +84,19 @@ goto_:
 
 expr:
 	  term            { $$ = $1 }
-	| expr OR term    { $$ = or($1, $3) }
+	| expr OR term    { $$ = seq.AnyOf($1, $3) }
 	;
 
 term:
 	  factor            { $$ = $1 }
-	| term AND factor   { $$ = and($1, $3) }
+	| term AND factor   { $$ = seq.AllOf($1, $3) }
 	;
 
 factor:
 	  NOT factor           { $$ = seq.Not{Of: $2} }
 	| LPAREN expr RPAREN   { $$ = $2 }
 	| IDENT                { $$ = seq.Name($1.text) }
-	| IDENT EQ STRING      { $$ = yylex.(*lexer).compare($1, "==", $3) }
-	| IDENT NE STRING      { $$ = yylex.(*lexer).compare($1, "!=", $3) }
-	| IDENT MATCH STRING   { $$ = yylex.(*lexer).compare($1, "~", $3) }
+	| IDENT EQ STRING      { $$ = yylex.(*lexer).compare($1, seq.Eq, $3) }
+	| IDENT NE STRING      { $$ = yylex.(*lexer).compare($1, seq.Ne, $3) }
+	| IDENT MATCH STRING   { $$ = yylex.(*lexer).compare($1, seq.Match, $3) }
 	;

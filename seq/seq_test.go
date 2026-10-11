@@ -10,8 +10,7 @@ import (
 func keys(a *Alphabet, names ...string) Class {
 	var c Class
 	for _, n := range names {
-		s, _ := a.Of(n)
-		c.Syms = append(c.Syms, s)
+		c.Syms = append(c.Syms, a.Of(n))
 	}
 	c.Text = strings.Join(names, "|")
 	return c
@@ -45,11 +44,7 @@ func alphabet() *Alphabet {
 func compile(t *testing.T) *Table {
 	t.Helper()
 	a := alphabet()
-	g := grammar(a)
-	if err := Check(g); err != nil {
-		t.Fatal(err)
-	}
-	tab, err := Compile(g, a)
+	tab, err := Compile(grammar(a), a)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,20 +62,32 @@ func actions(as []*Accept) string {
 	return strings.Join(s, ",")
 }
 
+func machine(t *testing.T, tab *Table, scope string) *Machine {
+	t.Helper()
+	m, err := NewMachine(tab, scope)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return m
+}
+
 func TestAlphabet(t *testing.T) {
 	a := NewAlphabet([]string{"x", "y", "x"}, "late", "early")
 	if a.Size() != 4 || a.Keys() != 2 {
 		t.Errorf("size %d keys %d", a.Size(), a.Keys())
 	}
-	if s, _ := a.Of("late"); s != 2 || a.Name(3) != "early" || a.IsKey(2) {
+	if a.Of("late") != 3 || a.Name(4) != "early" || a.IsKey(3) || !a.IsEvent(3) {
 		t.Errorf("events are not kept in order after the keys: %v", a.names)
+	}
+	if a.Of("nope") != 0 || a.Name(0) != "" || a.IsKey(0) || a.IsEvent(0) {
+		t.Error("symbol 0 is a symbol")
 	}
 }
 
 func TestMachine(t *testing.T) {
 	tab := compile(t)
-	sym := func(n string) Sym { s, _ := tab.Alpha.Of(n); return s }
-	m := NewMachine(tab, "start")
+	sym := tab.Alpha.Of
+	m := machine(t, tab, "")
 	on := Env{"on": "1"}
 	for _, c := range []struct {
 		in     string
@@ -119,22 +126,20 @@ func TestMachine(t *testing.T) {
 	}
 }
 
-func TestWhenRefuses(t *testing.T) {
+func TestAFailedWhenLeavesTheKey(t *testing.T) {
 	tab := compile(t)
-	m := NewMachine(tab, "mode")
-	x, _ := tab.Alpha.Of("x")
-	if ok, fired := m.Step(x, Env{}); !ok || len(fired) != 0 {
+	m := machine(t, tab, "mode")
+	if ok, fired := m.Step(tab.Alpha.Of("x"), Env{}); ok || len(fired) != 0 {
 		t.Errorf("a rule whose when fails consumed %v and fired %v", ok, actions(fired))
 	}
 }
 
 func TestOperand(t *testing.T) {
 	tab := compile(t)
-	m := NewMachine(tab, "start")
+	m := machine(t, tab, "")
 	var last []*Accept
 	for _, n := range []string{"c", "d", "d", "T"} {
-		s, _ := tab.Alpha.Of(n)
-		_, last = m.Step(s, nil)
+		_, last = m.Step(tab.Alpha.Of(n), nil)
 	}
 	if len(last) != 1 || last[0].Operand == nil || *last[0].Operand != (Slice{From: 1, To: 0}) {
 		t.Errorf("operand %+v", last)
@@ -180,8 +185,7 @@ func TestCheck(t *testing.T) {
 
 func TestLink(t *testing.T) {
 	a := NewAlphabet([]string{"1", "2"}, "answered")
-	one, _ := a.Of("1")
-	two, _ := a.Of("2")
+	one, two, ans := a.Of("1"), a.Of("2"), a.Of("answered")
 	first := &Grammar{Name: "first", Scopes: []string{"s"}, Rules: []Rule{{Scope: "s", Pattern: "1", Elems: []Class{{Syms: []Sym{one}}}, Action: "dial", Hands: "second"}}}
 	second := &Grammar{Name: "second", Scopes: []string{"s"}, Rules: []Rule{{Scope: "s", Pattern: "2", Elems: []Class{{Syms: []Sym{two}}}, Action: "menu"}}}
 	t1, _ := Compile(first, a)
@@ -190,27 +194,40 @@ func TestLink(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	m := NewMachine(tab, "first.s")
-	ans, _ := a.Of("answered")
+	m := machine(t, tab, "")
+	if m.Scope() != "first.s" {
+		t.Errorf("the link begins in %s; first hands to second, so first is the root", m.Scope())
+	}
+	if ok, _ := m.Step(two, nil); ok {
+		t.Error("the second tree's key worked before the hand-off")
+	}
 	if _, f := m.Step(one, nil); actions(f) != "dial" {
 		t.Fatalf("first tree fired %q", actions(f))
 	}
-	at := tab.Start["first.s"]
-	n := tab.Next[tab.Next[at][one]][ans]
-	if n == Dead || tab.Scope[n] != "second.s" {
-		t.Errorf("answered after dial leads to %d", n)
+	if ok, _ := m.Step(ans, nil); !ok || m.Scope() != "second.s" {
+		t.Errorf("answered after dial took the machine to %s", m.Scope())
+	}
+	if _, f := m.Step(two, nil); actions(f) != "menu" {
+		t.Errorf("after the hand-off, 2 fired %q", actions(f))
 	}
 	if _, err := Link([]*Table{t1}, "all", "answered"); err == nil {
 		t.Error("a hand-off to a missing tree linked")
 	}
+	if _, err := Link([]*Table{t1, t1, t2}, "all", "answered"); err == nil {
+		t.Error("two trees of one name linked")
+	}
 }
 
 func TestCond(t *testing.T) {
-	re, err := NewCompare("app", "~", "^(a|b)$")
+	re, err := NewCompare("app", Match, "^(a|b)$")
 	if err != nil {
 		t.Fatal(err)
 	}
-	c := Or{And{Name("x"), Not{Of: re}}, &Compare{Name: "app", Op: "==", Value: "c"}}
+	eq, err := NewCompare("app", Eq, "c")
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := AnyOf(AllOf(Name("x"), Not{Of: re}), eq)
 	for app, want := range map[string]bool{"a": false, "c": true, "d": true} {
 		if got := c.Eval(Env{"x": "1", "app": app}); got != want {
 			t.Errorf("app=%s: %v", app, got)
@@ -219,8 +236,11 @@ func TestCond(t *testing.T) {
 	if got := c.Names(); !reflect.DeepEqual(got, []string{"app", "x"}) {
 		t.Errorf("names %v", got)
 	}
-	if _, err := NewCompare("a", "<", "b"); err == nil {
-		t.Error("< compared")
+	if _, err := NewCompare("a", NoOp, "b"); err == nil {
+		t.Error("no op compared")
+	}
+	if (&Compare{}).Eval(Env{}) {
+		t.Error("the zero comparison holds")
 	}
 	if s := c.String(); !strings.Contains(s, "not app ~") {
 		t.Errorf("string %q", s)

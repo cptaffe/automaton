@@ -16,13 +16,9 @@ var (
 
 func prelude() []Def {
 	once.Do(func() {
-		bare = true
-		defer func() { bare = false }()
-
-		f, err := Parse(strings.NewReader(preludeSrc), "prelude.lex")
+		f, err := parse(strings.NewReader(preludeSrc), "prelude.lex", true)
 
 		if err != nil {
-
 			panic("gen: the prelude does not parse: " + err.Error())
 		}
 
@@ -31,5 +27,3 @@ func prelude() []Def {
 
 	return defs
 }
-
-var bare bool

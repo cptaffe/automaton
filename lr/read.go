@@ -3,9 +3,10 @@ package lr
 import (
 	"bufio"
 	"fmt"
-	"os"
+	"io"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -17,30 +18,18 @@ type Rule struct {
 
 type Grammar struct {
 	Rules []Rule
-	path  string
 	lhs   map[int]string
 }
 
-var (
-	item = regexp.MustCompile(`^\t(\S+):\s*(.*?)\s*\((\d+)\)\s*$`)
-	word = regexp.MustCompile(`[A-Za-z_][A-Za-z_0-9]*`)
-)
+var item = regexp.MustCompile(`^\t(\S+):\s*(.*?)\s*\((\d+)\)\s*$`)
 
-func Read(at string) (*Grammar, error) {
-	f, err := os.Open(at)
-
-	if err != nil {
-		return nil, err
-	}
-
-	defer f.Close()
-
+func Read(r io.Reader) (*Grammar, error) {
 	seen := map[int]bool{}
 	lhs := map[int]string{}
 	alts := map[string][]string{}
 	first := map[string]int{}
 
-	sc := bufio.NewScanner(f)
+	sc := bufio.NewScanner(r)
 	sc.Buffer(make([]byte, 1<<16), 1<<22)
 
 	for sc.Scan() {
@@ -50,8 +39,11 @@ func Read(at string) (*Grammar, error) {
 			continue
 		}
 
-		n := 0
-		fmt.Sscanf(m[3], "%d", &n)
+		n, err := strconv.Atoi(m[3])
+
+		if err != nil {
+			return nil, fmt.Errorf("rule %s: %w", m[3], err)
+		}
 
 		if seen[n] || m[1] == "$accept" {
 			continue
@@ -80,7 +72,7 @@ func Read(at string) (*Grammar, error) {
 		return nil, err
 	}
 
-	return &Grammar{Rules: out, path: at, lhs: lhs}, nil
+	return &Grammar{Rules: out, lhs: lhs}, nil
 }
 
 func clean(s string) string {

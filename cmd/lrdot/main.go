@@ -1,7 +1,9 @@
 package main
 
 import (
+	"flag"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,34 +13,58 @@ import (
 	"github.com/cptaffe/automaton/lr/draw"
 )
 
-func main() {
-	if len(os.Args) < 3 {
-		fmt.Fprintln(os.Stderr, "usage: lrdot <y.output> <out.dot> [shape-only]")
-		os.Exit(1)
-	}
-	shapeOnly := len(os.Args) > 3 && os.Args[3] == "shape-only"
+func main() { os.Exit(run(os.Args[1:], os.Stderr)) }
 
-	g, err := lr.Read(os.Args[1])
-	if err != nil {
-		fail(err)
+func run(args []string, stderr io.Writer) int {
+	fs := flag.NewFlagSet("lrdot", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	name := fs.String("name", "", "the grammar's name in the drawings; the output's base name if empty")
+	shapeOnly := fs.Bool("shape-only", false, "draw only the grammar's shape, not its machine over tokens")
+	fs.Usage = func() {
+		fmt.Fprintln(stderr, "usage: lrdot [-name n] [-shape-only] y.output out.dot")
+		fs.PrintDefaults()
 	}
-	name := strings.TrimPrefix(strings.TrimSuffix(filepath.Base(os.Args[2]), ".dot"), "parse-")
-	if err := os.WriteFile(os.Args[2], draw.Shape(g, name), 0o644); err != nil {
-		fail(err)
+	if err := fs.Parse(args); err != nil {
+		return 2
 	}
-
-	over := ""
-	if t := draw.Tokens(g, name); t != nil && !shapeOnly {
-		at := strings.TrimSuffix(os.Args[2], ".dot") + "-tokens.dot"
-		if err := os.WriteFile(at, dot.Draw(t), 0o644); err != nil {
-			fail(err)
-		}
-		over = fmt.Sprintf(", %d states over tokens", t.States())
+	if fs.NArg() != 2 {
+		fs.Usage()
+		return 2
 	}
-	fmt.Printf("lrdot: %s, %d rules%s\n", name, len(g.Rules), over)
+	if err := one(fs.Arg(0), fs.Arg(1), *name, *shapeOnly); err != nil {
+		fmt.Fprintln(stderr, "lrdot:", err)
+		return 1
+	}
+	return 0
 }
 
-func fail(err error) {
-	fmt.Fprintln(os.Stderr, "lrdot:", err)
-	os.Exit(1)
+func one(in, out, name string, shapeOnly bool) error {
+	if name == "" {
+		name = strings.TrimSuffix(filepath.Base(out), ".dot")
+	}
+	f, err := os.Open(in)
+	if err != nil {
+		return err
+	}
+	g, err := lr.Read(f)
+	f.Close()
+	if err != nil {
+		return fmt.Errorf("%s: %w", in, err)
+	}
+	b, err := draw.Shape(g, name)
+	if err == nil {
+		err = os.WriteFile(out, b, 0o644)
+	}
+	if err != nil {
+		return err
+	}
+	t := draw.Tokens(g, name)
+	if t == nil || shapeOnly {
+		return nil
+	}
+	b, err = dot.Draw(t)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(strings.TrimSuffix(out, ".dot")+"-tokens.dot", b, 0o644)
 }

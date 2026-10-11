@@ -3,17 +3,25 @@ package gen
 //go:generate go run ../../cmd/genlex -go internal/scan/scan.gen.go -package scan lex.lex
 
 import (
+	"fmt"
 	"io"
 	"strings"
 
+	"github.com/cptaffe/automaton"
 	"github.com/cptaffe/automaton/lex"
 	"github.com/cptaffe/automaton/lex/gen/internal/scan"
 )
 
+type word struct {
+	text string
+	line int
+}
+
 type parser struct {
 	*lex.Reader
 
-	named map[string]Expr
+	bare  bool
+	named map[string]automaton.Expr
 
 	given map[string]string
 	order []string
@@ -21,24 +29,22 @@ type parser struct {
 	file *File
 	ctx  string
 
-	declLine int
-
 	tok     int
 	tokText string
 }
 
-func newParser(r io.Reader, from string) (*parser, error) {
+func newParser(r io.Reader, from string, bare bool) (*parser, error) {
 	in, err := lex.Open(scan.Spec, r, "start", from, scan.TokNewline)
 
 	if err != nil {
 		return nil, err
 	}
 
-	p := &parser{Reader: in, named: predefined(), given: given(),
+	p := &parser{Reader: in, bare: bare, named: predefined(bare), given: given(bare),
 		file: &File{Name: in.Name()}}
 
 	if !bare {
-		for _, name := range builtinNames() {
+		for _, name := range builtinNames(bare) {
 			p.file.Defs = append(p.file.Defs, Def{Name: name, Expr: p.named[name]})
 		}
 	}
@@ -56,31 +62,29 @@ func (p *parser) Lex(v *yySymType) int {
 }
 
 var kinds = map[int]int{
-	scan.TokNewline:  NEWLINE,
-	scan.TokArrow:    ARROW,
-	scan.TokDefine:   DEFINE,
-	scan.TokLbrace:   LBRACE,
-	scan.TokRbrace:   RBRACE,
-	scan.TokOr:       OR,
-	scan.TokStar:     STAR,
-	scan.TokPlus:     PLUS,
-	scan.TokOpt:      OPT,
-	scan.TokLparen:   LPAREN,
-	scan.TokRparen:   RPAREN,
-	scan.TokLbrack:   LBRACK,
-	scan.TokRbrack:   RBRACK,
-	scan.TokCaret:    CARET,
-	scan.TokDash:     DASH,
-	scan.TokMinus:    MINUS,
-	scan.TokClass:    CLASS,
-	scan.TokText:     TEXT,
-	scan.TokAnycase:  ANYCASE,
-	scan.TokIncludes: INCLUDES,
-	scan.TokEmit:     EMIT,
-	scan.TokIgnore:   IGNORE,
-	scan.TokDo:       DO,
-	scan.TokWhen:     WHEN,
-	scan.TokName:     NAME,
+	scan.TokNewline: NEWLINE,
+	scan.TokArrow:   ARROW,
+	scan.TokDefine:  DEFINE,
+	scan.TokLbrace:  LBRACE,
+	scan.TokRbrace:  RBRACE,
+	scan.TokOr:      OR,
+	scan.TokStar:    STAR,
+	scan.TokPlus:    PLUS,
+	scan.TokOpt:     OPT,
+	scan.TokLparen:  LPAREN,
+	scan.TokRparen:  RPAREN,
+	scan.TokLbrack:  LBRACK,
+	scan.TokRbrack:  RBRACK,
+	scan.TokCaret:   CARET,
+	scan.TokDash:    DASH,
+	scan.TokMinus:   MINUS,
+	scan.TokClass:   CLASS,
+	scan.TokText:    TEXT,
+	scan.TokAnycase: ANYCASE,
+	scan.TokEmit:    EMIT,
+	scan.TokIgnore:  IGNORE,
+	scan.TokDo:      DO,
+	scan.TokName:    NAME,
 }
 
 func (p *parser) lex(v *yySymType) (int, string) {
@@ -93,10 +97,8 @@ func (p *parser) lex(v *yySymType) (int, string) {
 	switch tok.Kind {
 	case scan.TokNewline:
 		return NEWLINE, "a new line"
-	case scan.TokDefine, scan.TokLbrace:
-		p.declLine = tok.At.Line
 	case scan.TokName:
-		v.str = tok.Text
+		v.word = word{tok.Text, tok.At.Line}
 	case scan.TokClass:
 		v.str = strings.TrimSuffix(strings.TrimPrefix(tok.Text, "[:"), ":]")
 	case scan.TokText:
@@ -159,4 +161,10 @@ func escape(r rune) rune {
 	return r
 }
 
-func (p *parser) unexpected() string { return lex.Unexpected(p.tok, p.tokText) }
+func (p *parser) unexpected() string {
+	if p.tok == 0 {
+		return "the file ends in the middle of a rule"
+	}
+
+	return fmt.Sprintf("%s cannot stand here", p.tokText)
+}

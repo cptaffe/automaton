@@ -1,7 +1,7 @@
 package keypad
 
 //go:generate go run ../../cmd/genlex -go internal/scan/scan.gen.go -package scan tree.lex
-//go:generate go tool goyacc -l -p yy -o gram.go -v /dev/null gram.y
+//go:generate go tool goyacc -l -p yy -o gram.go -v "" gram.y
 
 import (
 	"fmt"
@@ -15,18 +15,13 @@ import (
 	"github.com/cptaffe/automaton/seq/keypad/internal/scan"
 )
 
-var Keys = []string{"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "#"}
-
-var Events = []string{"answered"}
+const keys = "0123456789*#"
 
 const Answered = "answered"
 
 func Alphabet(gs ...*seq.Grammar) *seq.Alphabet {
 	var delays []string
-	seen := map[string]bool{}
-	for _, e := range Events {
-		seen[e] = true
-	}
+	seen := map[string]bool{Answered: true}
 	for _, g := range gs {
 		for name := range g.Delays {
 			if !seen[name] {
@@ -36,12 +31,27 @@ func Alphabet(gs ...*seq.Grammar) *seq.Alphabet {
 		}
 	}
 	sort.Strings(delays)
-	return seq.NewAlphabet(Keys, append(append([]string(nil), Events...), delays...)...)
+	return seq.NewAlphabet(strings.Split(keys, ""), append([]string{Answered}, delays...)...)
 }
 
-var classes = map[rune][]int{
-	'N': {2, 3, 4, 5, 6, 7, 8, 9},
-	'X': {0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
+func classOf(r rune) ([]seq.Sym, bool) {
+	from := strings.IndexRune(keys, r)
+	switch r {
+	case 'N':
+		from = 2
+	case 'X':
+		from = 0
+	default:
+		if from < 0 {
+			return nil, false
+		}
+		return []seq.Sym{seq.Sym(from + 1)}, true
+	}
+	var out []seq.Sym
+	for k := from; k <= 9; k++ {
+		out = append(out, seq.Sym(k+1))
+	}
+	return out, true
 }
 
 var kinds = map[int]int{
@@ -177,16 +187,11 @@ func symbolOf(raw string) (seq.Class, bool) {
 	if at >= len(rs) {
 		return seq.Class{}, false
 	}
-	var c seq.Class
-	if keys, ok := classes[rs[at]]; ok {
-		for _, k := range keys {
-			c.Syms = append(c.Syms, seq.Sym(k))
-		}
-	} else if s := strings.IndexRune("0123456789*#", rs[at]); s >= 0 {
-		c.Syms = []seq.Sym{seq.Sym(s)}
-	} else {
+	syms, ok := classOf(rs[at])
+	if !ok {
 		return seq.Class{}, false
 	}
+	c := seq.Class{Syms: syms}
 	c.Text = string(rs[:at+1])
 	if at+1 < len(rs) && rs[at+1] == '+' {
 		c.Many = true
@@ -207,20 +212,6 @@ func event(t word) symv {
 	return symv{seq.Class{Event: t.text, Text: t.raw}, t.line}
 }
 
-func or(a, b seq.Cond) seq.Cond {
-	if o, ok := a.(seq.Or); ok {
-		return append(o, b)
-	}
-	return seq.Or{a, b}
-}
-
-func and(a, b seq.Cond) seq.Cond {
-	if x, ok := a.(seq.And); ok {
-		return append(x, b)
-	}
-	return seq.And{a, b}
-}
-
 func (l *lexer) unexpected() string {
 	switch l.tok {
 	case SYM:
@@ -228,7 +219,7 @@ func (l *lexer) unexpected() string {
 	case IDENT:
 		return fmt.Sprintf("%q is a name, and one cannot stand here", l.tokText)
 	}
-	return lex.Unexpected(l.tok, l.tokText)
+	return fmt.Sprintf("%s cannot stand here", l.tokText)
 }
 
 func (l *lexer) comment(text string, bol bool) {

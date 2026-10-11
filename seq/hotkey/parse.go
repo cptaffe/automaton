@@ -1,9 +1,10 @@
 package hotkey
 
 //go:generate go run ../../cmd/genlex -go internal/scan/scan.gen.go -package scan hotkey.lex
-//go:generate go tool goyacc -l -p yy -o gram.go -v /dev/null gram.y
+//go:generate go tool goyacc -l -p yy -o gram.go -v "" gram.y
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"sort"
@@ -21,7 +22,6 @@ type Rules struct {
 	Grammar *seq.Grammar
 	Table   *seq.Table
 	Prelude string
-	When    map[string]seq.Cond
 }
 
 type word struct {
@@ -52,10 +52,10 @@ type lexer struct {
 	g       *seq.Grammar
 	cur     string
 	rules   []rule
+	at      []int
 	anys    []rule
-	scopes  map[string]string
+	scopes  map[string]bool
 	prelude string
-	when    map[string]seq.Cond
 }
 
 var kinds = map[int]int{
@@ -94,15 +94,17 @@ func Parse(r io.Reader, from string, known func(name string) error) (*Rules, err
 	if err != nil {
 		return nil, err
 	}
-	l := &lexer{Reader: in, src: src, bare: true, labels: map[int]string{}, scopes: map[string]string{},
-		when: map[string]seq.Cond{}, g: &seq.Grammar{Name: in.Name()}}
+	l := &lexer{Reader: in, src: src, bare: true, labels: map[int]string{}, scopes: map[string]bool{},
+		g: &seq.Grammar{Name: in.Name()}}
 	failed := yyParse(l) != 0
 	switch {
 	case l.Err() != nil:
 	case l.Depth() > 0:
 		l.FailAt(l.line, "a block is never closed")
+	case failed && l.tok == 0:
+		l.FailAt(l.line, "the file ends in the middle of a rule")
 	case failed:
-		l.FailAt(l.line, "%s", lex.Unexpected(l.tok, l.text))
+		l.FailAt(l.line, "%s cannot stand here", strings.TrimSpace(l.text))
 	}
 	if err := l.Err(); err != nil {
 		return nil, err
@@ -111,17 +113,14 @@ func Parse(r io.Reader, from string, known func(name string) error) (*Rules, err
 	if err != nil {
 		return nil, err
 	}
-	if err := seq.Check(l.g); err != nil {
-		return nil, err
-	}
 	t, err := seq.Compile(l.g, a)
 	if err != nil {
 		return nil, err
 	}
 	if len(t.Conflicts) > 0 {
-		return nil, fmt.Errorf("%s: %s", from, strings.Join(t.Conflicts, "\n"+from+": "))
+		return nil, errors.New(strings.Join(t.Conflicts, "\n"))
 	}
-	return &Rules{Grammar: l.g, Table: t, Prelude: l.prelude, When: l.when}, nil
+	return &Rules{Grammar: l.g, Table: t, Prelude: l.prelude}, nil
 }
 
 func (l *lexer) Lex(v *yySymType) int {
@@ -166,17 +165,22 @@ func (l *lexer) addPrelude(open, close word) {
 	l.prelude += strings.TrimRight(l.src[open.end:close.start], "\n")
 }
 
-func (l *lexer) scope(name word, when seq.Cond) {
+func (l *lexer) scope(name word) {
 	l.cur = name.text
-	if _, ok := l.scopes[name.text]; ok {
+	if l.scopes[name.text] {
 		l.FailAt(name.line, "scope %s is declared twice", name.text)
 		return
 	}
-	l.scopes[name.text] = name.text
+	l.scopes[name.text] = true
 	l.g.Scopes = append(l.g.Scopes, name.text)
-	if when != nil {
-		l.when[name.text] = when
+}
+
+func (l *lexer) include(to word, when seq.Cond) {
+	if l.cur == "" {
+		l.FailAt(to.line, "-> %s is above every scope, and it reads %s's rules into one", to.text, to.text)
+		return
 	}
+	l.g.Rules = append(l.g.Rules, seq.Rule{Scope: l.cur, Include: to.text, When: when, Line: to.line})
 }
 
 func (l *lexer) delay(line int, name, of string) {
@@ -224,6 +228,7 @@ func (l *lexer) rule(r rule) {
 		return
 	}
 	l.rules = append(l.rules, r)
+	l.at = append(l.at, len(l.g.Rules))
 	l.g.Rules = append(l.g.Rules, seq.Rule{Scope: l.cur, Action: r.action, Goto: r.to, Label: l.labels[r.keys.line], Line: r.keys.line})
 }
 
@@ -236,27 +241,13 @@ func (l *lexer) anyRule(r rule) {
 	l.g.Any = append(l.g.Any, seq.Any{Scope: l.cur, Action: r.action, Goto: r.to, Label: l.labels[r.keys.line], Line: r.keys.line})
 }
 
-func (l *lexer) compare(name word, op string, value word) seq.Cond {
+func (l *lexer) compare(name word, op seq.Op, value word) seq.Cond {
 	c, err := seq.NewCompare(name.text, op, value.text)
 	if err != nil {
 		l.FailAt(name.line, "%v", err)
 		return seq.Name(name.text)
 	}
 	return c
-}
-
-func or(a, b seq.Cond) seq.Cond {
-	if o, ok := a.(seq.Or); ok {
-		return append(o, b)
-	}
-	return seq.Or{a, b}
-}
-
-func and(a, b seq.Cond) seq.Cond {
-	if x, ok := a.(seq.And); ok {
-		return append(x, b)
-	}
-	return seq.And{a, b}
 }
 
 func (l *lexer) resolve(known func(string) error) (*seq.Alphabet, error) {
@@ -308,16 +299,16 @@ func (l *lexer) resolve(known func(string) error) (*seq.Alphabet, error) {
 		if event {
 			return seq.Class{Event: k, Text: w.text}
 		}
-		s, _ := a.Of(k)
-		return seq.Class{Syms: []seq.Sym{s}, Text: w.text}
+		return seq.Class{Syms: []seq.Sym{a.Of(k)}, Text: w.text}
 	}
 	for i, r := range l.rules {
+		g := &l.g.Rules[l.at[i]]
 		var texts []string
 		for _, w := range r.keys.words {
-			l.g.Rules[i].Elems = append(l.g.Rules[i].Elems, class(w))
+			g.Elems = append(g.Elems, class(w))
 			texts = append(texts, w.text)
 		}
-		l.g.Rules[i].Pattern = strings.Join(texts, " ")
+		g.Pattern = strings.Join(texts, " ")
 	}
 	for i, r := range l.anys {
 		l.g.Any[i].Elem = class(r.keys.words[0])

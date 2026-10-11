@@ -28,7 +28,7 @@ start {
   "("         emit lparen
   ")"         emit rparen
 
-  "-"* (key | class) "+"?  do symbol  emit sym
+  "-"* (key | class) "+"?  emit sym
   "-"+        emit dash
-  ident       do name    emit name
+  ident       emit name
 }

@@ -8,8 +8,15 @@ import (
 )
 
 func Link(tabs []*Table, name, handoff string) (*Table, error) {
+	out := &Table{Name: name, Start: map[string]int{}, Roots: map[string]string{}}
+	seen := map[string]bool{}
+	for _, t := range tabs {
+		if seen[t.Name] {
+			return nil, fmt.Errorf("two trees are called %s", t.Name)
+		}
+		seen[t.Name] = true
+	}
 	tabs = rooted(tabs)
-	out := &Table{Name: name, Start: map[string]int{}}
 	for _, t := range tabs {
 		if out.Alpha == nil {
 			out.Alpha = t.Alpha
@@ -21,73 +28,62 @@ func Link(tabs []*Table, name, handoff string) (*Table, error) {
 	if out.Alpha == nil {
 		return out, nil
 	}
-	on, ok := out.Alpha.Of(handoff)
-	if !ok {
+	if out.Handoff = out.Alpha.Of(handoff); out.Handoff == 0 {
 		return nil, fmt.Errorf("the alphabet has no %s to hand off on", handoff)
 	}
 
-	at := map[string]int{}
-	first := map[string]int{}
+	out.state("")
+	var missing []string
 	for _, t := range tabs {
-		at[t.Name] = len(out.Next)
-		base := len(out.Rules)
-		low := -1
-		for _, s := range t.Start {
-			if low < 0 || s < low {
-				low = s
-			}
-		}
-		first[t.Name] = at[t.Name] + low
-		for s := range t.Next {
-			row := make([]int, out.Alpha.Size())
-			any := make([]*Accept, out.Alpha.Size())
-			for sym := range row {
-				row[sym] = Dead
-				if n := t.Next[s][sym]; n != Dead {
-					row[sym] = n + at[t.Name]
+		base := len(out.Next) - 1
+		at := func(scope string) string { return t.Name + "." + scope }
+		moved := func(as []*Accept) []*Accept {
+			out := make([]*Accept, len(as))
+			for i, a := range as {
+				b := *a
+				if b.Goto != "" {
+					b.Goto = at(b.Goto)
 				}
-				any[sym] = moved(t.Any[s][sym], t.Name, base)
+				if b.Hands != "" && !seen[b.Hands] {
+					missing = append(missing, fmt.Sprintf("%s:%d: %q hands to %q, and there is no such tree", t.Name, a.Line, a.Pattern, a.Hands))
+				}
+				out[i] = &b
 			}
-			out.Next = append(out.Next, row)
-			out.Any = append(out.Any, any)
-			out.Extend = append(out.Extend, t.Extend[s])
-			out.Scope = append(out.Scope, t.Name+"."+t.Scope[s])
-			out.Accept = append(out.Accept, moved(t.Accept[s], t.Name, base))
+			return out
 		}
-		for _, r := range t.Rules {
-			r.Scope = t.Name + "." + r.Scope
-			if r.Goto != "" {
-				r.Goto = t.Name + "." + r.Goto
+		for s := 1; s < len(t.Next); s++ {
+			n := out.state(at(t.Scope[s]))
+			for sym, to := range t.Next[s] {
+				if to != 0 {
+					out.Next[n][sym] = to + base
+				}
+				out.Any[n][sym] = moved(t.Any[s][sym])
 			}
-			out.Rules = append(out.Rules, r)
+			out.Accept[n] = moved(t.Accept[s])
+			out.Live[n] = t.Live[s]
+			out.Settle[n] = t.Settle[s]
 		}
-		for s, n := range t.Start {
-			out.Start[t.Name+"."+s] = n + at[t.Name]
+		for _, scope := range t.Scopes {
+			out.Scopes = append(out.Scopes, at(scope))
+			out.Start[at(scope)] = t.Start[scope] + base
+		}
+		if len(t.Scopes) > 0 {
+			out.Roots[t.Name] = at(t.Scopes[0])
 		}
 		for name, d := range t.Delays {
 			if out.Delays == nil {
 				out.Delays = map[string]time.Duration{}
 			}
+			if was, ok := out.Delays[name]; ok && was != d {
+				return nil, fmt.Errorf("%s waits %s for %s, and another tree %s", t.Name, d, name, was)
+			}
 			out.Delays[name] = d
 		}
 		out.Conflicts = append(out.Conflicts, t.Conflicts...)
 	}
-
-	var missing []string
-	for s, a := range out.Accept {
-		if a == nil || a.Hands == "" {
-			continue
-		}
-		to, ok := first[a.Hands]
-		if !ok {
-			missing = append(missing, fmt.Sprintf("%q hands to %q, and there is no such tree", out.Rules[a.Rule].Pattern, a.Hands))
-			continue
-		}
-		out.Next[s][on] = to
-	}
 	if len(missing) > 0 {
 		sort.Strings(missing)
-		return nil, fmt.Errorf("%s", strings.Join(missing, "; "))
+		return nil, fmt.Errorf("%s", strings.Join(missing, "\n"))
 	}
 	return out, nil
 }
@@ -97,25 +93,21 @@ func rooted(tabs []*Table) []*Table {
 	handed := map[string]bool{}
 	for _, t := range tabs {
 		by[t.Name] = t
-		for _, a := range t.Accept {
-			if a != nil && a.Hands != "" {
-				handed[a.Hands] = true
-			}
+		for _, a := range hands(t) {
+			handed[a] = true
 		}
 	}
 	var out []*Table
-	done := map[string]bool{}
+	done := map[*Table]bool{}
 	var walk func(t *Table)
 	walk = func(t *Table) {
-		if t == nil || done[t.Name] {
+		if t == nil || done[t] {
 			return
 		}
-		done[t.Name] = true
+		done[t] = true
 		out = append(out, t)
-		for _, a := range t.Accept {
-			if a != nil && a.Hands != "" {
-				walk(by[a.Hands])
-			}
+		for _, h := range hands(t) {
+			walk(by[h])
 		}
 	}
 	for _, t := range tabs {
@@ -129,16 +121,14 @@ func rooted(tabs []*Table) []*Table {
 	return out
 }
 
-func moved(a *Accept, tree string, base int) *Accept {
-	if a == nil {
-		return nil
+func hands(t *Table) []string {
+	var out []string
+	for _, as := range t.Accept {
+		for _, a := range as {
+			if a.Hands != "" {
+				out = append(out, a.Hands)
+			}
+		}
 	}
-	b := *a
-	if b.Goto != "" {
-		b.Goto = tree + "." + b.Goto
-	}
-	if b.Rule >= 0 {
-		b.Rule += base
-	}
-	return &b
+	return out
 }

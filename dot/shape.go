@@ -1,9 +1,6 @@
 package dot
 
-import (
-	"regexp"
-	"strings"
-)
+import "regexp"
 
 type Rule struct {
 	Name  string
@@ -13,7 +10,7 @@ type Rule struct {
 
 var word = regexp.MustCompile(`[A-Za-z_][A-Za-z_0-9.-]*`)
 
-func Shape(rs []Rule, name string) []byte {
+func Shape(rs []Rule, name string) ([]byte, error) {
 	is := map[string]bool{}
 
 	for _, r := range rs {
@@ -74,26 +71,4 @@ func Shape(rs []Rule, name string) []byte {
 	}
 
 	return g.Bytes()
-}
-
-func lines(s string) string {
-	var b strings.Builder
-
-	b.WriteByte('"')
-
-	for _, r := range s {
-		switch r {
-		case '"', '\\':
-			b.WriteByte('\\')
-			b.WriteRune(r)
-		case '\n':
-			b.WriteString("\\l")
-		default:
-			b.WriteRune(r)
-		}
-	}
-
-	b.WriteString("\\l\"")
-
-	return b.String()
 }

@@ -1,24 +1,28 @@
 %{
 package gen
+
+import "github.com/cptaffe/automaton"
 %}
 
 %union {
+	word word
 	str  string
-	set  Set
-	expr Expr
+	set  automaton.Set
+	expr automaton.Expr
 	rule Rule
 	acts Acts
 }
 
-%token <str> NAME TEXT ANYCASE CLASS PROP
-%token DEFINE COLON INCLUDES EMIT IGNORE ARROW DO WHEN LBRACE RBRACE
-%token OR STAR PLUS OPT LPAREN RPAREN LBRACK RBRACK LANGLE RANGLE CARET DASH MINUS NEWLINE
+%token <word> NAME
+%token <str> TEXT ANYCASE CLASS
+%token DEFINE EMIT IGNORE ARROW DO LBRACE RBRACE
+%token OR STAR PLUS OPT LPAREN RPAREN LBRACK RBRACK CARET DASH MINUS NEWLINE
 
 %type <expr> expr term piece diff atom
 %type <set> klass items item
 %type <rule> rule
 %type <acts> acts act
-%type <str> scope_ param_ arg_
+%type <str> param_ arg_
 
 %%
 
@@ -46,21 +50,17 @@ define:
 	;
 
 header:
-	  NAME param_ scope_   { yylex.(*parser).scope($1, $2, $3) }
+	  NAME param_   { yylex.(*parser).scope($1, $2) }
 	;
 
 param_:
 	  { $$ = "" }
-	| LPAREN NAME RPAREN { $$ = $2 }
-	;
-
-scope_:
-	  { $$ = "" }
-	| INCLUDES NAME      { $$ = $2 }
+	| LPAREN NAME RPAREN { $$ = $2.text }
 	;
 
 rule:
 	  expr acts NEWLINE  { $$ = Rule{Expr: $1, Acts: $2} }
+	| ARROW NAME NEWLINE { $$ = Rule{Include: $2.text} }
 	;
 
 acts:
@@ -69,32 +69,32 @@ acts:
 	;
 
 act:
-	  EMIT NAME          { $$ = Acts{Emit: $2} }
+	  EMIT NAME          { $$ = Acts{Emit: $2.text} }
 	| IGNORE             { $$ = Acts{Drop: true} }
-	| DO NAME            { $$ = Acts{Do: $2} }
-	| ARROW NAME arg_    { $$ = Acts{Goto: $2, Arg: $3} }
+	| DO NAME            { $$ = Acts{Do: $2.text} }
+	| ARROW NAME arg_    { $$ = Acts{Goto: $2.text, Arg: $3} }
 	;
 
 arg_:
 	  { $$ = "" }
-	| LPAREN NAME RPAREN { $$ = $2 }
+	| LPAREN NAME RPAREN { $$ = $2.text }
 	;
 
 expr:
 	  term               { $$ = $1 }
-	| expr OR term       { $$ = Alt($1, $3) }
+	| expr OR term       { $$ = automaton.Alt($1, $3) }
 	;
 
 term:
 	  piece              { $$ = $1 }
-	| term piece         { $$ = Cat($1, $2) }
+	| term piece         { $$ = automaton.Cat($1, $2) }
 	;
 
 piece:
 	  diff               { $$ = $1 }
-	| diff STAR          { $$ = Star($1) }
-	| diff PLUS          { $$ = Plus($1) }
-	| diff OPT           { $$ = Opt($1) }
+	| diff STAR          { $$ = automaton.Star($1) }
+	| diff PLUS          { $$ = automaton.Plus($1) }
+	| diff OPT           { $$ = automaton.Opt($1) }
 	;
 
 diff:
@@ -106,7 +106,7 @@ atom:
 	  TEXT               { $$ = yylex.(*parser).text($1) }
 	| ANYCASE            { $$ = yylex.(*parser).anycase($1) }
 	| NAME               { $$ = yylex.(*parser).use($1) }
-	| klass              { $$ = Lit($1) }
+	| klass              { $$ = automaton.Lit($1) }
 	| LPAREN expr RPAREN { $$ = $2 }
 	;
 
@@ -124,5 +124,4 @@ item:
 	  TEXT                { $$ = yylex.(*parser).runes($1) }
 	| TEXT DASH TEXT      { $$ = yylex.(*parser).span($1, $3) }
 	| CLASS               { $$ = yylex.(*parser).category($1) }
-	| PROP                { $$ = yylex.(*parser).category($1) }
 	;

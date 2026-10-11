@@ -30,10 +30,10 @@ func build(t *testing.T, src string) *lex.Spec {
 		t.Fatalf("%v %v", err, dead)
 	}
 
-	spec, bad := gen.Spec(flat, ms)
+	spec, err := gen.Spec(flat, ms)
 
-	if len(bad) != 0 {
-		t.Fatalf("%v", bad)
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	return spec
@@ -56,7 +56,7 @@ func kinds(t *testing.T, spec *lex.Spec, src string) []string {
 			break
 		}
 
-		out = append(out, spec.Tokens[tok.Kind]+"("+tok.Text+")")
+		out = append(out, spec.Token(tok.Kind)+"("+tok.Text+")")
 	}
 
 	if err := l.Err(); err != nil {
@@ -70,13 +70,15 @@ func TestAScopeIsTheContext(t *testing.T) {
 	spec := build(t, `
 word = alpha+
 
-head includes blanks {
+head {
   "do"    emit keyword  -> body
   word    emit name
+  -> blanks
 }
 
-body includes blanks {
+body {
   word    emit name
+  -> blanks
 }
 
 blanks {
@@ -126,10 +128,10 @@ func TestADifferenceReadsWhatIsLeft(t *testing.T) {
 		t.Fatalf("%v %v", err, dead)
 	}
 
-	spec, bad := gen.Spec(flat, ms)
+	spec, err := gen.Spec(flat, ms)
 
-	if len(bad) != 0 {
-		t.Fatalf("%v", bad)
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	if got := strings.Join(kinds(t, spec, "abcNXX"), " "); got != "word(abc) class(NXX)" {
@@ -178,10 +180,10 @@ func TestTheSpacingOfADifferenceDoesNotMatter(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		spec, bad := gen.Spec(flat, ms)
+		spec, err := gen.Spec(flat, ms)
 
-		if len(bad) != 0 {
-			t.Fatalf("%v", bad)
+		if err != nil {
+			t.Fatal(err)
 		}
 
 		got := strings.Join(kinds(t, spec, "abcNXX"), " ")

@@ -1,12 +1,3 @@
-{{- /*
-  One template for every drawing. A generator says what kind of drawing it is
-  making and what is in it; everything about how that looks is here, and
-  nothing here names a colour -- a class does that, and the page styles it.
-
-  A label of several lines is written with flush and not brk. Graphviz's \l
-  left-justifies the line before it, so a label whose last line has none is
-  centred while every line above it is not.
-*/ -}}
 digraph {{ q .Name }} {
 {{ template "look" . }}
 {{- if .Compound }}
@@ -50,8 +41,6 @@ digraph {{ q .Name }} {
 {{ .ID }} [label={{ if .Flush }}{{ flush .Label }}{{ else }}{{ q .Label }}{{ end }}{{ with .Shape }}, shape={{ . }}{{ end }}{{ with .Style }}, style={{ printf "%q" . }}{{ end }}{{ with .Class }}, class={{ printf "%q" . }}{{ end }}{{ with .Size }}, width={{ . }}{{ end }}{{ if .Bold }}, fontname="Helvetica-Bold"{{ end }}{{ if .Twice }}, peripheries=2{{ end }}]
 {{- end -}}
 
-{{- /* A state machine: states are circles, all the same size whatever the
-       number in them, and the reading goes left to right. */ -}}
 {{- define "look" -}}
 {{ if eq .Look "machine" }}  rankdir=LR
   graph [fontname="Helvetica", fontsize=11, nodesep=0.22, ranksep=0.55]

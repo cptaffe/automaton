@@ -55,43 +55,90 @@ func (o Or) Eval(e Env) bool {
 func (o Or) Names() []string { return names(o) }
 func (o Or) String() string  { return join(o, " or ") }
 
-type Compare struct {
-	Name  string
-	Op    string
-	Value string
+type Op int
 
-	re *regexp.Regexp
+const (
+	NoOp Op = iota
+	Eq
+	Ne
+	Match
+)
+
+func (o Op) String() string {
+	switch o {
+	case Eq:
+		return "=="
+	case Ne:
+		return "!="
+	case Match:
+		return "~"
+	}
+	return "?"
 }
 
-func NewCompare(name, op, value string) (*Compare, error) {
-	c := &Compare{Name: name, Op: op, Value: value}
+type Compare struct {
+	name  string
+	op    Op
+	value string
+	re    *regexp.Regexp
+}
+
+func NewCompare(name string, op Op, value string) (*Compare, error) {
+	c := &Compare{name: name, op: op, value: value}
 	switch op {
-	case "==", "!=":
-	case "~":
+	case Eq, Ne:
+	case Match:
 		re, err := regexp.Compile(value)
 		if err != nil {
 			return nil, err
 		}
 		c.re = re
 	default:
-		return nil, fmt.Errorf("%s is not a comparison", op)
+		return nil, fmt.Errorf("%v is not a comparison", op)
 	}
 	return c, nil
 }
 
 func (c *Compare) Eval(e Env) bool {
-	v := e[c.Name]
-	switch c.Op {
-	case "==":
-		return v == c.Value
-	case "!=":
-		return v != c.Value
+	v := e[c.name]
+	switch c.op {
+	case Eq:
+		return v == c.value
+	case Ne:
+		return v != c.value
+	case Match:
+		return c.re.MatchString(v)
 	}
-	return c.re.MatchString(v)
+	return false
 }
 
-func (c *Compare) Names() []string { return []string{c.Name} }
-func (c *Compare) String() string  { return fmt.Sprintf("%s %s %q", c.Name, c.Op, c.Value) }
+func (c *Compare) Names() []string { return []string{c.name} }
+func (c *Compare) String() string  { return fmt.Sprintf("%s %v %q", c.name, c.op, c.value) }
+
+func AllOf(a, b Cond) Cond {
+	switch x := a.(type) {
+	case nil:
+		return b
+	case And:
+		if b == nil {
+			return a
+		}
+		return append(x[:len(x):len(x)], b)
+	}
+	if b == nil {
+		return a
+	}
+	return And{a, b}
+}
+
+func AnyOf(a, b Cond) Cond {
+	if x, ok := a.(Or); ok {
+		return append(x[:len(x):len(x)], b)
+	}
+	return Or{a, b}
+}
+
+func Holds(c Cond, e Env) bool { return c == nil || c.Eval(e) }
 
 func names(cs []Cond) []string {
 	seen := map[string]bool{}

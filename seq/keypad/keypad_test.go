@@ -38,19 +38,21 @@ func compile(t *testing.T, src string) *seq.Table {
 
 func walk(t *testing.T, tab *seq.Table, scope string, syms ...string) *seq.Accept {
 	t.Helper()
-	s := tab.Start[scope]
+	m, err := seq.NewMachine(tab, scope)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var last *seq.Accept
 	for _, name := range syms {
-		sym, ok := tab.Alpha.Of(name)
-		if !ok {
+		sym := tab.Alpha.Of(name)
+		if sym == 0 {
 			t.Fatalf("no symbol %s", name)
 		}
-		if n := tab.Next[s][sym]; n != seq.Dead {
-			s = n
-			continue
+		if _, fired := m.Step(sym, seq.Env{"holding": "yes"}); len(fired) > 0 {
+			last = fired[len(fired)-1]
 		}
-		return tab.Any[s][sym]
 	}
-	return tab.Accept[s]
+	return last
 }
 
 func TestPlan(t *testing.T) {
@@ -85,8 +87,33 @@ func TestPlan(t *testing.T) {
 	if a := walk(t, tab, "start", "4", "8", "2", "1", "2", "3", "4"); a == nil || a.Operand == nil || *a.Operand != (seq.Slice{From: 0, To: 0}) {
 		t.Errorf("operand %+v", a.Operand)
 	}
-	if got := tab.Waiting(); len(got) != 1 || got[0] != "T" {
+	if got := strings.Join(tab.Waiting(), " "); got != "T abandon" {
 		t.Errorf("waiting %v", got)
+	}
+	m, _ := seq.NewMachine(tab, "mailbox")
+	if ok, _ := m.Step(tab.Alpha.Of("1"), nil); ok {
+		t.Error("1 in the mailbox was taken while nothing is holding")
+	}
+}
+
+func TestATreeHandsOff(t *testing.T) {
+	g1, err := Parse(strings.NewReader("start:\n  0  do operator  => menu\n"), "dial.tree")
+	if err != nil {
+		t.Fatal(err)
+	}
+	g2, err := Parse(strings.NewReader("start:\n  1  do one\n"), "menu.tree")
+	if err != nil {
+		t.Fatal(err)
+	}
+	a := Alphabet(g1, g2)
+	t1, _ := seq.Compile(g1, a)
+	t2, _ := seq.Compile(g2, a)
+	tab, err := seq.Link([]*seq.Table{t2, t1}, "all", Answered)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a := walk(t, tab, "", "0", Answered, "1"); a == nil || a.Action != "one" {
+		t.Errorf("0, answered, 1 fired %+v; want the menu's one", a)
 	}
 }
 
@@ -112,6 +139,42 @@ func TestErrors(t *testing.T) {
 		{"s:\n  %delay T 1s\n", "t.tree:2: %delay T 1s belongs above every scope"},
 		{"\n%settles T\n", "t.tree:2: %settles T is above every scope"},
 		{"s:\n  1 do a\n\n  2 do Put\n", "t.tree:4: the action"},
+	} {
+		_, err := Parse(strings.NewReader(c.src), "t.tree")
+		if err == nil || !strings.Contains(err.Error(), c.want) {
+			t.Errorf("%q: got %v, want %q", c.src, err, c.want)
+		}
+	}
+}
+
+func TestCommentsLabelAndNote(t *testing.T) {
+	g, err := Parse(strings.NewReader("; dial plan\n\nstart:\n  ; label: the operator\n  0  do operator\n  ; a remark\n  1  do one  when a and (b or not c)\n"), "p.tree")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if g.Note != "dial plan" {
+		t.Errorf("note %q", g.Note)
+	}
+	if g.Rules[0].Label != "the operator" || g.Rules[1].Label != "" {
+		t.Errorf("labels %q %q", g.Rules[0].Label, g.Rules[1].Label)
+	}
+	if got := g.Rules[1].When.String(); got != "a and (b or not c)" {
+		t.Errorf("when %q", got)
+	}
+}
+
+func TestMoreErrors(t *testing.T) {
+	for _, c := range []struct{ src, want string }{
+		{"s:\n  1 do a 2\n", `"2" is a pattern symbol, and one cannot stand here`},
+		{"s:\n  1 do a when\n", "cannot stand here"},
+		{"s:\n  1 do a when x y\n", `"y" is a name, and one cannot stand here`},
+		{"%bogus\n", "%bogus is not a declaration"},
+		{"%delay T soon\n", "soon is not a duration"},
+		{"%delay T 0s\n", "a wait of no time is not a wait"},
+		{"%delay T 1s\n%delay T 2s\n", "it is already 1s"},
+		{"%delay T 1s\ns:\n  %settles T\n  %settles U\n", "T already settles s"},
+		{"s:\n  ... 1 2 do a\n", "is more than one symbol"},
+		{"s:\n  ... 1 do Put\n", "not lower case"},
 	} {
 		_, err := Parse(strings.NewReader(c.src), "t.tree")
 		if err == nil || !strings.Contains(err.Error(), c.want) {

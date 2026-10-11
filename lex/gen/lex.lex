@@ -19,23 +19,21 @@ start {
   "-"         emit minus
   "("         emit lparen    -> name
   "["         emit lbrack    -> klass(start)
-  quoted "i"  do unescape  emit anycase
-  quoted      do unescape  emit text
+  quoted "i"  emit anycase
+  quoted      emit text
 
   "\"" ([^"\n] - [\\] | "\\" any)*  emit unterminated
 
-  "includes"  emit includes  -> name
   "emit"      emit emit      -> name
   "ignore"    emit ignore
   "do"        emit do        -> name
-  "when"      emit when      -> name
   ident       emit name
 }
 
-name includes start {
+name {
   ident       emit name      -> start
-
   "\n"        emit newline   -> start
+  -> start
 }
 
 klass(then) {
@@ -45,6 +43,6 @@ klass(then) {
   "^"         emit caret
   "-"         emit dash
   "[:" (alnum | "-" | ".")+ ":]"  emit class
-  "\\" any    do unescape  emit text
+  "\\" any    emit text
   inner       emit text
 }

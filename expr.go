@@ -3,12 +3,12 @@ package automaton
 type kind int
 
 const (
-	lit kind = iota
+	empty kind = iota
+	lit
 	cat
 	alt
 	star
 	plus
-	empty
 )
 
 type Expr struct {
@@ -19,7 +19,7 @@ type Expr struct {
 
 func Lit(s Set) Expr { return Expr{kind: lit, set: s} }
 
-func Empty() Expr { return Expr{kind: empty} }
+func Empty() Expr { return Expr{} }
 
 func Cat(e ...Expr) Expr {
 	switch len(e) {

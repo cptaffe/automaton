@@ -1,6 +1,7 @@
 package lr
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -10,7 +11,7 @@ import (
 	"github.com/cptaffe/automaton"
 )
 
-func same(a, b *automaton.DFA, of map[rune]string) (bool, string) {
+func same(a, b *automaton.DFA, words []string) (bool, string) {
 	type pair struct{ x, y automaton.State }
 
 	seen := map[pair]bool{}
@@ -28,7 +29,8 @@ func same(a, b *automaton.DFA, of map[rune]string) (bool, string) {
 			return false, fmt.Sprintf("only one accepts after %v", word[p])
 		}
 
-		for r, name := range of {
+		for i, name := range words {
+			r := rune(i + 1)
 			x, y := a.Step(p.x, r), b.Step(p.y, r)
 
 			if (x == automaton.NoState) != (y == automaton.NoState) {
@@ -68,40 +70,40 @@ func TestTheDrawingIsTheLRAutomatonWithoutItsStack(t *testing.T) {
 			cmd.Dir = dir
 
 			if got, err := cmd.CombinedOutput(); err != nil {
-				t.Skipf("goyacc: %v: %s", err, got)
+				t.Fatalf("goyacc: %v: %s", err, got)
 			}
 
-			g, err := Read(out)
+			text, err := os.ReadFile(out)
+
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			g, err := Read(bytes.NewReader(text))
 
 			if err != nil {
 				t.Fatal(err)
 			}
 
 			if len(g.Rules) == 0 {
-				t.Skip("no rules in y.output: this reads the one golang.org/x/tools/cmd/goyacc writes")
+				t.Fatal("no rules in y.output: this reads the one golang.org/x/tools/cmd/goyacc writes")
 			}
 
-			ss, err := g.states()
+			ss, err := g.states(bytes.NewReader(text))
 
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			mine := g.Tokens(name)
+			mine := g.Tokens()
 
 			if mine == nil {
 				t.Fatal("no machine over tokens")
 			}
 
-			at := map[string]rune{}
+			theirs := stackless(ss, mine.at)
 
-			for r, w := range mine.of {
-				at[w] = r
-			}
-
-			theirs := stackless(ss, at)
-
-			if ok, why := same(mine.dfa, theirs, mine.of); !ok {
+			if ok, why := same(mine.dfa, theirs, mine.words); !ok {
 				t.Errorf("the two constructions differ: %s", why)
 			}
 		})

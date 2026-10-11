@@ -2,7 +2,8 @@ package lr
 
 import (
 	"bufio"
-	"os"
+	"fmt"
+	"io"
 	"regexp"
 	"strconv"
 	"strings"
@@ -31,25 +32,22 @@ var (
 	kernel = regexp.MustCompile(`^\t(\S+:\s.*?)\s*(?:\(\d+\))?\s*$`)
 )
 
-func (g *Grammar) states() ([]state, error) {
-	f, err := os.Open(g.path)
-
-	if err != nil {
-		return nil, err
-	}
-
-	defer f.Close()
-
+func (g *Grammar) states(r io.Reader) ([]state, error) {
 	var out []state
 	var now *state
-	sc := bufio.NewScanner(f)
+	sc := bufio.NewScanner(r)
 	sc.Buffer(make([]byte, 1<<16), 1<<22)
 
 	for sc.Scan() {
 		line := sc.Text()
 
 		if m := head.FindStringSubmatch(strings.TrimSpace(line)); m != nil {
-			n, _ := strconv.Atoi(m[1])
+			n, err := number(m[1])
+
+			if err != nil {
+				return nil, err
+			}
+
 			out = append(out, state{at: n})
 			now = &out[len(out)-1]
 
@@ -63,14 +61,28 @@ func (g *Grammar) states() ([]state, error) {
 		switch {
 		case shift.MatchString(line):
 			m := shift.FindStringSubmatch(line)
-			to, _ := strconv.Atoi(m[2])
+			to, err := number(m[2])
+
+			if err != nil {
+				return nil, err
+			}
+
 			now.moves = append(now.moves, move{on: m[1], to: to})
 		case jump.MatchString(line):
 			m := jump.FindStringSubmatch(line)
-			to, _ := strconv.Atoi(m[2])
+			to, err := number(m[2])
+
+			if err != nil {
+				return nil, err
+			}
+
 			now.moves = append(now.moves, move{on: m[1], to: to, jump: true})
 		case reduce.MatchString(line):
-			n, _ := strconv.Atoi(reduce.FindStringSubmatch(line)[2])
+			n, err := number(reduce.FindStringSubmatch(line)[2])
+
+			if err != nil {
+				return nil, err
+			}
 
 			if name, ok := g.lhs[n]; ok {
 				now.reduces = append(now.reduces, name)
@@ -85,4 +97,14 @@ func (g *Grammar) states() ([]state, error) {
 	}
 
 	return out, sc.Err()
+}
+
+func number(s string) (int, error) {
+	n, err := strconv.Atoi(s)
+
+	if err != nil {
+		return 0, fmt.Errorf("y.output: %w", err)
+	}
+
+	return n, nil
 }

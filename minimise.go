@@ -3,39 +3,14 @@ package automaton
 import "sort"
 
 func (d *DFA) Minimise() *DFA {
-	sink := len(d.next)
-	n := sink + 1
-	cols := d.classes.Len()
-
-	to := make([][]int, n)
-
-	for s := range to {
-		to[s] = make([]int, cols)
-
-		for c := range to[s] {
-			at := sink
-
-			if s != sink && d.next[s][Class(c)] != NoState {
-				at = int(d.next[s][Class(c)])
-			}
-
-			to[s][c] = at
-		}
-	}
-
-	accept := func(s int) Match {
-		if s == sink {
-			return NoMatch
-		}
-
-		return d.accept[s]
-	}
+	n := len(d.next)
+	cols := d.classes.Len() + 1
 
 	group := make([]int, n)
 	byAccept := map[Match]int{}
 
 	for s := 0; s < n; s++ {
-		a := accept(s)
+		a := d.accept[s]
 		at, ok := byAccept[a]
 
 		if !ok {
@@ -76,7 +51,7 @@ func (d *DFA) Minimise() *DFA {
 			hit := map[int]bool{}
 
 			for s := 0; s < n; s++ {
-				if in[to[s][c]] {
+				if in[int(d.next[s][c])] {
 					hit[s] = true
 				}
 			}
@@ -115,10 +90,10 @@ func (d *DFA) Minimise() *DFA {
 		}
 	}
 
-	return d.rebuild(group, parts, sink)
+	return d.rebuild(group, parts)
 }
 
-func (d *DFA) rebuild(group []int, parts [][]int, sink int) *DFA {
+func (d *DFA) rebuild(group []int, parts [][]int) *DFA {
 	keep := map[int]bool{}
 
 	var walk func(int)
@@ -131,57 +106,46 @@ func (d *DFA) rebuild(group []int, parts [][]int, sink int) *DFA {
 		keep[g] = true
 
 		for _, s := range parts[g] {
-			if s == sink {
-				continue
-			}
-
-			for c := range d.next[s] {
-				if at := d.next[s][Class(c)]; at != NoState {
-					walk(group[at])
-				}
+			for _, at := range d.next[s] {
+				walk(group[at])
 			}
 		}
 	}
 
 	walk(group[d.start])
 
+	dead := group[NoState]
 	live := make([]int, 0, len(keep))
 
 	for g := range keep {
-		live = append(live, g)
+		if g != dead {
+			live = append(live, g)
+		}
 	}
 
 	sort.Ints(live)
 
-	at := map[int]int{}
+	at := map[int]State{dead: NoState}
 
 	for i, g := range live {
-		at[g] = i
+		at[g] = State(i + 1)
 	}
 
-	out := &DFA{classes: d.classes, start: State(at[group[d.start]])}
+	out := &DFA{classes: d.classes, start: at[group[d.start]],
+		next: [][]State{make([]State, d.classes.Len()+1)}, accept: []Match{NoMatch}}
 
 	for _, g := range live {
-		row := make([]State, d.classes.Len())
-
-		for c := range row {
-			row[c] = NoState
-		}
-
+		row := make([]State, d.classes.Len()+1)
 		a := NoMatch
 
 		for _, s := range parts[g] {
-			if s == sink {
-				continue
-			}
-
 			if d.accept[s] != NoMatch && (a == NoMatch || d.accept[s] < a) {
 				a = d.accept[s]
 			}
 
-			for c := range d.next[s] {
-				if to := d.next[s][Class(c)]; to != NoState {
-					row[c] = State(at[group[to]])
+			for c, to := range d.next[s] {
+				if to != NoState {
+					row[c] = at[group[to]]
 				}
 			}
 		}

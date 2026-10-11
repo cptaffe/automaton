@@ -45,11 +45,11 @@ func stackless(ss []state, of map[string]rune) *automaton.DFA {
 		}
 
 		if s.accepts {
-			n.Accepts(at[s.at], automaton.Match(0))
+			n.Accepts(at[s.at], automaton.Match(1))
 		}
 	}
 
 	n.Start(at[ss[0].at])
 
-	return n.Determinise(automaton.Partition(n.Sets())).Minimise()
+	return n.DFA().Minimise()
 }

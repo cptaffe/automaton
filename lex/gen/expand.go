@@ -15,11 +15,10 @@ func Expand(f *File) (*Flat, error) {
 
 			break
 		}
+	}
 
-		if s.Includes != "" {
-			return nil, fmt.Errorf("%s:%d: %s takes a parameter and includes %s; a template cannot include",
-				f.Name, s.Line, s.Name, s.Includes)
-		}
+	if err := cycles(f); err != nil {
+		return nil, err
 	}
 
 	if entry == "" {
@@ -113,16 +112,22 @@ func Expand(f *File) (*Flat, error) {
 type wanter func(name, arg string, chain []string) (string, error)
 
 func emit(f *File, out *Flat, s *Scope, at, param, arg string, dyn map[string]bool, want wanter, chain []string) error {
-	out.Scopes = append(out.Scopes, FlatScope{Name: at, Includes: s.Includes, Line: s.Line})
-
-	if s.Includes != "" {
-		if _, err := want(s.Includes, "", chain); err != nil {
-			return err
-		}
-	}
+	out.Scopes = append(out.Scopes, FlatScope{Name: at, Line: s.Line})
 
 	for _, r := range f.Rules {
 		if r.Scope != s.Name {
+			continue
+		}
+
+		if r.Include != "" {
+			got, err := want(r.Include, "", chain)
+
+			if err != nil {
+				return err
+			}
+
+			out.Rules = append(out.Rules, FlatRule{Include: got, Scope: at, Line: r.Line, Text: r.Text})
+
 			continue
 		}
 
@@ -195,6 +200,49 @@ func move(f *File, r Rule, at, param, arg string, dyn map[string]bool, want want
 	back, err := want(a, "", chain)
 
 	return FlatActs{Goto: got, Push: back}, err
+}
+
+func cycles(f *File) error {
+	into := map[string][]Rule{}
+
+	for _, r := range f.Rules {
+		if r.Include != "" {
+			into[r.Scope] = append(into[r.Scope], r)
+		}
+	}
+
+	state := map[string]int{}
+
+	var visit func(at string) error
+
+	visit = func(at string) error {
+		state[at] = 1
+
+		for _, r := range into[at] {
+			switch state[r.Include] {
+			case 1:
+				return fmt.Errorf("%s:%d: -> %s goes round in a loop back to %s", f.Name, r.Line, r.Include, at)
+			case 0:
+				if err := visit(r.Include); err != nil {
+					return err
+				}
+			}
+		}
+
+		state[at] = 2
+
+		return nil
+	}
+
+	for _, s := range f.Scopes {
+		if state[s.Name] == 0 {
+			if err := visit(s.Name); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 func dynamic(f *File) map[string]bool {

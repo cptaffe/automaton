@@ -3,8 +3,19 @@ package lex
 import (
 	"fmt"
 	"io"
+	"path/filepath"
 	"strings"
 )
+
+type Error struct {
+	File string
+	Line int
+	Err  error
+}
+
+func (e *Error) Error() string { return fmt.Sprintf("%s:%d: %v", e.File, e.Line, e.Err) }
+
+func (e *Error) Unwrap() error { return e.Err }
 
 type Reader struct {
 	run  *Lexer
@@ -55,7 +66,7 @@ func (r *Reader) Next() (Token, bool) {
 
 	if !ok {
 		if err := r.run.Err(); err != nil {
-			r.Fail("%s", err)
+			r.Fail("%w", err)
 		}
 
 		return tok, false
@@ -101,7 +112,7 @@ func (r *Reader) Statement() int { return r.stmt }
 func (r *Reader) From() string { return r.from }
 
 func (r *Reader) Name() string {
-	base := r.from[strings.LastIndexByte(r.from, '/')+1:]
+	base := filepath.Base(r.from)
 
 	if dot := strings.LastIndexByte(base, '.'); dot > 0 {
 		base = base[:dot]
@@ -111,44 +122,21 @@ func (r *Reader) Name() string {
 }
 
 func (r *Reader) Source(line int) string {
-	src := r.src
-	at, n := 0, 1
+	lines := strings.Split(r.src, "\n")
 
-	for i, c := range src {
-		if n == line {
-			at = i
-
-			break
-		}
-
-		if c == '\n' {
-			n++
-		}
+	if line < 1 || line > len(lines) {
+		return ""
 	}
 
-	end := at
-
-	for end < len(src) && src[end] != '\n' {
-		end++
-	}
-
-	return strings.TrimSpace(src[at:end])
+	return strings.TrimSpace(lines[line-1])
 }
 
 func (r *Reader) Fail(f string, a ...any) { r.FailAt(r.line, f, a...) }
 
 func (r *Reader) FailAt(line int, f string, a ...any) {
 	if r.err == nil {
-		r.err = fmt.Errorf("%s:%d: %s", r.from, line, fmt.Sprintf(f, a...))
+		r.err = &Error{File: r.from, Line: line, Err: fmt.Errorf(f, a...)}
 	}
 }
 
 func (r *Reader) Err() error { return r.err }
-
-func Unexpected(tok int, text string) string {
-	if tok == 0 {
-		return "the file ends in the middle of a rule"
-	}
-
-	return fmt.Sprintf("%s cannot stand here", text)
-}

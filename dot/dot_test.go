@@ -4,71 +4,141 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cptaffe/automaton"
 	"github.com/cptaffe/automaton/dot"
 )
 
 type toy struct {
-	c       *automaton.Classes
-	letters automaton.Class
+	name   string
+	starts []dot.Start
+	moves  map[int][]dot.Move
+	accept map[int]string
+	leaves map[int]string
+	states int
 }
 
-func (t toy) Name() string { return "toy" }
-func (t toy) Note() string { return "" }
-func (t toy) States() int  { return 3 }
-func (t toy) Starts() map[string]automaton.State {
-	return map[string]automaton.State{"start": 0}
-}
-func (t toy) Classes() *automaton.Classes { return t.c }
+func (t toy) Name() string                { return t.name }
+func (t toy) Note() string                { return "" }
+func (t toy) States() int                 { return t.states }
+func (t toy) Starts() []dot.Start         { return t.starts }
+func (t toy) Moves(s int) []dot.Move      { return t.moves[s] }
+func (t toy) Leaves(s int) (string, bool) { to, ok := t.leaves[s]; return to, ok }
 
-func (t toy) Next(s automaton.State, c automaton.Class) automaton.State {
-	if s != 0 {
-		return automaton.NoState
+func (t toy) Accepts(s int) (string, bool) {
+	label, ok := t.accept[s]
+	return label, ok
+}
+
+func words() toy {
+	return toy{
+		name:   "toy",
+		states: 3,
+		starts: []dot.Start{{Name: "start", State: 1}},
+		moves:  map[int][]dot.Move{1: {{To: 2, Label: "a-z"}, {To: 3, Label: "0-9", Dashed: true}}},
+		accept: map[int]string{2: "word", 3: "number"},
 	}
-
-	if c == t.letters {
-		return 1
-	}
-
-	return 2
 }
 
-func (t toy) Accepts(s automaton.State) (string, bool) {
-	switch s {
-	case 1:
-		return "word", true
-	case 2:
-		return "number", true
+func drawn(t *testing.T) func([]byte, error) string {
+	return func(b []byte, err error) string {
+		t.Helper()
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(b)
 	}
-
-	return "", false
 }
 
-func TestAnEdgeIsLabelledWithItsRange(t *testing.T) {
-	letters, digits := automaton.Span('a', 'z'), automaton.Span('0', '9')
-	c := automaton.Partition([]automaton.Set{letters, digits})
-	out := string(dot.Draw(toy{c: c, letters: c.Covers(letters)[0]}))
+func TestAMoveIsAnEdge(t *testing.T) {
+	out := drawn(t)(dot.Draw(words()))
 
 	if n := strings.Count(out, "->"); n != 2 {
-		t.Errorf("the drawing has %d edges; two classes go two places:\n%s", n, out)
+		t.Errorf("the drawing has %d edges; want 2:\n%s", n, out)
 	}
-
-	for _, want := range []string{`" a-z "`, `" 0-9 "`, "doublecircle", "word", "number", `label="start"`} {
+	for _, want := range []string{`" a-z "`, `" 0-9 "`, "style=dashed", "doublecircle", "word", "number", `label="start"`} {
 		if !strings.Contains(out, want) {
 			t.Errorf("the drawing does not hold %s:\n%s", want, out)
 		}
 	}
 }
 
-func TestClassesToOneStateAreOneEdge(t *testing.T) {
-	c := automaton.Partition([]automaton.Set{automaton.Span('a', 'z'), automaton.Span('0', '9')})
-	out := string(dot.Draw(toy{c: c, letters: -1}))
-
-	if n := strings.Count(out, "->"); n != 1 {
-		t.Errorf("the drawing has %d edges; both classes go to one state:\n%s", n, out)
+func TestTheFirstStartNamesAShared(t *testing.T) {
+	m := words()
+	m.starts = []dot.Start{{Name: "b", State: 1}, {Name: "a", State: 1}}
+	for range 20 {
+		if out := drawn(t)(dot.Draw(m)); !strings.Contains(out, `label="b"`) {
+			t.Fatalf("two starts on one state are drawn as the second:\n%s", out)
+		}
 	}
+}
 
-	if !strings.Contains(out, `" 0-9a-z "`) {
-		t.Errorf("the one edge is not labelled with both ranges:\n%s", out)
+func chain() toy {
+	return toy{
+		name:   "chain",
+		states: 5,
+		starts: []dot.Start{{Name: "chain", State: 1}},
+		moves: map[int][]dot.Move{
+			1: {{To: 2, Label: "x"}},
+			2: {{To: 3, Label: "x"}},
+			3: {{To: 4, Label: "x"}},
+			4: {{To: 5, Label: "y"}},
+		},
+		accept: map[int]string{5: "done"},
+	}
+}
+
+func TestARunOfOneLabelIsFolded(t *testing.T) {
+	out := drawn(t)(dot.Whole([]dot.Machine{chain()}, "whole"))
+
+	if !strings.Contains(out, "x ×3") {
+		t.Errorf("three x in a row are not folded into one edge:\n%s", out)
+	}
+	if n := strings.Count(out, "->"); n != 2 {
+		t.Errorf("the folded chain has %d edges; want 2:\n%s", n, out)
+	}
+}
+
+func TestAHandOffCrossesMachines(t *testing.T) {
+	a := words()
+	a.leaves = map[int]string{2: "chain"}
+	out := drawn(t)(dot.Whole([]dot.Machine{a, chain()}, "whole"))
+
+	if !strings.Contains(out, `m0_s2 -> m1_s1 [label="", class="hands", style=dashed, constraint=false]`) {
+		t.Errorf("the hand-off from toy to chain is not drawn:\n%s", out)
+	}
+	if n := strings.Count(out, "subgraph cluster_"); n != 2 {
+		t.Errorf("%d boxes for two machines:\n%s", n, out)
+	}
+}
+
+func TestAShapeMarksEmbeddingCycles(t *testing.T) {
+	rs := []dot.Rule{
+		{Name: "expr", Alts: []string{"NUM", "LP expr RP"}, Start: true},
+		{Name: "list", Alts: []string{"ITEM", "ITEM COMMA list"}},
+	}
+	out := drawn(t)(dot.Shape(rs, "g"))
+
+	if !strings.Contains(out, `class="start"`) {
+		t.Errorf("the first rule is not marked as the start:\n%s", out)
+	}
+	if got := dot.Nested(rs); len(got) != 1 || got[0] != "expr" {
+		t.Errorf("Nested is %v; want [expr]", got)
+	}
+}
+
+func TestAnUnknownLookIsAnError(t *testing.T) {
+	if _, err := (dot.Graph{Name: "g", Look: "nonsense"}).Bytes(); err == nil {
+		t.Error("an unknown look drew without complaint")
+	}
+}
+
+func TestPlural(t *testing.T) {
+	for _, c := range []struct {
+		n    int
+		what string
+		want string
+	}{{0, "state", "0 states"}, {1, "state", "1 state"}, {2, "class", "2 classes"}} {
+		if got := dot.Plural(c.n, c.what); got != c.want {
+			t.Errorf("Plural(%d, %q) = %q; want %q", c.n, c.what, got, c.want)
+		}
 	}
 }

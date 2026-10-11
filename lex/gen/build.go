@@ -46,7 +46,7 @@ func Build(f *Flat) ([]Machine, []string, error) {
 		d, err := automaton.BuildWith(in, classes)
 
 		if err != nil {
-			return nil, nil, fmt.Errorf("%s: in %s, %s", f.Name, s.Name, err)
+			return nil, nil, fmt.Errorf("%s: in %s, %w", f.Name, s.Name, err)
 		}
 
 		d = d.Minimise()
@@ -60,6 +60,10 @@ func Build(f *Flat) ([]Machine, []string, error) {
 				continue
 			}
 
+			if r.Scope != s.Name {
+				continue
+			}
+
 			m.Covered = append(m.Covered, fmt.Sprintf("%s:%d: %s is covered in %s by %s",
 				f.Name, r.Line, label(r), s.Name, covers(rules, d, i)))
 		}
@@ -70,7 +74,7 @@ func Build(f *Flat) ([]Machine, []string, error) {
 	var dead []string
 
 	for _, r := range f.Rules {
-		if !live[key(r)] {
+		if r.Include == "" && !live[key(r)] {
 			dead = append(dead, fmt.Sprintf("%s:%d: %s is covered in every scope it runs in", f.Name, r.Line, label(r)))
 		}
 	}
@@ -81,8 +85,8 @@ func Build(f *Flat) ([]Machine, []string, error) {
 }
 
 func reaches(d *automaton.DFA, rule int) bool {
-	for s := automaton.State(0); int(s) < d.States(); s++ {
-		if d.Accept(s) == automaton.Match(rule) {
+	for s := automaton.State(1); int(s) <= d.States(); s++ {
+		if d.Accept(s) == automaton.Match(rule+1) {
 			return true
 		}
 	}
@@ -94,14 +98,14 @@ func covers(rules []FlatRule, d *automaton.DFA, rule int) string {
 	var out []string
 	seen := map[string]bool{}
 
-	for s := automaton.State(0); int(s) < d.States(); s++ {
+	for s := automaton.State(1); int(s) <= d.States(); s++ {
 		a := d.Accept(s)
 
-		if a == automaton.NoMatch || int(a) >= rule {
+		if a == automaton.NoMatch || int(a) > rule {
 			continue
 		}
 
-		if got := label(rules[a]); !seen[got] {
+		if got := label(rules[a-1]); !seen[got] {
 			seen[got] = true
 			out = append(out, got)
 		}

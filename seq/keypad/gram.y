@@ -95,12 +95,12 @@ when_:
 
 expr:
 	  term          { $$ = $1 }
-	| expr OR term  { $$ = or($1, $3) }
+	| expr OR term  { $$ = seq.AnyOf($1, $3) }
 	;
 
 term:
 	  factor            { $$ = $1 }
-	| term AND factor   { $$ = and($1, $3) }
+	| term AND factor   { $$ = seq.AllOf($1, $3) }
 	;
 
 factor:

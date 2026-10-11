@@ -59,10 +59,10 @@ func TestLongestMatchThenRuleOrder(t *testing.T) {
 		rule automaton.Match
 		upto int
 	}{
-		{"do", 0, 2},
-		{"double", 1, 6},
-		{"d", 1, 1},
-		{"doing", 1, 5},
+		{"do", 1, 2},
+		{"double", 2, 6},
+		{"d", 2, 1},
+		{"doing", 2, 5},
 	} {
 		rule, upto := run(d, c.in)
 
@@ -82,11 +82,11 @@ func TestItReadsPastTheMatchAndReturns(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if rule, upto := run(d, "->"); rule != 0 || upto != 2 {
+	if rule, upto := run(d, "->"); rule != 1 || upto != 2 {
 		t.Errorf(`"->" is rule %d upto %d; want arrow upto 2`, rule, upto)
 	}
 
-	if rule, upto := run(d, "-x"); rule != 1 || upto != 1 {
+	if rule, upto := run(d, "-x"); rule != 2 || upto != 1 {
 		t.Errorf(`"-x" is rule %d upto %d; want dash upto 1, having read the x`, rule, upto)
 	}
 }
@@ -102,11 +102,11 @@ func TestTheOverrunIsUnbounded(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if rule, upto := run(d, "12.5"); rule != 0 || upto != 4 {
+	if rule, upto := run(d, "12.5"); rule != 1 || upto != 4 {
 		t.Errorf(`"12.5" is rule %d upto %d; want float upto 4`, rule, upto)
 	}
 
-	if rule, upto := run(d, "12.foo"); rule != 1 || upto != 2 {
+	if rule, upto := run(d, "12.foo"); rule != 2 || upto != 2 {
 		t.Errorf(`"12.foo" is rule %d upto %d; want int upto 2`, rule, upto)
 	}
 }
@@ -191,7 +191,7 @@ func TestMinimisingMergesStatesNothingTellsApart(t *testing.T) {
 	for _, c := range []struct {
 		in   string
 		want automaton.Match
-	}{{"ab", 0}, {"cb", 0}, {"ax", automaton.NoMatch}, {"b", automaton.NoMatch}} {
+	}{{"ab", 1}, {"cb", 1}, {"ax", automaton.NoMatch}, {"b", automaton.NoMatch}} {
 		rule, _ := run(m, c.in)
 
 		if rule != c.want {
@@ -221,7 +221,7 @@ func TestMinimisingKeepsRulesApart(t *testing.T) {
 	for _, c := range []struct {
 		in   string
 		want automaton.Match
-	}{{"ab", 0}, {"ac", 1}} {
+	}{{"ab", 1}, {"ac", 2}} {
 		if rule, _ := run(m, c.in); rule != c.want {
 			t.Errorf("minimised, %q is rule %d; want %d", c.in, rule, c.want)
 		}
@@ -249,11 +249,11 @@ func TestAUnicodeRuleStaysSmall(t *testing.T) {
 		t.Errorf("the machine has %d states for two rules over all of unicode:\n%s", d.States(), d)
 	}
 
-	if at := d.Step(d.Start(), '漢'); at == automaton.NoState || d.Accept(at) != 0 {
+	if at := d.Step(d.Start(), '漢'); at == automaton.NoState || d.Accept(at) != 1 {
 		t.Error("a han character does not begin a name")
 	}
 
-	if at := d.Step(d.Start(), '٣'); at == automaton.NoState || d.Accept(at) != 1 {
+	if at := d.Step(d.Start(), '٣'); at == automaton.NoState || d.Accept(at) != 2 {
 		t.Error("an arabic-indic three is not a number")
 	}
 }

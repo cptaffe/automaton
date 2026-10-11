@@ -1,28 +1,23 @@
 package dot
 
-import (
-	"fmt"
-	"sort"
-
-	"github.com/cptaffe/automaton"
-)
+import "fmt"
 
 type run struct {
-	to  automaton.State
-	set automaton.Set
-	n   int
+	to    int
+	label string
+	n     int
 }
 
-func through(m Machine) map[automaton.State]bool {
-	starts := map[automaton.State]bool{}
+func through(m Machine) map[int]bool {
+	starts := map[int]bool{}
 
 	for _, s := range m.Starts() {
-		starts[s] = true
+		starts[s.State] = true
 	}
 
-	out := map[automaton.State]bool{}
+	out := map[int]bool{}
 
-	for s := automaton.State(0); int(s) < m.States(); s++ {
+	for s := 1; s <= m.States(); s++ {
 		if starts[s] {
 			continue
 		}
@@ -31,7 +26,7 @@ func through(m Machine) map[automaton.State]bool {
 			continue
 		}
 
-		if to, _, ok := only(m, s); ok && to != s {
+		if mv := m.Moves(s); len(mv) == 1 && mv[0].To != s {
 			out[s] = true
 		}
 	}
@@ -39,49 +34,28 @@ func through(m Machine) map[automaton.State]bool {
 	return out
 }
 
-func only(m Machine, s automaton.State) (automaton.State, automaton.Set, bool) {
-	to, set, found := automaton.NoState, automaton.Set{}, false
-
-	for c := automaton.Class(0); int(c) < m.Classes().Len(); c++ {
-		got := m.Next(s, c)
-
-		if got == automaton.NoState {
-			continue
-		}
-
-		if found && got != to {
-			return automaton.NoState, automaton.Set{}, false
-		}
-
-		to, found = got, true
-		set = set.Union(m.Classes().Part(c))
-	}
-
-	return to, set, found
-}
-
-func follow(m Machine, skip map[automaton.State]bool, to automaton.State, set automaton.Set) run {
-	got := run{to: to, set: set, n: 1}
-	seen := map[automaton.State]bool{}
+func follow(m Machine, skip map[int]bool, mv Move) run {
+	got := run{to: mv.To, label: mv.Label, n: 1}
+	seen := map[int]bool{}
 
 	for skip[got.to] && !seen[got.to] {
 		seen[got.to] = true
-		next, step, ok := only(m, got.to)
+		next := m.Moves(got.to)
 
-		if !ok || !step.Equal(got.set) {
+		if len(next) != 1 || next[0].Label != got.label {
 			return got
 		}
 
-		got.to, got.n = next, got.n+1
+		got.to, got.n = next[0].To, got.n+1
 	}
 
 	return got
 }
 
-func kept(m Machine) map[automaton.State]bool {
+func kept(m Machine) map[int]bool {
 	skip := through(m)
 
-	for s := automaton.State(0); int(s) < m.States(); s++ {
+	for s := 1; s <= m.States(); s++ {
 		if skip[s] {
 			continue
 		}
@@ -94,29 +68,12 @@ func kept(m Machine) map[automaton.State]bool {
 	return skip
 }
 
-func runs(m Machine, skip map[automaton.State]bool, s automaton.State) []run {
-	to := map[automaton.State]automaton.Set{}
-	var order []automaton.State
+func runs(m Machine, skip map[int]bool, s int) []run {
+	moves := m.Moves(s)
+	out := make([]run, 0, len(moves))
 
-	for c := automaton.Class(0); int(c) < m.Classes().Len(); c++ {
-		got := m.Next(s, c)
-
-		if got == automaton.NoState {
-			continue
-		}
-
-		if _, ok := to[got]; !ok {
-			order = append(order, got)
-		}
-
-		to[got] = to[got].Union(m.Classes().Part(c))
-	}
-
-	sort.Slice(order, func(i, j int) bool { return order[i] < order[j] })
-	out := make([]run, 0, len(order))
-
-	for _, got := range order {
-		out = append(out, follow(m, skip, got, to[got]))
+	for _, mv := range moves {
+		out = append(out, follow(m, skip, mv))
 	}
 
 	return out

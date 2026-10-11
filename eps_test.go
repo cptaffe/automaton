@@ -25,8 +25,8 @@ func TestTheTableHasNoEmptyTransitions(t *testing.T) {
 		t.Errorf("the table holds an edge that reads nothing:\n%s", out)
 	}
 
-	for s := automaton.State(0); int(s) < d.States(); s++ {
-		for c := automaton.Class(0); int(c) < d.Classes().Len(); c++ {
+	for s := automaton.State(1); int(s) <= d.States(); s++ {
+		for c := automaton.Class(1); int(c) <= d.Classes().Len(); c++ {
 			if at := d.Next(s, c); at != automaton.NoState && d.Classes().Part(c).Empty() {
 				t.Errorf("state %d leaves on an empty class to %d", s, at)
 			}

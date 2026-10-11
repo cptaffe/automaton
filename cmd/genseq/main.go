@@ -1,51 +1,78 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/cptaffe/automaton/seq"
-	"github.com/cptaffe/automaton/seq/draw"
+	seqdraw "github.com/cptaffe/automaton/seq/draw"
 	"github.com/cptaffe/automaton/seq/hotkey"
 	"github.com/cptaffe/automaton/seq/keypad"
 )
 
-func main() {
-	dialect := flag.String("d", "", "the dialect, keypad or hotkey; by default .tree is keypad and anything else hotkey")
-	dir := flag.String("dot", "", "write Graphviz into this directory")
-	flag.Parse()
+func main() { os.Exit(run(os.Args[1:], os.Stderr)) }
 
-	tabs, err := compile(flag.Args(), *dialect)
+func run(args []string, stderr io.Writer) int {
+	fs := flag.NewFlagSet("genseq", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	dialect := fs.String("d", "", "the dialect, keypad or hotkey; by default .tree is keypad and anything else hotkey")
+	dir := fs.String("dot", "", "write Graphviz drawings into this directory")
+	verbose := fs.Bool("v", false, "describe each table")
+	fs.Usage = func() {
+		fmt.Fprintln(stderr, "usage: genseq [-v] [-d dialect] [-dot dir] file...")
+		fs.PrintDefaults()
+	}
+	if err := fs.Parse(args); err != nil {
+		return 2
+	}
+	if fs.NArg() == 0 {
+		fs.Usage()
+		return 2
+	}
+	if err := draw(fs.Args(), *dialect, *dir, *verbose, stderr); err != nil {
+		fmt.Fprintln(stderr, "genseq:", err)
+		return 1
+	}
+	return 0
+}
+
+func draw(paths []string, dialect, dir string, verbose bool, stderr io.Writer) error {
+	tabs, err := compile(paths, dialect)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "genseq:", err)
-		os.Exit(1)
+		return err
 	}
 	for _, t := range tabs {
-		fmt.Printf("genseq: %s, %d rules in %d states\n", t.Name, len(t.Rules), len(t.Next))
-		for _, name := range t.Waiting() {
-			fmt.Printf("genseq:   waits %s in state %d\n", name, t.WaitsIn(name))
+		if verbose {
+			fmt.Fprintf(stderr, "genseq: %s, %d states, waits for %s\n", t.Name, len(t.Next)-1, strings.Join(t.Waiting(), " "))
 		}
-		if *dir == "" {
+		if dir == "" {
 			continue
 		}
-		at := filepath.Join(*dir, t.Name+".dot")
-		if err := os.MkdirAll(*dir, 0o755); err != nil {
-			fmt.Fprintln(os.Stderr, "genseq:", err)
-			os.Exit(1)
+		b, err := seqdraw.Draw(t)
+		if err == nil {
+			err = os.MkdirAll(dir, 0o755)
 		}
-		if err := os.WriteFile(at, draw.Draw(t), 0o644); err != nil {
-			fmt.Fprintln(os.Stderr, "genseq:", err)
-			os.Exit(1)
+		if err == nil {
+			err = os.WriteFile(filepath.Join(dir, t.Name+".dot"), b, 0o644)
 		}
-		fmt.Printf("genseq:   %s\n", at)
+		if err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 func compile(paths []string, dialect string) ([]*seq.Table, error) {
-	var tabs []*seq.Table
+	type parsed struct {
+		tree *seq.Grammar
+		tab  *seq.Table
+	}
+	var all []parsed
 	var trees []*seq.Grammar
 	for _, path := range paths {
 		d := dialect
@@ -67,28 +94,42 @@ func compile(paths []string, dialect string) ([]*seq.Table, error) {
 				return nil, err
 			}
 			trees = append(trees, g)
+			all = append(all, parsed{tree: g})
 		case "hotkey":
 			r, err := hotkey.Parse(f, path, nil)
 			f.Close()
 			if err != nil {
 				return nil, err
 			}
-			tabs = append(tabs, r.Table)
+			all = append(all, parsed{tab: r.Table})
 		default:
 			f.Close()
 			return nil, fmt.Errorf("no dialect called %s", d)
 		}
 	}
+
 	a := keypad.Alphabet(trees...)
-	for _, g := range trees {
-		t, err := seq.Compile(g, a)
+	var compiled []*seq.Table
+	var out []*seq.Table
+	for _, p := range all {
+		if p.tab != nil {
+			out = append(out, p.tab)
+			continue
+		}
+		t, err := seq.Compile(p.tree, a)
 		if err != nil {
 			return nil, err
 		}
 		if len(t.Conflicts) > 0 {
-			return nil, fmt.Errorf("%s: %s", g.Name, strings.Join(t.Conflicts, "; "))
+			return nil, errors.New(strings.Join(t.Conflicts, "\n"))
 		}
-		tabs = append(tabs, t)
+		compiled = append(compiled, t)
+		out = append(out, t)
 	}
-	return tabs, nil
+	if len(compiled) > 0 {
+		if _, err := seq.Link(compiled, "trees", keypad.Answered); err != nil {
+			return nil, err
+		}
+	}
+	return out, nil
 }
