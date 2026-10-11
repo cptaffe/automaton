@@ -1,5 +1,10 @@
 package seq
 
+import (
+	"fmt"
+	"strings"
+)
+
 func expand(g *Grammar) (*Grammar, error) {
 	if len(g.Params) == 0 {
 		return g, nil
@@ -21,6 +26,8 @@ func expand(g *Grammar) (*Grammar, error) {
 				return arg, nil
 			case param != "" && a == param:
 				a = arg
+			case a == "this":
+				a = at
 			}
 			return want(to, a)
 		}
@@ -60,6 +67,9 @@ func expand(g *Grammar) (*Grammar, error) {
 		param := g.Params[name]
 		at := name
 		if param != "" {
+			if strings.Contains("("+arg, "("+name+"(") {
+				return "", fmt.Errorf("%s: %s(%s) holds %s inside itself, and a scope has no stack to come back by", g.Name, name, arg, name)
+			}
 			at = name + "(" + arg + ")"
 		}
 		if done[at] {

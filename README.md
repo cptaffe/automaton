@@ -73,7 +73,8 @@ rule that holds can use it. Both dialects share it.
 
 A dial plan, where `N` is 2–9, `X` is 0–9, and `T` settles a number that
 could still grow. A scope can take a parameter: `dialing(then)` waits for the
-call to be answered and then goes wherever it was told, and `connected`, with
+call to be answered and then goes wherever it was told, and
+`-> dialing(this)` would come back to the scope it was called from; and `connected`, with
 no rules, ends the plan once a number is dialled. Several trees compile
 together with `keypad.Compile`, and a `->` to another tree's name goes to its
 first scope:

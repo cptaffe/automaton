@@ -8,6 +8,9 @@ func Check(g *Grammar) error {
 	}
 	seen := map[string]bool{}
 	for _, s := range g.Scopes {
+		if s == "this" {
+			return fmt.Errorf("%s: a scope cannot be called this, which names the scope a rule is in", g.Name)
+		}
 		if seen[s] {
 			return fmt.Errorf("%s: scope %s is declared twice", g.Name, s)
 		}
@@ -31,6 +34,8 @@ func Check(g *Grammar) error {
 			return fmt.Errorf("%s:%d: %s takes a parameter and was given none", g.Name, line, to)
 		case g.Params[to] == "" && arg != "":
 			return fmt.Errorf("%s:%d: %s takes no parameter and was given %s", g.Name, line, to, arg)
+		case arg == "this":
+			return nil
 		case arg != "" && arg != param && !seen[arg]:
 			return fmt.Errorf("%s:%d: -> %s(%s), and there is no scope %s", g.Name, line, to, arg, arg)
 		case arg != "" && arg != param && g.Params[arg] != "":

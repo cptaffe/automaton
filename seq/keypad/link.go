@@ -56,7 +56,7 @@ func Link(trees ...*seq.Grammar) (*seq.Grammar, error) {
 			out.Delays[name] = d
 		}
 		named := func(scope, name string, line int) (string, error) {
-			if p := g.Params[scope]; p != "" && name == p {
+			if p := g.Params[scope]; name == "this" || p != "" && name == p {
 				return name, nil
 			}
 			return at(name, line)
