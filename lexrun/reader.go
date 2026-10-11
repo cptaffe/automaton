@@ -81,6 +81,8 @@ func (r *Reader) Next() (Token, bool) {
 
 func (r *Reader) Skip() { r.empty = true }
 
+func (r *Reader) Depth() int { return r.run.Depth() }
+
 func (r *Reader) walk(text string) {
 	if n := strings.Count(text, "\n"); n > 0 {
 		r.line += n

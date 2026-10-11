@@ -99,15 +99,23 @@ func (d drawn) Accepts(s automaton.State) (string, bool) {
 	}
 
 	r := d.m.Rules[a]
+	label := "-> " + r.Acts.Goto
 
 	switch {
 	case r.Acts.Emit != "":
-		return r.Acts.Emit, true
+		label = r.Acts.Emit
 	case r.Acts.Drop:
-		return "ignore", true
+		label = "ignore"
 	}
 
-	return "-> " + r.Acts.Goto, true
+	switch {
+	case r.Acts.Pop:
+		label += " -> return"
+	case r.Acts.Push != "":
+		label += " (push " + r.Acts.Push + ")"
+	}
+
+	return label, true
 }
 
 func plural(n int, what string) string {

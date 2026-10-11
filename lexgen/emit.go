@@ -68,7 +68,7 @@ func Spec(f *Flat, ms []Machine) (*lexrun.Spec, []string) {
 		}
 
 		for _, r := range m.Rules {
-			a := lexrun.Act{Emit: lexrun.None, Do: lexrun.None, Goto: lexrun.None, Drop: r.Acts.Drop}
+			a := lexrun.Act{Emit: lexrun.None, Do: lexrun.None, Goto: lexrun.None, Push: lexrun.None, Pop: r.Acts.Pop, Drop: r.Acts.Drop}
 
 			if r.Acts.Emit != "" {
 				a.Emit = kind[r.Acts.Emit]
@@ -86,6 +86,16 @@ func Spec(f *Flat, ms []Machine) (*lexrun.Spec, []string) {
 				}
 
 				a.Goto = to
+			}
+
+			if r.Acts.Push != "" {
+				back, ok := at[r.Acts.Push]
+
+				if !ok {
+					return nil, []string{fmt.Sprintf("%s:%d: returns to %s, and there is no such scope", f.Name, r.Line, r.Acts.Push)}
+				}
+
+				a.Push = back
 			}
 
 			s.Acts = append(s.Acts, a)
@@ -193,8 +203,8 @@ func Go(f *Flat, spec *lexrun.Spec, pkg string) []byte {
 		b.WriteString("},\n\t\t\tActs: []lexrun.Act{\n")
 
 		for _, a := range s.Acts {
-			fmt.Fprintf(&b, "\t\t\t\t{Emit: %s, Do: %s, Goto: %s, Drop: %t},\n",
-				some(a.Emit), some(a.Do), some(a.Goto), a.Drop)
+			fmt.Fprintf(&b, "\t\t\t\t{Emit: %s, Do: %s, Goto: %s, Push: %s, Pop: %t, Drop: %t},\n",
+				some(a.Emit), some(a.Do), some(a.Goto), some(a.Push), a.Pop, a.Drop)
 		}
 
 		b.WriteString("\t\t\t},\n\t\t},\n")

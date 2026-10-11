@@ -75,30 +75,6 @@ clause {
 	}
 }
 
-func TestATemplateInsideItselfIsRefused(t *testing.T) {
-	f, err := lexgen.Parse(strings.NewReader(`
-start {
-  "/*"  -> comment(this)
-}
-
-comment(then) {
-  "/*"  -> comment(this)
-  "*/"  -> then
-  any   ignore
-}
-`), "x.lex")
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	_, err = lexgen.Expand(f)
-
-	if err == nil || !strings.Contains(err.Error(), "needs a stack") {
-		t.Errorf("the refusal is %v", err)
-	}
-}
-
 func TestATemplateUsedWithNoArgumentIsRefused(t *testing.T) {
 	f, err := lexgen.Parse(strings.NewReader("start {\n  \"a\" -> klass\n}\n\nklass(then) {\n  \"b\" -> then\n}\n"), "x.lex")
 

@@ -124,6 +124,8 @@ func label(r FlatRule) string {
 		return r.Acts.Emit
 	case r.Acts.Drop:
 		return "ignore"
+	case r.Acts.Pop:
+		return "-> return"
 	case r.Acts.Goto != "":
 		return "-> " + r.Acts.Goto
 	}

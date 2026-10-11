@@ -25,6 +25,8 @@ type Act struct {
 	Emit int
 	Do   int
 	Goto int
+	Push int
+	Pop  bool
 	Drop bool
 }
 
@@ -72,6 +74,7 @@ type Lexer struct {
 	spec  *Spec
 	sc    *bufio.Scanner
 	scope int
+	stack []int
 	at    int
 	tok   Token
 	err   error
@@ -99,7 +102,7 @@ func New(spec *Spec, r io.Reader, scope string) (*Lexer, error) {
 }
 
 func (l *Lexer) split(data []byte, atEOF bool) (int, []byte, error) {
-	was, scope := l.at, l.scope
+	was, scope, stack := l.at, l.scope, l.stack
 	done := 0
 
 	give := func(n int, tok []byte) (int, []byte, error) {
@@ -109,7 +112,7 @@ func (l *Lexer) split(data []byte, atEOF bool) (int, []byte, error) {
 	}
 
 	drop := func() (int, []byte, error) {
-		l.at, l.scope = was, scope
+		l.at, l.scope, l.stack = was, scope, stack
 
 		return 0, nil, nil
 	}
@@ -196,7 +199,17 @@ func (l *Lexer) one(data []byte, atEOF bool) (int, []byte, error) {
 	act := s.Acts[rule]
 	text := data[:back]
 
-	if act.Goto != None {
+	if act.Push != None {
+		n := len(l.stack)
+		l.stack = append(l.stack[:n:n], act.Push)
+	}
+
+	switch n := len(l.stack); {
+	case act.Pop && n == 0:
+		return 0, nil, fmt.Errorf("%s: returns with nothing to return to", s.Name)
+	case act.Pop:
+		l.scope, l.stack = l.stack[n-1], l.stack[:n-1]
+	case act.Goto != None:
 		l.scope = act.Goto
 	}
 
@@ -224,3 +237,5 @@ func (l *Lexer) Next() (Token, bool) {
 func (l *Lexer) Err() error { return l.err }
 
 func (l *Lexer) Scope() string { return l.spec.Scopes[l.scope].Name }
+
+func (l *Lexer) Depth() int { return len(l.stack) }

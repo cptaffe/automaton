@@ -4,6 +4,8 @@ type FlatActs struct {
 	Emit string
 	Do   string
 	Goto string
+	Push string
+	Pop  bool
 	Drop bool
 }
 

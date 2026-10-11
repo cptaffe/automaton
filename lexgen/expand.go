@@ -28,6 +28,7 @@ func Expand(f *File) (*Flat, error) {
 
 	out := &Flat{Name: f.Name, Shadowed: f.Shadowed, Defs: f.Defs}
 	done := map[string]bool{}
+	dyn := dynamic(f)
 
 	var want func(name, arg string, chain []string) (string, error)
 
@@ -51,11 +52,21 @@ func Expand(f *File) (*Flat, error) {
 
 			done[at] = true
 
-			return at, emit(f, out, s, at, "", "", want, chain)
+			return at, emit(f, out, s, at, "", "", dyn, want, chain)
 		}
 
 		if arg == "" {
 			return "", fmt.Errorf("%s:%d: %s takes a parameter and was used without one", f.Name, s.Line, name)
+		}
+
+		if dyn[name] {
+			if done[name] {
+				return name, nil
+			}
+
+			done[name] = true
+
+			return name, emit(f, out, s, name, s.Param, "", dyn, want, chain)
 		}
 
 		at := name + "(" + arg + ")"
@@ -73,7 +84,7 @@ func Expand(f *File) (*Flat, error) {
 
 		done[at] = true
 
-		return at, emit(f, out, s, at, s.Param, arg, want, append(chain, name))
+		return at, emit(f, out, s, at, s.Param, arg, dyn, want, append(chain, name))
 	}
 
 	if _, err := want(entry, "", nil); err != nil {
@@ -101,7 +112,7 @@ func Expand(f *File) (*Flat, error) {
 
 type wanter func(name, arg string, chain []string) (string, error)
 
-func emit(f *File, out *Flat, s *Scope, at, param, arg string, want wanter, chain []string) error {
+func emit(f *File, out *Flat, s *Scope, at, param, arg string, dyn map[string]bool, want wanter, chain []string) error {
 	out.Scopes = append(out.Scopes, FlatScope{Name: at, Includes: s.Includes, Line: s.Line})
 
 	if s.Includes != "" {
@@ -116,36 +127,143 @@ func emit(f *File, out *Flat, s *Scope, at, param, arg string, want wanter, chai
 		}
 
 		got := FlatRule{Expr: r.Expr, Scope: at, Line: r.Line, Text: r.Text,
-			Acts: FlatActs{Emit: r.Acts.Emit, Do: r.Acts.Do, Goto: r.Acts.Goto, Drop: r.Acts.Drop}}
+			Acts: FlatActs{Emit: r.Acts.Emit, Do: r.Acts.Do, Drop: r.Acts.Drop}}
 
 		if r.Acts.Goto != "" {
-			to, a := r.Acts.Goto, r.Acts.Arg
-
-			if to == param {
-				if a != "" {
-					return fmt.Errorf("%s:%d: %s is this scope's parameter and cannot take one of its own", f.Name, r.Line, to)
-				}
-
-				to, a = arg, ""
-			}
-
-			if a == "this" {
-				a = at
-			}
-
-			to, err := want(to, a, chain)
+			acts, err := move(f, r, at, param, arg, dyn, want, chain)
 
 			if err != nil {
 				return err
 			}
 
-			got.Acts.Goto = to
+			got.Acts.Goto, got.Acts.Push, got.Acts.Pop = acts.Goto, acts.Push, acts.Pop
 		}
 
 		out.Rules = append(out.Rules, got)
 	}
 
 	return nil
+}
+
+func move(f *File, r Rule, at, param, arg string, dyn map[string]bool, want wanter, chain []string) (FlatActs, error) {
+	to, a := r.Acts.Goto, r.Acts.Arg
+	inDyn := param != "" && arg == ""
+
+	if to == param {
+		if a != "" {
+			return FlatActs{}, fmt.Errorf("%s:%d: %s is this scope's parameter and cannot take one of its own", f.Name, r.Line, to)
+		}
+
+		if inDyn {
+			return FlatActs{Pop: true}, nil
+		}
+
+		to, a = arg, ""
+	}
+
+	if a == param && param != "" && !inDyn {
+		a = arg
+	}
+
+	if !dyn[to] {
+		if a == "this" {
+			a = at
+		}
+
+		got, err := want(to, a, chain)
+
+		return FlatActs{Goto: got}, err
+	}
+
+	if a == "" {
+		return FlatActs{}, fmt.Errorf("%s:%d: %s takes a parameter and was used without one", f.Name, r.Line, to)
+	}
+
+	got, err := want(to, a, chain)
+
+	if err != nil {
+		return FlatActs{}, err
+	}
+
+	switch {
+	case a == "this":
+		return FlatActs{Goto: got, Push: at}, nil
+	case inDyn && a == param:
+		return FlatActs{Goto: got}, nil
+	}
+
+	back, err := want(a, "", chain)
+
+	return FlatActs{Goto: got, Push: back}, err
+}
+
+func dynamic(f *File) map[string]bool {
+	param := map[string]string{}
+
+	for _, s := range f.Scopes {
+		if s.Param != "" {
+			param[s.Name] = s.Param
+		}
+	}
+
+	calls := map[string][]Rule{}
+
+	for _, r := range f.Rules {
+		if _, ok := param[r.Scope]; ok && r.Acts.Goto != "" && r.Acts.Goto != param[r.Scope] {
+			calls[r.Scope] = append(calls[r.Scope], r)
+		}
+	}
+
+	reaches := func(from, to string) bool {
+		seen := map[string]bool{}
+		work := []string{from}
+
+		for len(work) > 0 {
+			at := work[len(work)-1]
+			work = work[:len(work)-1]
+
+			for _, r := range calls[at] {
+				next := r.Acts.Goto
+
+				if _, ok := param[next]; !ok || seen[next] {
+					continue
+				}
+
+				if next == to {
+					return true
+				}
+
+				seen[next] = true
+				work = append(work, next)
+			}
+		}
+
+		return false
+	}
+
+	dyn := map[string]bool{}
+
+	for name := range param {
+		dyn[name] = reaches(name, name)
+	}
+
+	for changed := true; changed; {
+		changed = false
+
+		for name := range param {
+			if !dyn[name] {
+				continue
+			}
+
+			for _, r := range calls[name] {
+				if _, ok := param[r.Acts.Goto]; ok && r.Acts.Arg == param[name] && !dyn[r.Acts.Goto] {
+					dyn[r.Acts.Goto], changed = true, true
+				}
+			}
+		}
+	}
+
+	return dyn
 }
 
 func (f *Flat) Instantiations() []string {
