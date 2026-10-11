@@ -60,6 +60,7 @@ type File struct {
 	Defs []Def
 
 	Name     string
+	Path     string
 	Scopes   []Scope
 	Rules    []Rule
 	Shadowed []string

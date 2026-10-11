@@ -45,13 +45,13 @@ func Spec(f *Flat, ms []Machine) (*lex.Spec, error) {
 
 			if r.Acts.Goto != "" {
 				if a.Goto = at[r.Acts.Goto]; a.Goto == 0 {
-					return nil, fmt.Errorf("%s:%d: -> %s, and there is no such scope", f.Name, r.Line, r.Acts.Goto)
+					return nil, fmt.Errorf("%s:%d: -> %s, and there is no such scope", f.Path, r.Line, r.Acts.Goto)
 				}
 			}
 
 			if r.Acts.Push != "" {
 				if a.Push = at[r.Acts.Push]; a.Push == 0 {
-					return nil, fmt.Errorf("%s:%d: returns to %s, and there is no such scope", f.Name, r.Line, r.Acts.Push)
+					return nil, fmt.Errorf("%s:%d: returns to %s, and there is no such scope", f.Path, r.Line, r.Acts.Push)
 				}
 			}
 
@@ -67,7 +67,7 @@ func Spec(f *Flat, ms []Machine) (*lex.Spec, error) {
 
 	for i := range ms {
 		if got := ranges(ms[i].DFA.Classes()); !sameRanges(got, spec.Ranges) {
-			return nil, fmt.Errorf("%s: %s reads a different alphabet; one file, one alphabet", f.Name, ms[i].Scope)
+			return nil, fmt.Errorf("%s: %s reads a different alphabet; one file, one alphabet", f.Path, ms[i].Scope)
 		}
 	}
 
@@ -124,7 +124,7 @@ func sameRanges(a, b []lex.Range) bool {
 }
 
 func Go(spec *lex.Spec, pkg, from string) ([]byte, error) {
-	if !token.IsIdentifier(pkg) {
+	if !token.IsIdentifier(pkg) || pkg == "_" {
 		return nil, fmt.Errorf("%q cannot name a package", pkg)
 	}
 

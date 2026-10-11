@@ -18,7 +18,7 @@ type Machine struct {
 
 func Build(f *Flat) ([]Machine, []string, error) {
 	var out []Machine
-	live := map[string]bool{}
+	live := map[int]bool{}
 
 	var all []automaton.Rule
 
@@ -34,7 +34,7 @@ func Build(f *Flat) ([]Machine, []string, error) {
 		rules := f.Of(s.Name)
 
 		if len(rules) == 0 {
-			return nil, nil, fmt.Errorf("%s:%d: %s has no rules", f.Name, s.Line, s.Name)
+			return nil, nil, fmt.Errorf("%s:%d: %s has no rules", f.Path, s.Line, s.Name)
 		}
 
 		in := make([]automaton.Rule, len(rules))
@@ -46,7 +46,7 @@ func Build(f *Flat) ([]Machine, []string, error) {
 		d, err := automaton.BuildWith(in, classes)
 
 		if err != nil {
-			return nil, nil, fmt.Errorf("%s: in %s, %w", f.Name, s.Name, err)
+			return nil, nil, fmt.Errorf("%s: in %s, %w", f.Path, s.Name, err)
 		}
 
 		d = d.Minimise()
@@ -60,12 +60,11 @@ func Build(f *Flat) ([]Machine, []string, error) {
 				continue
 			}
 
-			if r.Scope != s.Name {
+			if r.Inlined {
 				continue
 			}
 
-			m.Covered = append(m.Covered, fmt.Sprintf("%s:%d: %s is covered in %s by %s",
-				f.Name, r.Line, label(r), s.Name, covers(rules, d, i)))
+			m.Covered = append(m.Covered, fmt.Sprintf("%s:%d: %s is covered in %s by %s", f.Path, r.Line, label(r), s.Name, covers(rules, d, i)))
 		}
 
 		out = append(out, m)
@@ -73,9 +72,12 @@ func Build(f *Flat) ([]Machine, []string, error) {
 
 	var dead []string
 
+	told := map[int]bool{}
+
 	for _, r := range f.Rules {
-		if r.Include == "" && !live[key(r)] {
-			dead = append(dead, fmt.Sprintf("%s:%d: %s is covered in every scope it runs in", f.Name, r.Line, label(r)))
+		if r.Include == "" && !live[key(r)] && !told[key(r)] {
+			told[key(r)] = true
+			dead = append(dead, fmt.Sprintf("%s:%d: %s is covered in every scope it runs in", f.Path, r.Line, label(r)))
 		}
 	}
 
@@ -120,7 +122,7 @@ func covers(rules []FlatRule, d *automaton.DFA, rule int) string {
 	return strings.Join(out, " and ")
 }
 
-func key(r FlatRule) string { return fmt.Sprintf("%s:%d", r.Scope, r.Line) }
+func key(r FlatRule) int { return r.Line }
 
 func label(r FlatRule) string {
 	switch {

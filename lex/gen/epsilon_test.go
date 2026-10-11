@@ -92,3 +92,45 @@ func TestParsingIsSafeAtOnce(t *testing.T) {
 		}
 	}
 }
+
+func TestThisInAnIncludedScopeIsTheScopeReadingIt(t *testing.T) {
+	spec := build(t, `
+start {
+  -> common
+  "x"  emit x
+}
+
+common {
+  "("  emit lp -> paren(this)
+}
+
+paren(then) {
+  "("  emit lp -> paren(this)
+  ")"  emit rp -> then
+  "y"  emit y
+}
+`)
+	if got := strings.Join(kinds(t, spec, "x((y))x"), " "); got != "x(x) lp(() lp(() y(y) rp()) rp()) x(x)" {
+		t.Errorf("the tokens are %q", got)
+	}
+}
+
+func TestARuleCoveredThroughAnEpsilonIsDead(t *testing.T) {
+	f, err := gen.Parse(strings.NewReader("start {\n  [a-z]+ emit word\n  -> kw\n  \" \" ignore\n}\n\nkw {\n  \"if\" emit keyword\n}\n"), "x.lex")
+	if err != nil {
+		t.Fatal(err)
+	}
+	flat, err := gen.Expand(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, dead, err := gen.Build(flat); err != nil || len(dead) != 1 || !strings.Contains(dead[0], "keyword is covered") {
+		t.Errorf("dead %v, %v", dead, err)
+	}
+}
+
+func TestARuleErrorIsOnTheRulesLine(t *testing.T) {
+	refused(t, "start {\n  \"a\" emit a\n  \"b\" do x\n  \"c\" emit c\n}\n", "x.lex:3: do x with nothing emitted")
+	refused(t, "start {\n  \"b\" emit b ignore\n}\n", "x.lex:2: a rule cannot both ignore")
+	refused(t, "start {\n  \"a\" emit a\n}\n\nb {\n  \"b\" emit b\n}\n", "x.lex:5: nothing reaches b")
+}

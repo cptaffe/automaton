@@ -180,3 +180,18 @@ func TestAnErrorCarriesItsPlace(t *testing.T) {
 		t.Errorf("Name %q, Source(2) %q, Source(9) %q", r.Name(), r.Source(2), r.Source(9))
 	}
 }
+
+func TestOneIgnoredMatchLongerThanAMegabyte(t *testing.T) {
+	src := "a" + strings.Repeat(" ", 2<<20) + "b\n"
+	l, err := lex.New(spec(t), strings.NewReader(src), "start")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for tok, ok := l.Next(); ok; tok, ok = l.Next() {
+		got = append(got, tok.Text)
+	}
+	if err := l.Err(); err != nil || strings.Join(got, "") != "ab\n" {
+		t.Errorf("read %q, %v", got, err)
+	}
+}

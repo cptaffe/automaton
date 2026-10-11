@@ -48,3 +48,9 @@ func TestTheTableRefusesBadNames(t *testing.T) {
 		}
 	}
 }
+
+func TestTheBlankPackageIsNoPackage(t *testing.T) {
+	if _, err := gen.Go(&lex.Spec{}, "_", "t.lex"); err == nil {
+		t.Error("package _ was written")
+	}
+}

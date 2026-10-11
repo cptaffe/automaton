@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"math"
 	"sort"
 	"unicode/utf8"
 )
@@ -95,7 +96,7 @@ func New(spec *Spec, r io.Reader, scope string) (*Lexer, error) {
 
 	l := &Lexer{spec: spec, scope: at}
 	l.sc = bufio.NewScanner(r)
-	l.sc.Buffer(make([]byte, 4096), 1<<20)
+	l.sc.Buffer(make([]byte, 4096), math.MaxInt32)
 	l.sc.Split(l.split)
 
 	return l, nil

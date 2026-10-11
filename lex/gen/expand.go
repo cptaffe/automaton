@@ -22,10 +22,10 @@ func Expand(f *File) (*Flat, error) {
 	}
 
 	if entry == "" {
-		return nil, fmt.Errorf("%s: every scope takes a parameter, so there is nowhere to begin", f.Name)
+		return nil, fmt.Errorf("%s: every scope takes a parameter, so there is nowhere to begin", f.Path)
 	}
 
-	out := &Flat{Name: f.Name, Shadowed: f.Shadowed, Defs: f.Defs}
+	out := &Flat{Name: f.Name, Path: f.Path, Shadowed: f.Shadowed, Defs: f.Defs}
 	done := map[string]bool{}
 	dyn := dynamic(f)
 
@@ -35,12 +35,12 @@ func Expand(f *File) (*Flat, error) {
 		s := f.Scope(name)
 
 		if s == nil {
-			return "", fmt.Errorf("%s: -> %s, and there is no such scope", f.Name, name)
+			return "", fmt.Errorf("%s: -> %s, and there is no such scope", f.Path, name)
 		}
 
 		if s.Param == "" {
 			if arg != "" {
-				return "", fmt.Errorf("%s:%d: %s takes no parameter, and %s was given one", f.Name, s.Line, name, arg)
+				return "", fmt.Errorf("%s:%d: %s takes no parameter, and %s was given one", f.Path, s.Line, name, arg)
 			}
 
 			at := name
@@ -55,7 +55,7 @@ func Expand(f *File) (*Flat, error) {
 		}
 
 		if arg == "" {
-			return "", fmt.Errorf("%s:%d: %s takes a parameter and was used without one", f.Name, s.Line, name)
+			return "", fmt.Errorf("%s:%d: %s takes a parameter and was used without one", f.Path, s.Line, name)
 		}
 
 		if dyn[name] {
@@ -76,8 +76,7 @@ func Expand(f *File) (*Flat, error) {
 
 		for _, was := range chain {
 			if was == name {
-				return "", fmt.Errorf("%s:%d: %s stands inside itself, so where it goes next is not known until it runs; that needs a stack, which is not built",
-					f.Name, s.Line, name)
+				return "", fmt.Errorf("%s:%d: %s stands inside itself, so where it goes next is not known until it runs; that needs a stack, which is not built", f.Path, s.Line, name)
 			}
 		}
 
@@ -92,8 +91,16 @@ func Expand(f *File) (*Flat, error) {
 
 	sort.SliceStable(out.Scopes, func(i, j int) bool { return out.Scopes[i].Line < out.Scopes[j].Line })
 
+	included := map[string]bool{}
+
+	for _, r := range f.Rules {
+		if r.Include != "" {
+			included[r.Include] = true
+		}
+	}
+
 	for _, s := range f.Scopes {
-		used := false
+		used := included[s.Name]
 
 		for _, got := range out.Scopes {
 			if got.Name == s.Name || strings.HasPrefix(got.Name, s.Name+"(") {
@@ -102,7 +109,7 @@ func Expand(f *File) (*Flat, error) {
 		}
 
 		if !used {
-			return nil, fmt.Errorf("%s:%d: nothing reaches %s", f.Name, s.Line, s.Name)
+			return nil, fmt.Errorf("%s:%d: nothing reaches %s", f.Path, s.Line, s.Name)
 		}
 	}
 
@@ -114,24 +121,28 @@ type wanter func(name, arg string, chain []string) (string, error)
 func emit(f *File, out *Flat, s *Scope, at, param, arg string, dyn map[string]bool, want wanter, chain []string) error {
 	out.Scopes = append(out.Scopes, FlatScope{Name: at, Line: s.Line})
 
+	return rules(f, out, s.Name, at, param, arg, false, dyn, want, chain)
+}
+
+func rules(f *File, out *Flat, scope, at, param, arg string, inlined bool, dyn map[string]bool, want wanter, chain []string) error {
 	for _, r := range f.Rules {
-		if r.Scope != s.Name {
+		if r.Scope != scope {
 			continue
 		}
 
 		if r.Include != "" {
-			got, err := want(r.Include, "", chain)
-
-			if err != nil {
-				return err
+			if !inlined {
+				out.Rules = append(out.Rules, FlatRule{Include: r.Include, Scope: at, Line: r.Line, Text: r.Text})
 			}
 
-			out.Rules = append(out.Rules, FlatRule{Include: got, Scope: at, Line: r.Line, Text: r.Text})
+			if err := rules(f, out, r.Include, at, "", "", true, dyn, want, chain); err != nil {
+				return err
+			}
 
 			continue
 		}
 
-		got := FlatRule{Expr: r.Expr, Scope: at, Line: r.Line, Text: r.Text,
+		got := FlatRule{Expr: r.Expr, Scope: at, Line: r.Line, Text: r.Text, Inlined: inlined,
 			Acts: FlatActs{Emit: r.Acts.Emit, Do: r.Acts.Do, Drop: r.Acts.Drop}}
 
 		if r.Acts.Goto != "" {
@@ -156,7 +167,7 @@ func move(f *File, r Rule, at, param, arg string, dyn map[string]bool, want want
 
 	if to == param {
 		if a != "" {
-			return FlatActs{}, fmt.Errorf("%s:%d: %s is this scope's parameter and cannot take one of its own", f.Name, r.Line, to)
+			return FlatActs{}, fmt.Errorf("%s:%d: %s is this scope's parameter and cannot take one of its own", f.Path, r.Line, to)
 		}
 
 		if inDyn {
@@ -181,7 +192,7 @@ func move(f *File, r Rule, at, param, arg string, dyn map[string]bool, want want
 	}
 
 	if a == "" {
-		return FlatActs{}, fmt.Errorf("%s:%d: %s takes a parameter and was used without one", f.Name, r.Line, to)
+		return FlatActs{}, fmt.Errorf("%s:%d: %s takes a parameter and was used without one", f.Path, r.Line, to)
 	}
 
 	got, err := want(to, a, chain)
@@ -221,7 +232,7 @@ func cycles(f *File) error {
 		for _, r := range into[at] {
 			switch state[r.Include] {
 			case 1:
-				return fmt.Errorf("%s:%d: -> %s goes round in a loop back to %s", f.Name, r.Line, r.Include, at)
+				return fmt.Errorf("%s:%d: -> %s goes round in a loop back to %s", f.Path, r.Line, r.Include, at)
 			case 0:
 				if err := visit(r.Include); err != nil {
 					return err

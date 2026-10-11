@@ -15,6 +15,7 @@ type FlatRule struct {
 	Expr    automaton.Expr
 	Acts    FlatActs
 	Include string
+	Inlined bool
 	Scope   string
 	Line    int
 	Text    string
@@ -28,6 +29,7 @@ type FlatScope struct {
 type Flat struct {
 	Defs     []Def
 	Name     string
+	Path     string
 	Scopes   []FlatScope
 	Rules    []FlatRule
 	Shadowed []string
@@ -46,29 +48,11 @@ func (f *Flat) Scope(name string) *FlatScope {
 func (f *Flat) Of(name string) []FlatRule {
 	var out []FlatRule
 
-	var walk func(at string, seen map[string]bool)
-
-	walk = func(at string, seen map[string]bool) {
-		if seen[at] {
-			return
+	for _, r := range f.Rules {
+		if r.Scope == name && r.Include == "" {
+			out = append(out, r)
 		}
-
-		seen[at] = true
-
-		for _, r := range f.Rules {
-			switch {
-			case r.Scope != at:
-			case r.Include != "":
-				walk(r.Include, seen)
-			default:
-				out = append(out, r)
-			}
-		}
-
-		delete(seen, at)
 	}
-
-	walk(name, map[string]bool{})
 
 	return out
 }

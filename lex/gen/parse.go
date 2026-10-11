@@ -128,25 +128,25 @@ func (p *parser) scope(w word, param string) {
 
 func (p *parser) rule(r Rule) {
 	if p.ctx == "" {
-		p.FailAt(p.Line(), "a rule is above every scope")
+		p.FailAt(p.Statement(), "a rule is above every scope")
 
 		return
 	}
 
 	if r.Acts.Do != "" && r.Acts.Emit == "" {
-		p.FailAt(p.Line(), "do %s with nothing emitted: a do rides on a token", r.Acts.Do)
+		p.FailAt(p.Statement(), "do %s with nothing emitted: a do rides on a token", r.Acts.Do)
 
 		return
 	}
 
 	if r.Include == "" && r.Acts.Emit == "" && r.Acts.Goto == "" && !r.Acts.Drop {
-		p.FailAt(p.Line(), "a rule that matches and does nothing")
+		p.FailAt(p.Statement(), "a rule that matches and does nothing")
 
 		return
 	}
 
 	if r.Acts.Drop && r.Acts.Emit != "" {
-		p.FailAt(p.Line(), "a rule cannot both ignore what it reads and emit it")
+		p.FailAt(p.Statement(), "a rule cannot both ignore what it reads and emit it")
 
 		return
 	}

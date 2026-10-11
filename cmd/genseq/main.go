@@ -46,7 +46,12 @@ func draw(paths []string, dialect, dir string, verbose bool, stderr io.Writer) e
 	if err != nil {
 		return err
 	}
+	named := map[string]bool{}
 	for _, t := range tabs {
+		if dir != "" && named[t.Name] {
+			return fmt.Errorf("two tables are called %s, and their drawings would share %s.dot", t.Name, t.Name)
+		}
+		named[t.Name] = true
 		if verbose {
 			fmt.Fprintf(stderr, "genseq: %s, %d states, waits for %s\n", t.Name, len(t.Next)-1, strings.Join(t.Waiting(), " "))
 		}
