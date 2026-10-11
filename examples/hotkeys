@@ -1,0 +1,16 @@
+%{
+fn ctl { echo $1 | 9p write acme/`{9p read acme-focused/focus}/ctl }
+%}
+%delay settle 1s
+
+acme: when app == "devdraw"
+	%settles settle
+	command-s		{ ctl put }	# save
+	command-w		{ ctl del }	# close
+	control-x control-s	{ ctl put }	# save, the emacs way
+	control-x		{ ctl show }	# show, unless control-s follows
+	command-m		-> marks
+
+marks:
+	m			{ ctl mark }
+	escape			{ ctl show } -> acme

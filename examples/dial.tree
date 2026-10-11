@@ -1,0 +1,14 @@
+%delay T 5s
+%delay abandon 16s
+
+start:
+  %settles T
+  0             do operator
+  *98           do voicemail  -> mailbox
+  NXX-XXXX      do local
+  960-NXX-XXXX  do long-distance
+  ... abandon   do dial-again
+
+mailbox:
+  1             do play       when messages
+  #             do hang-up    -> start
