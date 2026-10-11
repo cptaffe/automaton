@@ -1,0 +1,376 @@
+package hotkey
+
+//go:generate go run ../../cmd/genlex -go internal/scan/scan.gen.go -package scan hotkey.lex
+//go:generate go tool goyacc -l -p yy -o gram.go -v /dev/null gram.y
+
+import (
+	"fmt"
+	"io"
+	"sort"
+	"strings"
+	"time"
+
+	"github.com/cptaffe/automaton/lexrun"
+	"github.com/cptaffe/automaton/seq"
+	"github.com/cptaffe/automaton/seq/hotkey/internal/scan"
+)
+
+var modifiers = []string{"command", "shift", "control", "option"}
+
+type Rules struct {
+	Grammar *seq.Grammar
+	Table   *seq.Table
+}
+
+type word struct {
+	text       string
+	line       int
+	start, end int
+}
+
+type pat struct {
+	words []word
+	line  int
+}
+
+type rule struct {
+	keys   pat
+	action string
+	to     string
+}
+
+type lexer struct {
+	*lexrun.Reader
+	src    string
+	tok    int
+	text   string
+	line   int
+	bare   bool
+	labels map[int]string
+	g      *seq.Grammar
+	cur    string
+	rules  []rule
+	anys   []rule
+	scopes map[string]string
+}
+
+var kinds = map[int]int{
+	scan.TokNewline: NEWLINE,
+	scan.TokColon:   COLON,
+	scan.TokArrow:   ARROW,
+	scan.TokWhen:    WHEN,
+	scan.TokEq:      EQ,
+	scan.TokNe:      NE,
+	scan.TokMatch:   MATCH,
+	scan.TokAnd:     AND,
+	scan.TokOr:      OR,
+	scan.TokNot:     NOT,
+	scan.TokLparen:  LPAREN,
+	scan.TokRparen:  RPAREN,
+	scan.TokText:    TEXT,
+	scan.TokWord:    WORD,
+	scan.TokString:  STRING,
+	scan.TokIdent:   IDENT,
+	scan.TokDelay:   DELAY,
+	scan.TokSettles: SETTLES,
+	scan.TokDots:    DOTS,
+	scan.TokLbrace:  LBRACE,
+	scan.TokRbrace:  RBRACE,
+	scan.TokOpen:    OPEN,
+	scan.TokClose:   CLOSE,
+}
+
+func Parse(r io.Reader, from string, known func(name string) error) (*Rules, error) {
+	b, err := io.ReadAll(r)
+	if err != nil {
+		return nil, err
+	}
+	src := string(b)
+	in, err := lexrun.Open(scan.Spec, strings.NewReader(src), "start", from, scan.TokNewline)
+	if err != nil {
+		return nil, err
+	}
+	l := &lexer{Reader: in, src: src, bare: true, labels: map[int]string{}, scopes: map[string]string{},
+		g: &seq.Grammar{Name: in.Name(), When: map[string]seq.Cond{}}}
+	failed := yyParse(l) != 0
+	switch {
+	case l.Err() != nil:
+	case l.Depth() > 0:
+		l.FailAt(l.line, "a block is never closed")
+	case failed:
+		l.FailAt(l.line, "%s", lexrun.Unexpected(l.tok, l.text))
+	}
+	if err := l.Err(); err != nil {
+		return nil, err
+	}
+	a, err := l.resolve(known)
+	if err != nil {
+		return nil, err
+	}
+	if err := seq.Check(l.g); err != nil {
+		return nil, err
+	}
+	t, err := seq.Compile(l.g, a)
+	if err != nil {
+		return nil, err
+	}
+	if len(t.Conflicts) > 0 {
+		return nil, fmt.Errorf("%s: %s", from, strings.Join(t.Conflicts, "\n"+from+": "))
+	}
+	return &Rules{Grammar: l.g, Table: t}, nil
+}
+
+func (l *lexer) Lex(v *yySymType) int {
+	for {
+		tok, ok := l.Next()
+		if !ok {
+			return 0
+		}
+		l.text, l.line = tok.Text, tok.At.Line
+		switch tok.Kind {
+		case scan.TokComment:
+			if !l.bare {
+				l.labels[tok.At.Line] = strings.TrimSpace(strings.TrimPrefix(tok.Text, "#"))
+			}
+			l.Skip()
+			continue
+		case scan.TokNewline:
+			l.bare = true
+		default:
+			l.bare = false
+		}
+		text := tok.Text
+		if tok.Kind == scan.TokString {
+			text = text[1 : len(text)-1]
+		}
+		v.word = word{text, tok.At.Line, tok.Start, tok.End}
+		l.tok = kinds[tok.Kind]
+		return l.tok
+	}
+}
+
+func (l *lexer) Error(string) {}
+
+func (l *lexer) between(open, close word) string {
+	return strings.TrimSpace(l.src[open.end:close.start])
+}
+
+func (l *lexer) prelude(open, close word) {
+	if l.g.Prelude != "" {
+		l.g.Prelude += "\n"
+	}
+	l.g.Prelude += strings.TrimRight(l.src[open.end:close.start], "\n")
+}
+
+func (l *lexer) scope(name word, when seq.Cond) {
+	l.cur = name.text
+	if _, ok := l.scopes[name.text]; ok {
+		l.FailAt(name.line, "scope %s is declared twice", name.text)
+		return
+	}
+	l.scopes[name.text] = name.text
+	l.g.Scopes = append(l.g.Scopes, name.text)
+	if when != nil {
+		l.g.When[name.text] = when
+	}
+}
+
+func (l *lexer) delay(line int, name, of string) {
+	if l.cur != "" {
+		l.FailAt(line, "%%delay %s belongs above every scope", name)
+		return
+	}
+	d, err := time.ParseDuration(of)
+	if err != nil || d <= 0 {
+		l.FailAt(line, "%%delay %s %s: %s is not a duration", name, of, of)
+		return
+	}
+	if _, ok := l.g.Delays[name]; ok {
+		l.FailAt(line, "%%delay %s is declared twice", name)
+		return
+	}
+	if l.g.Delays == nil {
+		l.g.Delays = map[string]time.Duration{}
+	}
+	l.g.Delays[name] = d
+}
+
+func (l *lexer) settles(line int, name string) {
+	if l.cur == "" {
+		l.FailAt(line, "%%settles %s is above every scope, and it settles one scope", name)
+		return
+	}
+	if l.g.Settles == nil {
+		l.g.Settles = map[string]string{}
+	}
+	if was, ok := l.g.Settles[l.cur]; ok && was != name {
+		l.FailAt(line, "%%settles %s: %s already settles %s", name, was, l.cur)
+		return
+	}
+	l.g.Settles[l.cur] = name
+}
+
+func (l *lexer) rule(r rule) {
+	if l.cur == "" {
+		l.FailAt(r.keys.line, "a rule above every scope; only a ... rule can be there")
+		return
+	}
+	if r.action == "" && r.to == "" {
+		l.FailAt(r.keys.line, "a rule with keys and nowhere to go")
+		return
+	}
+	l.rules = append(l.rules, r)
+	l.g.Rules = append(l.g.Rules, seq.Rule{Scope: l.cur, Action: r.action, Goto: r.to, Label: l.labels[r.keys.line], Line: r.keys.line})
+}
+
+func (l *lexer) anyRule(r rule) {
+	if len(r.keys.words) != 1 {
+		l.FailAt(r.keys.line, "... takes one key")
+		return
+	}
+	l.anys = append(l.anys, r)
+	l.g.Any = append(l.g.Any, seq.Any{Scope: l.cur, Action: r.action, Goto: r.to, Label: l.labels[r.keys.line], Line: r.keys.line})
+}
+
+func (l *lexer) compare(name word, op string, value word) seq.Cond {
+	c, err := seq.NewCompare(name.text, op, value.text)
+	if err != nil {
+		l.FailAt(name.line, "%v", err)
+		return seq.Name(name.text)
+	}
+	return c
+}
+
+func or(a, b seq.Cond) seq.Cond {
+	if o, ok := a.(seq.Or); ok {
+		return append(o, b)
+	}
+	return seq.Or{a, b}
+}
+
+func and(a, b seq.Cond) seq.Cond {
+	if x, ok := a.(seq.And); ok {
+		return append(x, b)
+	}
+	return seq.And{a, b}
+}
+
+func (l *lexer) resolve(known func(string) error) (*seq.Alphabet, error) {
+	var errs []string
+	fail := func(line int, f string, a ...any) {
+		errs = append(errs, fmt.Sprintf("%s:%d: %s", l.g.Name, line, fmt.Sprintf(f, a...)))
+	}
+	keyOf := func(w word) (string, bool) {
+		if _, ok := l.g.Delays[w.text]; ok {
+			return w.text, true
+		}
+		k, err := Canon(w.text)
+		if err != nil {
+			fail(w.line, "%s: %v", w.text, err)
+			return "", false
+		}
+		if known != nil {
+			if err := known(Name(k)); err != nil {
+				fail(w.line, "%s: %v", w.text, err)
+				return "", false
+			}
+		}
+		return k, false
+	}
+
+	seen := map[string]bool{}
+	var keys []string
+	for _, r := range append(append([]rule(nil), l.rules...), l.anys...) {
+		for _, w := range r.keys.words {
+			if k, event := keyOf(w); k != "" && !event && !seen[k] {
+				seen[k] = true
+				keys = append(keys, k)
+			}
+		}
+	}
+	if len(errs) > 0 {
+		return nil, fmt.Errorf("%s", strings.Join(errs, "\n"))
+	}
+	sort.Strings(keys)
+	var events []string
+	for name := range l.g.Delays {
+		events = append(events, name)
+	}
+	sort.Strings(events)
+	a := seq.NewAlphabet(keys, events...)
+
+	class := func(w word) seq.Class {
+		k, event := keyOf(w)
+		if event {
+			return seq.Class{Event: k, Text: w.text}
+		}
+		s, _ := a.Of(k)
+		return seq.Class{Syms: []seq.Sym{s}, Text: w.text}
+	}
+	for i, r := range l.rules {
+		var texts []string
+		for _, w := range r.keys.words {
+			l.g.Rules[i].Elems = append(l.g.Rules[i].Elems, class(w))
+			texts = append(texts, w.text)
+		}
+		l.g.Rules[i].Pattern = strings.Join(texts, " ")
+	}
+	for i, r := range l.anys {
+		l.g.Any[i].Elem = class(r.keys.words[0])
+		l.g.Any[i].Pattern = r.keys.words[0].text
+	}
+	return a, nil
+}
+
+func Canon(s string) (string, error) {
+	mods := map[string]bool{}
+	for {
+		found := false
+		for _, m := range modifiers {
+			if p := m + "-"; strings.HasPrefix(s, p) && len(s) > len(p) {
+				if mods[m] {
+					return "", fmt.Errorf("%s twice", m)
+				}
+				mods[m] = true
+				s = s[len(p):]
+				found = true
+			}
+		}
+		if !found {
+			break
+		}
+	}
+	var have []string
+	for m := range mods {
+		have = append(have, m)
+	}
+	return Key(have, s), nil
+}
+
+func Key(mods []string, name string) string {
+	have := map[string]bool{}
+	for _, m := range mods {
+		have[m] = true
+	}
+	var parts []string
+	for _, m := range modifiers {
+		if have[m] {
+			parts = append(parts, m)
+		}
+	}
+	return strings.Join(append(parts, name), "-")
+}
+
+func Name(key string) string {
+	for {
+		cut := false
+		for _, m := range modifiers {
+			if p := m + "-"; strings.HasPrefix(key, p) && len(key) > len(p) {
+				key, cut = key[len(p):], true
+			}
+		}
+		if !cut {
+			return key
+		}
+	}
+}

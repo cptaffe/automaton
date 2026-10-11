@@ -57,6 +57,8 @@ func same(a, b *automaton.DFA, of map[rune]string) (bool, string) {
 func TestTheDrawingIsTheLRAutomatonWithoutItsStack(t *testing.T) {
 	for _, dir := range []string{
 		"../lexgen",
+		"../seq/keypad",
+		"../seq/hotkey",
 	} {
 		name := filepath.Base(dir)
 
