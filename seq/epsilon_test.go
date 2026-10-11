@@ -195,3 +195,108 @@ func TestOnlyAPlaceAMachineCanBeIsCompiled(t *testing.T) {
 		t.Error("a machine began in a scope nothing goes to")
 	}
 }
+
+func hk(t *testing.T, a *Alphabet, g *Grammar) *Table {
+	t.Helper()
+	tab, err := Compile(g, a)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return tab
+}
+
+func TestOverlappingRepeatsCompile(t *testing.T) {
+	a := NewAlphabet([]string{"1", "2"}, "T")
+	one := keys(a, "1")
+	g := &Grammar{Name: "g", Scopes: []string{"s"}, Delays: map[string]time.Duration{"T": time.Second}, Settles: map[string]string{"s": "T"},
+		Rules: []Rule{{Scope: "s", Pattern: "1+1+2", Elems: []Class{many(one), many(one), keys(a, "2")}, Action: "x"}}}
+	done := make(chan error, 1)
+	go func() { _, err := Compile(g, a); done <- err }()
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("1+1+2 is still compiling")
+	}
+}
+
+func TestACompleteRuleAnotherOriginExtendsSettles(t *testing.T) {
+	a := NewAlphabet([]string{"x", "s"}, "settle")
+	g := &Grammar{Name: "g", Scopes: []string{"main", "a", "b"},
+		Delays:  map[string]time.Duration{"settle": time.Second},
+		Settles: map[string]string{"a": "settle"},
+		Rules: []Rule{
+			{Scope: "main", Include: "a"},
+			{Scope: "main", Include: "b"},
+			{Scope: "a", Pattern: "x", Elems: []Class{keys(a, "x")}, Action: "one"},
+			{Scope: "b", Pattern: "x s", Elems: []Class{keys(a, "x"), keys(a, "s")}, Action: "two"},
+		}}
+	tab := hk(t, a, g)
+	m := machine(t, tab, "")
+	m.Step(a.Of("x"), nil)
+	if got := strings.Join(m.Waits(), " "); got != "settle" {
+		t.Errorf("after x the machine waits for %q; want settle", got)
+	}
+	if _, f := m.Step(a.Of("settle"), nil); actions(f) != "one" {
+		t.Errorf("settle fired %q; want one", actions(f))
+	}
+
+	delete(g.Settles, "a")
+	tab = hk(t, a, g)
+	m = machine(t, tab, "")
+	if _, f := m.Step(a.Of("x"), nil); actions(f) != "one" || m.Pending() {
+		t.Errorf("with nothing to settle on, x fired %q and pending is %v; want one at once", actions(f), m.Pending())
+	}
+}
+
+func TestOneScopeReadInTwiceIsNoConflict(t *testing.T) {
+	a := NewAlphabet([]string{"s"})
+	g := &Grammar{Name: "g", Scopes: []string{"main", "emacs"}, Rules: []Rule{
+		{Scope: "main", Include: "emacs", When: app("Emacs")},
+		{Scope: "main", Include: "emacs", When: app("Terminal")},
+		{Scope: "emacs", Pattern: "s", Elems: []Class{keys(a, "s")}, Action: "save"},
+	}}
+	tab := hk(t, a, g)
+	if len(tab.Conflicts) > 0 {
+		t.Fatal(tab.Conflicts)
+	}
+	for _, name := range []string{"Emacs", "Terminal"} {
+		m := machine(t, tab, "")
+		if ok, f := m.Step(a.Of("s"), Env{"app": name}); !ok || actions(f) != "save" {
+			t.Errorf("in %s, s took %v and fired %q", name, ok, actions(f))
+		}
+	}
+}
+
+func TestAWildcardSettlesWhatWasPending(t *testing.T) {
+	a := NewAlphabet([]string{"x", "s", "j"}, "settle")
+	j := keys(a, "j")
+	tab := hk(t, a, &Grammar{Name: "g", Scopes: []string{"m"},
+		Delays:  map[string]time.Duration{"settle": time.Second},
+		Settles: map[string]string{"m": "settle"},
+		Rules: []Rule{
+			{Scope: "m", Pattern: "x", Elems: []Class{keys(a, "x")}, Action: "one"},
+			{Scope: "m", Pattern: "x s", Elems: []Class{keys(a, "x"), keys(a, "s")}, Action: "two"},
+		},
+		Any: []Any{{Scope: "m", Pattern: "j", Elem: j, Action: "wild"}}})
+	m := machine(t, tab, "")
+	m.Step(a.Of("x"), nil)
+	if _, f := m.Step(a.Of("j"), nil); actions(f) != "one,wild" {
+		t.Errorf("j after x fired %q; want one,wild", actions(f))
+	}
+}
+
+func TestARuleOnTheSettleEventConflicts(t *testing.T) {
+	a := NewAlphabet([]string{"1"}, "T")
+	tab := hk(t, a, &Grammar{Name: "g", Scopes: []string{"s"},
+		Delays: map[string]time.Duration{"T": time.Second}, Settles: map[string]string{"s": "T"},
+		Rules: []Rule{
+			{Scope: "s", Pattern: "1", Elems: []Class{keys(a, "1")}, Action: "one"},
+			{Scope: "s", Pattern: "1 T", Elems: []Class{keys(a, "1"), event("T")}, Action: "two"},
+		}})
+	if len(tab.Conflicts) == 0 || !strings.Contains(strings.Join(tab.Conflicts, "\n"), "T settles here and a rule reads T next") {
+		t.Errorf("conflicts %v", tab.Conflicts)
+	}
+}

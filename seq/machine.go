@@ -78,7 +78,7 @@ func (m *Machine) from(at int, s Sym, env Env) (bool, []*Accept) {
 	if n := m.t.Next[at][s]; n != 0 {
 		ready, going := m.ready(n, env), m.going(n, env)
 		switch {
-		case ready != nil && !going:
+		case ready != nil && (!going || m.t.Settle[n] == 0):
 			return true, m.fire(ready)
 		case ready != nil || going:
 			m.state = n
@@ -87,7 +87,11 @@ func (m *Machine) from(at int, s Sym, env Env) (bool, []*Accept) {
 	}
 	for _, a := range m.t.Any[at][s] {
 		if Holds(a.When, env) {
-			return true, m.fire(a)
+			var fired []*Accept
+			if at == m.state {
+				fired = m.Settle(env)
+			}
+			return true, append(fired, m.fire(a)...)
 		}
 	}
 	return false, nil

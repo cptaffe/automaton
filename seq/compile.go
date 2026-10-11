@@ -171,11 +171,11 @@ func (c *compiler) scope(scope string) {
 	}
 	var lower func(at string, when Cond, origin string)
 	lower = func(at string, when Cond, origin string) {
-		for _, r := range c.rules {
+		for i, r := range c.rules {
 			switch {
 			case r.Scope != at:
 			case r.Include != "":
-				lower(r.Include, AllOf(when, r.When), origin+" -> "+r.Include)
+				lower(r.Include, AllOf(when, r.When), fmt.Sprintf("%s -%d-> %s", origin, i, r.Include))
 			default:
 				c.entries = append(c.entries, entry{rule: r, when: AllOf(when, r.When), origin: origin})
 			}
@@ -232,19 +232,36 @@ func (c *compiler) add(scope string, items []item, wilds []wild) int {
 			next = append(next, item{it.e, it.i + 1})
 		}
 		if len(next) > 0 {
-			t.Next[s][sym] = c.add(scope, next, wilds)
+			t.Next[s][sym] = c.add(scope, unique(next), wilds)
 		}
 	}
+	if settle := t.Settle[s]; settle != 0 && t.Next[s][settle] != 0 {
+		c.conflict(c.entries[items[0].e].rule.Line, "%s settles here and a rule reads %s next -- which is meant", t.Alpha.Name(settle), t.Alpha.Name(settle))
+	}
 	return s
+}
+
+func unique(items []item) []item {
+	seen := map[item]bool{}
+	out := items[:0]
+	for _, it := range items {
+		if !seen[it] {
+			seen[it] = true
+			out = append(out, it)
+		}
+	}
+	return out
 }
 
 func (c *compiler) finish(s int, items []item) {
 	t := c.t
 	going := map[string][]string{}
+	anyGoing := false
 	for _, it := range items {
 		if e := c.entries[it.e]; it.i < len(e.rule.Elems) {
 			t.Live[s] = append(t.Live[s], e.when)
 			going[e.origin] = append(going[e.origin], e.rule.Pattern)
+			anyGoing = true
 		}
 	}
 	done := map[string]*Accept{}
@@ -261,10 +278,13 @@ func (c *compiler) finish(s int, items []item) {
 		}
 		done[e.origin] = acc
 		t.Accept[s] = append(t.Accept[s], acc)
-		if len(going[e.origin]) == 0 {
+		if !anyGoing {
 			continue
 		}
 		name, ok := c.g.Settles[e.rule.Scope]
+		if !ok && len(going[e.origin]) == 0 {
+			continue
+		}
 		if !ok {
 			c.conflict(acc.Line, "%q is complete, and %s can still follow -- %s has no %%settles to say which was meant",
 				acc.Pattern, strings.Join(going[e.origin], ", "), e.rule.Scope)
