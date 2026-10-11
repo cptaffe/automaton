@@ -116,9 +116,9 @@ func TestATreeHandsOff(t *testing.T) {
 	for _, c := range []struct {
 		sym, fired, scope string
 	}{
-		{"0", "operator", "dial.start => menu"},
-		{"1", "one", "dial.start => menu"},
-		{"T", "idle", "dial.start => menu"},
+		{"0", "operator", "=> menu"},
+		{"1", "", "=> menu"},
+		{"T", "", "=> menu"},
 		{Answered, "", "menu.start"},
 		{"1", "menu-one", "menu.start"},
 		{"T", "", "menu.start"},

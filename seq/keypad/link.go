@@ -67,18 +67,13 @@ func Link(trees ...*Tree) (*seq.Grammar, error) {
 					errs = append(errs, fmt.Errorf("%s:%d: %q hands to %s, and there is no such tree", g.Name, r.Line, r.Pattern, to))
 					continue
 				}
-				back := r.Goto
-				if back == "" {
-					back = r.Scope
-				}
-				r.Goto = back + " => " + to
+				r.Goto = "=> " + to
 				if !waits[r.Goto] {
 					waits[r.Goto] = true
 					out.Scopes = append(out.Scopes, r.Goto)
 					out.Rules = append(out.Rules,
 						seq.Rule{Scope: r.Goto, Pattern: Answered, Elems: []seq.Class{{Event: Answered, Text: Answered}},
-							Goto: to + "." + next.Grammar.Scopes[0], Line: r.Line},
-						seq.Rule{Scope: r.Goto, Include: back, Line: r.Line})
+							Goto: to + "." + next.Grammar.Scopes[0], Line: r.Line})
 				}
 			}
 			out.Rules = append(out.Rules, r)

@@ -73,7 +73,8 @@ rule that holds can use it. Both dialects share it.
 
 A dial plan, where `N` is 2–9, `X` is 0–9, and `T` settles a number that
 could still grow. A plan can span several trees: `=> menu` after a rule
-carries on in the `menu` tree once the call is answered, and `keypad.Compile`
+ends this tree's part, and the `menu` tree reads keys once the call is
+answered, as the office's menu hears them only then; `keypad.Compile`
 links the trees it is given into one table, naming each scope after its
 tree:
 
