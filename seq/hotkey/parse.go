@@ -20,6 +20,8 @@ var modifiers = []string{"command", "shift", "control", "option"}
 type Rules struct {
 	Grammar *seq.Grammar
 	Table   *seq.Table
+	Prelude string
+	When    map[string]seq.Cond
 }
 
 type word struct {
@@ -41,17 +43,19 @@ type rule struct {
 
 type lexer struct {
 	*lex.Reader
-	src    string
-	tok    int
-	text   string
-	line   int
-	bare   bool
-	labels map[int]string
-	g      *seq.Grammar
-	cur    string
-	rules  []rule
-	anys   []rule
-	scopes map[string]string
+	src     string
+	tok     int
+	text    string
+	line    int
+	bare    bool
+	labels  map[int]string
+	g       *seq.Grammar
+	cur     string
+	rules   []rule
+	anys    []rule
+	scopes  map[string]string
+	prelude string
+	when    map[string]seq.Cond
 }
 
 var kinds = map[int]int{
@@ -91,7 +95,7 @@ func Parse(r io.Reader, from string, known func(name string) error) (*Rules, err
 		return nil, err
 	}
 	l := &lexer{Reader: in, src: src, bare: true, labels: map[int]string{}, scopes: map[string]string{},
-		g: &seq.Grammar{Name: in.Name(), When: map[string]seq.Cond{}}}
+		when: map[string]seq.Cond{}, g: &seq.Grammar{Name: in.Name()}}
 	failed := yyParse(l) != 0
 	switch {
 	case l.Err() != nil:
@@ -117,7 +121,7 @@ func Parse(r io.Reader, from string, known func(name string) error) (*Rules, err
 	if len(t.Conflicts) > 0 {
 		return nil, fmt.Errorf("%s: %s", from, strings.Join(t.Conflicts, "\n"+from+": "))
 	}
-	return &Rules{Grammar: l.g, Table: t}, nil
+	return &Rules{Grammar: l.g, Table: t, Prelude: l.prelude, When: l.when}, nil
 }
 
 func (l *lexer) Lex(v *yySymType) int {
@@ -155,11 +159,11 @@ func (l *lexer) between(open, close word) string {
 	return strings.TrimSpace(l.src[open.end:close.start])
 }
 
-func (l *lexer) prelude(open, close word) {
-	if l.g.Prelude != "" {
-		l.g.Prelude += "\n"
+func (l *lexer) addPrelude(open, close word) {
+	if l.prelude != "" {
+		l.prelude += "\n"
 	}
-	l.g.Prelude += strings.TrimRight(l.src[open.end:close.start], "\n")
+	l.prelude += strings.TrimRight(l.src[open.end:close.start], "\n")
 }
 
 func (l *lexer) scope(name word, when seq.Cond) {
@@ -171,7 +175,7 @@ func (l *lexer) scope(name word, when seq.Cond) {
 	l.scopes[name.text] = name.text
 	l.g.Scopes = append(l.g.Scopes, name.text)
 	if when != nil {
-		l.g.When[name.text] = when
+		l.when[name.text] = when
 	}
 }
 

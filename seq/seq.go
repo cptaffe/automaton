@@ -16,10 +16,11 @@ type Alphabet struct {
 }
 
 func NewAlphabet(keys []string, events ...string) *Alphabet {
-	a := &Alphabet{keys: len(keys), by: map[string]Sym{}}
+	a := &Alphabet{by: map[string]Sym{}}
 	for _, k := range keys {
 		a.add(k)
 	}
+	a.keys = len(a.names)
 	for _, e := range events {
 		a.add(e)
 	}
@@ -107,10 +108,8 @@ type Grammar struct {
 	Name    string
 	Note    string
 	Scopes  []string
-	When    map[string]Cond
 	Rules   []Rule
 	Any     []Any
 	Delays  map[string]time.Duration
 	Settles map[string]string
-	Prelude string
 }

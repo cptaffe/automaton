@@ -490,7 +490,7 @@ yydefault:
 	case 4:
 		yyDollar = yyS[yypt-4 : yypt+1]
 		{
-			yylex.(*lexer).prelude(yyDollar[2].word, yyDollar[4].word)
+			yylex.(*lexer).addPrelude(yyDollar[2].word, yyDollar[4].word)
 		}
 	case 7:
 		yyDollar = yyS[yypt-2 : yypt+1]

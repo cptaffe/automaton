@@ -28,7 +28,7 @@ file:
 
 lines:
 	| lines NEWLINE
-	| lines OPEN text CLOSE   { yylex.(*lexer).prelude($2, $4) }
+	| lines OPEN text CLOSE   { yylex.(*lexer).addPrelude($2, $4) }
 	| lines header
 	| lines decl
 	| lines rule              { yylex.(*lexer).rule($2) }

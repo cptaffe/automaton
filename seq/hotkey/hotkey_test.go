@@ -48,7 +48,7 @@ func actions(as []*seq.Accept) string {
 
 func TestParse(t *testing.T) {
 	r := parse(t, keytab)
-	if got := r.Grammar.Prelude; got != "fn put { echo put | 9p write acme/$winid/ctl }" {
+	if got := r.Prelude; got != "fn put { echo put | 9p write acme/$winid/ctl }" {
 		t.Errorf("prelude %q", got)
 	}
 	labels := map[string]string{}
