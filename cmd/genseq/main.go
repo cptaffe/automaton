@@ -69,7 +69,7 @@ func draw(paths []string, dialect, dir string, verbose bool, stderr io.Writer) e
 
 func compile(paths []string, dialect string) ([]*seq.Table, error) {
 	var out []*seq.Table
-	var trees []*keypad.Tree
+	var trees []*seq.Grammar
 	for _, path := range paths {
 		d := dialect
 		if d == "" {

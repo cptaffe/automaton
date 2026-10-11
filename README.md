@@ -72,11 +72,11 @@ rule that holds can use it. Both dialects share it.
 ### Keypad
 
 A dial plan, where `N` is 2–9, `X` is 0–9, and `T` settles a number that
-could still grow. A plan can span several trees: `=> menu` after a rule
-ends this tree's part, and the `menu` tree reads keys once the call is
-answered, as the office's menu hears them only then; `keypad.Compile`
-links the trees it is given into one table, naming each scope after its
-tree:
+could still grow. A scope can take a parameter: `dialing(then)` waits for the
+call to be answered and then goes wherever it was told, and `connected`, with
+no rules, ends the plan once a number is dialled. Several trees compile
+together with `keypad.Compile`, and a `->` to another tree's name goes to its
+first scope:
 
 ```
 %delay T 5s
@@ -84,11 +84,16 @@ tree:
 
 start:
   %settles T
-  0             do operator
-  *98           do voicemail  -> mailbox
-  NXX-XXXX      do local
-  960-NXX-XXXX  do long-distance
+  0             do operator         -> connected
+  *98           do voicemail        -> dialing(mailbox)
+  NXX-XXXX      do local            -> connected
+  960-NXX-XXXX  do long-distance    -> connected
   ... abandon   do dial-again
+
+dialing(then):
+  answered      -> then
+
+connected:
 
 mailbox:
   1             do play       when messages

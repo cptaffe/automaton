@@ -6,6 +6,7 @@ package keypad
 import (
 	"fmt"
 	"io"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -57,7 +58,6 @@ var kinds = map[int]int{
 	scan.TokRparen:  RPAREN,
 	scan.TokDots:    DOTS,
 	scan.TokArrow:   ARROW,
-	scan.TokHandoff: HANDOFF,
 	scan.TokDelay:   DELAY,
 	scan.TokSettles: SETTLES,
 	scan.TokDo:      DO,
@@ -96,21 +96,12 @@ type lexer struct {
 	block   []string
 	bare    bool
 	g       *seq.Grammar
-	hands   map[int]string
 	cur     string
 }
 
-type rule struct {
-	seq.Rule
-	hands string
-}
+type move struct{ to, arg string }
 
-type Tree struct {
-	Grammar *seq.Grammar
-	hands   map[int]string
-}
-
-func Parse(r io.Reader, from string) (*Tree, error) {
+func Parse(r io.Reader, from string) (*seq.Grammar, error) {
 	b, err := io.ReadAll(r)
 	if err != nil {
 		return nil, err
@@ -119,17 +110,14 @@ func Parse(r io.Reader, from string) (*Tree, error) {
 	if err != nil {
 		return nil, err
 	}
-	l := &lexer{Reader: in, src: string(b), bare: true, g: &seq.Grammar{Name: in.Name()}, hands: map[int]string{}}
+	l := &lexer{Reader: in, src: string(b), bare: true, g: &seq.Grammar{Name: in.Name()}}
 	if yyParse(l) != 0 && l.Err() == nil {
 		l.FailAt(l.tokLine, "%s", l.unexpected())
 	}
 	if err := l.Err(); err != nil {
 		return nil, err
 	}
-	if err := seq.Check(l.g); err != nil {
-		return nil, err
-	}
-	return &Tree{Grammar: l.g, hands: l.hands}, nil
+	return l.g, nil
 }
 
 func (l *lexer) Lex(v *yySymType) int {
@@ -272,24 +260,31 @@ func (l *lexer) settles(line int, name string) {
 	l.g.Settles[l.cur] = name
 }
 
-func (l *lexer) scope(name string) {
+func (l *lexer) scope(name word, param string) {
 	l.says()
-	l.cur = name
-	for _, s := range l.g.Scopes {
-		if s == name {
-			return
-		}
+	l.cur = name.text
+	if was, ok := l.g.Params[name.text]; ok && was != param || !ok && param != "" && slices.Contains(l.g.Scopes, name.text) {
+		l.FailAt(name.line, "%s is opened again with another parameter", name.text)
+		return
 	}
-	l.g.Scopes = append(l.g.Scopes, name)
+	if param != "" {
+		if l.g.Params == nil {
+			l.g.Params = map[string]string{}
+		}
+		l.g.Params[name.text] = param
+	}
+	if !slices.Contains(l.g.Scopes, name.text) {
+		l.g.Scopes = append(l.g.Scopes, name.text)
+	}
 }
 
-func (l *lexer) rule(r rule) {
+func (l *lexer) rule(r seq.Rule) {
 	label := l.says()
 	if l.cur == "" {
 		l.FailAt(r.Line, "%q is above every scope, where only a `...` rule can be", r.Pattern)
 		return
 	}
-	if r.Action == "" && r.Goto == "" && r.hands == "" {
+	if r.Action == "" && r.Goto == "" {
 		l.FailAt(r.Line, "%q has a pattern and nowhere to go", r.Pattern)
 		return
 	}
@@ -298,10 +293,7 @@ func (l *lexer) rule(r rule) {
 		return
 	}
 	r.Scope, r.Label = l.cur, label
-	if r.hands != "" {
-		l.hands[len(l.g.Rules)] = r.hands
-	}
-	l.g.Rules = append(l.g.Rules, r.Rule)
+	l.g.Rules = append(l.g.Rules, r)
 }
 
 func (l *lexer) anyRule(a seq.Any) {

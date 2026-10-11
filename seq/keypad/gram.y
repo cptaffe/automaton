@@ -6,19 +6,21 @@ import "github.com/cptaffe/automaton/seq"
 
 %union {
 	str  string
+	move move
 	word word
 	sym  symv
 	pat  pat
 	cond seq.Cond
-	rule rule
+	rule seq.Rule
 	any  seq.Any
 }
 
 %token <word> IDENT DELAY SETTLES
 %token <sym> SYM
-%token ARROW HANDOFF COLON DOTS DO WHEN AND OR NOT LPAREN RPAREN NEWLINE
+%token ARROW COLON DOTS DO WHEN AND OR NOT LPAREN RPAREN NEWLINE
 
-%type <str> action goto_ handoff
+%type <str> action param_
+%type <move> goto_
 %type <pat> syms
 %type <cond> when_ expr term factor
 %type <rule> rule
@@ -39,7 +41,12 @@ lines:
 	;
 
 header:
-	  IDENT COLON NEWLINE   { yylex.(*lexer).scope($1.text) }
+	  IDENT param_ COLON NEWLINE   { yylex.(*lexer).scope($1, $2) }
+	;
+
+param_:
+		{ $$ = "" }
+	| LPAREN IDENT RPAREN   { $$ = $2.text }
 	;
 
 decl:
@@ -48,16 +55,16 @@ decl:
 	;
 
 rule:
-	  syms action goto_ handoff when_ NEWLINE
+	  syms action goto_ when_ NEWLINE
 		{
-			$$ = rule{seq.Rule{Pattern: yylex.(*lexer).text($1), Elems: $1.elems, Line: $1.line, Action: $2, Goto: $3, When: $5}, $4}
+			$$ = seq.Rule{Pattern: yylex.(*lexer).text($1), Elems: $1.elems, Line: $1.line, Action: $2, Goto: $3.to, Arg: $3.arg, When: $4}
 		}
 	;
 
 anyrule:
 	  DOTS syms action goto_ when_ NEWLINE
 		{
-			$$ = seq.Any{Pattern: yylex.(*lexer).text($2), Line: $2.line, Action: $3, Goto: $4, When: $5}
+			$$ = seq.Any{Pattern: yylex.(*lexer).text($2), Line: $2.line, Action: $3, Goto: $4.to, Arg: $4.arg, When: $5}
 			if len($2.elems) == 1 {
 				$$.Elem = $2.elems[0]
 			} else {
@@ -79,13 +86,9 @@ action:
 	;
 
 goto_:
-		{ $$ = "" }
-	| ARROW IDENT   { $$ = $2.text }
-	;
-
-handoff:
-		{ $$ = "" }
-	| HANDOFF IDENT { $$ = $2.text }
+		{ $$ = move{} }
+	| ARROW IDENT   { $$ = move{to: $2.text} }
+	| ARROW IDENT LPAREN IDENT RPAREN   { $$ = move{to: $2.text, arg: $4.text} }
 	;
 
 when_:

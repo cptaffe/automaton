@@ -11,7 +11,7 @@ import (
 func TestGenseq(t *testing.T) {
 	dir := t.TempDir()
 	bad := filepath.Join(dir, "bad.tree")
-	if err := os.WriteFile(bad, []byte("start:\n  0  do x  => nowhere\n"), 0o644); err != nil {
+	if err := os.WriteFile(bad, []byte("start:\n  0  do x  -> nowhere\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	for _, c := range []struct {
@@ -21,7 +21,7 @@ func TestGenseq(t *testing.T) {
 	}{
 		{nil, 2, "usage: genseq"},
 		{[]string{"-d", "nope", "../../examples/dial.tree"}, 1, "no dialect called nope"},
-		{[]string{bad}, 1, "hands to nowhere"},
+		{[]string{bad}, 1, "-> nowhere, and there is no such scope"},
 		{[]string{"-v", "-dot", dir, "../../examples/dial.tree", "../../examples/hotkeys"}, 0, "dial, "},
 	} {
 		var stderr bytes.Buffer

@@ -84,6 +84,7 @@ type Rule struct {
 	Elems   []Class
 	Action  string
 	Goto    string
+	Arg     string
 	Include string
 	When    Cond
 	Label   string
@@ -96,6 +97,7 @@ type Any struct {
 	Elem    Class
 	Action  string
 	Goto    string
+	Arg     string
 	When    Cond
 	Label   string
 	Line    int
@@ -107,6 +109,7 @@ type Grammar struct {
 	Name    string
 	Note    string
 	Scopes  []string
+	Params  map[string]string
 	Rules   []Rule
 	Any     []Any
 	Delays  map[string]time.Duration

@@ -65,39 +65,39 @@ func TestPlan(t *testing.T) {
 		keys   string
 		action string
 	}{
-		{"plan.start", "* 9 8", "voicemail"},
-		{"plan.start", "0", "operator"},
-		{"plan.start", "4 8 2 1 2 3 4", "line"},
-		{"plan.start", "9 6 0 1 2 3 4 T", "line"},
-		{"plan.start", "9 6 0 4 8 2 1 2 3 4", "line-ten"},
-		{"plan.start", "4 abandon", "dial-again"},
-		{"plan.mailbox", "1", "play"},
+		{"start", "* 9 8", "voicemail"},
+		{"start", "0", "operator"},
+		{"start", "4 8 2 1 2 3 4", "line"},
+		{"start", "9 6 0 1 2 3 4 T", "line"},
+		{"start", "9 6 0 4 8 2 1 2 3 4", "line-ten"},
+		{"start", "4 abandon", "dial-again"},
+		{"mailbox", "1", "play"},
 	} {
 		a := walk(t, tab, c.scope, strings.Fields(c.keys)...)
 		if a == nil || a.Action != c.action {
 			t.Errorf("%s %s: got %+v, want %s", c.scope, c.keys, a, c.action)
 		}
 	}
-	if a := walk(t, tab, "plan.start", "*", "9", "8"); a.Goto != "plan.mailbox" {
+	if a := walk(t, tab, "start", "*", "9", "8"); a.Goto != "mailbox" {
 		t.Errorf("*98 goes to %q", a.Goto)
 	}
-	if a := walk(t, tab, "plan.mailbox", "1"); a == nil || a.When == nil || a.When.String() != "holding" {
+	if a := walk(t, tab, "mailbox", "1"); a == nil || a.When == nil || a.When.String() != "holding" {
 		t.Errorf("when %v", a.When)
 	}
-	if a := walk(t, tab, "plan.start", "4", "8", "2", "1", "2", "3", "4"); a == nil || a.Operand == nil || *a.Operand != (seq.Slice{From: 0, To: 0}) {
+	if a := walk(t, tab, "start", "4", "8", "2", "1", "2", "3", "4"); a == nil || a.Operand == nil || *a.Operand != (seq.Slice{From: 0, To: 0}) {
 		t.Errorf("operand %+v", a.Operand)
 	}
 	if got := strings.Join(tab.Waiting(), " "); got != "T abandon" {
 		t.Errorf("waiting %v", got)
 	}
-	m, _ := seq.NewMachine(tab, "plan.mailbox")
+	m, _ := seq.NewMachine(tab, "mailbox")
 	if ok, _ := m.Step(tab.Alpha.Of("1"), nil); ok {
 		t.Error("1 in the mailbox was taken while nothing is holding")
 	}
 }
 
 func TestATreeHandsOff(t *testing.T) {
-	dial, err := Parse(strings.NewReader("%delay T 1s\nstart:\n  %settles T\n  0  do operator  => menu\n  1  do one\n  ... T  do idle\n"), "dial.tree")
+	dial, err := Parse(strings.NewReader("%delay T 1s\nstart:\n  %settles T\n  0     do operator  -> dialing(menu)\n  1     do one\n  NXX   do line  -> connected\n  ... T  do idle\n\ndialing(then):\n  answered  -> then\n\nconnected:\n"), "dial.tree")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,34 +105,37 @@ func TestATreeHandsOff(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	tab, err := Compile(menu, dial)
-	if err != nil {
-		t.Fatal(err)
-	}
-	m, err := seq.NewMachine(tab, "")
+	tab, err := Compile(dial, menu)
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, c := range []struct {
-		sym, fired, scope string
+		syms, fired, scope string
 	}{
-		{"0", "operator", "=> menu"},
-		{"1", "", "=> menu"},
-		{"T", "", "=> menu"},
-		{Answered, "", "menu.start"},
-		{"1", "menu-one", "menu.start"},
-		{"T", "", "menu.start"},
+		{"0", "operator", "dial.dialing(menu.start)"},
+		{"0 1 T", "operator", "dial.dialing(menu.start)"},
+		{"0 answered 1", "operator,menu-one", "menu.start"},
+		{"2 3 4 5 1", "line", "dial.connected"},
+		{"T", "idle", "dial.start"},
 	} {
-		_, fired := m.Step(tab.Alpha.Of(c.sym), nil)
+		m, err := seq.NewMachine(tab, "")
+		if err != nil {
+			t.Fatal(err)
+		}
 		var got []string
-		for _, a := range fired {
-			got = append(got, a.Action)
+		for _, sym := range strings.Fields(c.syms) {
+			_, fired := m.Step(tab.Alpha.Of(sym), nil)
+			for _, a := range fired {
+				if a.Action != "" {
+					got = append(got, a.Action)
+				}
+			}
 		}
 		if strings.Join(got, ",") != c.fired || m.Scope() != c.scope {
-			t.Errorf("%s fired %v in %s; want %q in %s", c.sym, got, m.Scope(), c.fired, c.scope)
+			t.Errorf("%s fired %v in %s; want %q in %s", c.syms, got, m.Scope(), c.fired, c.scope)
 		}
 	}
-	if _, err := Compile(dial); err == nil || !strings.Contains(err.Error(), "hands to menu, and there is no such tree") {
+	if _, err := Compile(dial); err == nil || !strings.Contains(err.Error(), "-> dialing(menu), and there is no scope menu") {
 		t.Errorf("a hand-off to a missing tree: %v", err)
 	}
 	if _, err := Compile(dial, dial); err == nil || !strings.Contains(err.Error(), "two trees are called dial") {
@@ -157,8 +160,6 @@ func TestErrors(t *testing.T) {
 		{"1 do a\n", "above every scope"},
 		{"s:\n  1\n", "nowhere to go"},
 		{"s:\n  1 do Put\n", "not lower case"},
-		{"s:\n  1 do a -> t\n", "no such scope"},
-		{"s:\n  1X+ do a\n", "ends in a repeat"},
 		{"s:\n  %delay T 1s\n", "t.tree:2: %delay T 1s belongs above every scope"},
 		{"\n%settles T\n", "t.tree:2: %settles T is above every scope"},
 		{"s:\n  1 do a\n\n  2 do Put\n", "t.tree:4: the action"},
@@ -170,12 +171,30 @@ func TestErrors(t *testing.T) {
 	}
 }
 
+func TestCompileErrors(t *testing.T) {
+	for _, c := range []struct{ src, want string }{
+		{"s:\n  1 do a -> t\n", "no such scope"},
+		{"s:\n  1X+ do a\n", "ends in a repeat"},
+		{"s:\n  1 do a -> w(s)\nw(x):\n  2 -> x(s)\n", "x is w's parameter and cannot take one of its own"},
+		{"s:\n  1 do a -> w\nw(x):\n  2 -> x\n", "w takes a parameter and was given none"},
+		{"s:\n  1 do a -> s(s)\n", "s takes no parameter"},
+		{"w(x):\n  1 -> x\ns:\n  2 -> w(s)\n", "the first scope is where a machine begins"},
+	} {
+		g, err := Parse(strings.NewReader(c.src), "t.tree")
+		if err == nil {
+			_, err = Compile(g)
+		}
+		if err == nil || !strings.Contains(err.Error(), c.want) {
+			t.Errorf("%q: got %v, want %q", c.src, err, c.want)
+		}
+	}
+}
+
 func TestCommentsLabelAndNote(t *testing.T) {
-	tree, err := Parse(strings.NewReader("; dial plan\n\nstart:\n  ; label: the operator\n  0  do operator\n  ; a remark\n  1  do one  when a and (b or not c)\n"), "p.tree")
+	g, err := Parse(strings.NewReader("; dial plan\n\nstart:\n  ; label: the operator\n  0  do operator\n  ; a remark\n  1  do one  when a and (b or not c)\n"), "p.tree")
 	if err != nil {
 		t.Fatal(err)
 	}
-	g := tree.Grammar
 	if g.Note != "dial plan" {
 		t.Errorf("note %q", g.Note)
 	}

@@ -11,15 +11,15 @@ func TestTheExampleCompiles(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer f.Close()
-	tree, err := Parse(f, "dial.tree")
+	g, err := Parse(f, "dial.tree")
 	if err != nil {
 		t.Fatal(err)
 	}
-	tab, err := Compile(tree)
+	tab, err := Compile(g)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(tab.Conflicts) > 0 || tab.Scopes[0] != "dial.start" {
+	if len(tab.Conflicts) > 0 || tab.Scopes[0] != "start" {
 		t.Fatal(tab.Scopes, tab.Conflicts)
 	}
 }

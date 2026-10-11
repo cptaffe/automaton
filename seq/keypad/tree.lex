@@ -11,7 +11,6 @@ start {
 
   "..."       emit dots
   "->"        emit arrow
-  "=>"        emit handoff
 
   "%delay"    emit delay
   "%settles"  emit settles

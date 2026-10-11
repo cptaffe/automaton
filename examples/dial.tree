@@ -3,11 +3,16 @@
 
 start:
   %settles T
-  0             do operator
-  *98           do voicemail  -> mailbox
-  NXX-XXXX      do local
-  960-NXX-XXXX  do long-distance
+  0             do operator         -> connected
+  *98           do voicemail        -> dialing(mailbox)
+  NXX-XXXX      do local            -> connected
+  960-NXX-XXXX  do long-distance    -> connected
   ... abandon   do dial-again
+
+dialing(then):
+  answered      -> then
+
+connected:
 
 mailbox:
   1             do play       when messages

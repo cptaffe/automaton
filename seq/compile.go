@@ -66,6 +66,10 @@ func Compile(g *Grammar, a *Alphabet) (*Table, error) {
 	if err := Check(g); err != nil {
 		return nil, err
 	}
+	g, err := expand(g)
+	if err != nil {
+		return nil, err
+	}
 	rules := make([]Rule, len(g.Rules))
 	for i, r := range g.Rules {
 		r.Elems = append([]Class(nil), r.Elems...)
