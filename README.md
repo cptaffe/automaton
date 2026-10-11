@@ -72,7 +72,10 @@ rule that holds can use it. Both dialects share it.
 ### Keypad
 
 A dial plan, where `N` is 2–9, `X` is 0–9, and `T` settles a number that
-could still grow:
+could still grow. A plan can span several trees: `=> menu` after a rule
+carries on in the `menu` tree once the call is answered, and `keypad.Compile`
+links the trees it is given into one table, naming each scope after its
+tree:
 
 ```
 %delay T 5s
@@ -92,8 +95,8 @@ mailbox:
 ```
 
 ```go
-g, err := keypad.Parse(f, "dial.tree")
-t, err := seq.Compile(g, keypad.Alphabet(g))
+tree, err := keypad.Parse(f, "dial.tree")
+t, err := keypad.Compile(tree)
 m, err := seq.NewMachine(t, "")
 taken, fired := m.Step(t.Alpha.Of("*"), seq.Env{"messages": "1"})
 ```

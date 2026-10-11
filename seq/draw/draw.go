@@ -107,8 +107,5 @@ func Label(a *seq.Accept) string {
 	if a.Goto != "" {
 		parts = append(parts, "-> "+a.Goto)
 	}
-	if a.Hands != "" {
-		parts = append(parts, "=> "+a.Hands)
-	}
 	return strings.Join(parts, " ")
 }

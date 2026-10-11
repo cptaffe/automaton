@@ -21,7 +21,7 @@ func Check(g *Grammar) error {
 			return fmt.Errorf("%s:%d: -> %s, and there is no such scope", g.Name, r.Line, r.Goto)
 		case r.Include != "" && !seen[r.Include]:
 			return fmt.Errorf("%s:%d: -> %s, and there is no such scope", g.Name, r.Line, r.Include)
-		case r.Include != "" && (len(r.Elems) > 0 || r.Action != "" || r.Goto != "" || r.Hands != ""):
+		case r.Include != "" && (len(r.Elems) > 0 || r.Action != "" || r.Goto != ""):
 			return fmt.Errorf("%s:%d: -> %s with no pattern reads %s's rules, and does nothing else", g.Name, r.Line, r.Include, r.Include)
 		case r.Include == "" && len(r.Elems) == 0:
 			return fmt.Errorf("%s:%d: a rule with no pattern", g.Name, r.Line)

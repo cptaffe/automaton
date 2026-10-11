@@ -68,12 +68,8 @@ func draw(paths []string, dialect, dir string, verbose bool, stderr io.Writer) e
 }
 
 func compile(paths []string, dialect string) ([]*seq.Table, error) {
-	type parsed struct {
-		tree *seq.Grammar
-		tab  *seq.Table
-	}
-	var all []parsed
-	var trees []*seq.Grammar
+	var out []*seq.Table
+	var trees []*keypad.Tree
 	for _, path := range paths {
 		d := dialect
 		if d == "" {
@@ -88,48 +84,33 @@ func compile(paths []string, dialect string) ([]*seq.Table, error) {
 		}
 		switch d {
 		case "keypad":
-			g, err := keypad.Parse(f, path)
+			t, err := keypad.Parse(f, path)
 			f.Close()
 			if err != nil {
 				return nil, err
 			}
-			trees = append(trees, g)
-			all = append(all, parsed{tree: g})
+			trees = append(trees, t)
 		case "hotkey":
 			r, err := hotkey.Parse(f, path, nil)
 			f.Close()
 			if err != nil {
 				return nil, err
 			}
-			all = append(all, parsed{tab: r.Table})
+			out = append(out, r.Table)
 		default:
 			f.Close()
 			return nil, fmt.Errorf("no dialect called %s", d)
 		}
 	}
-
-	a := keypad.Alphabet(trees...)
-	var compiled []*seq.Table
-	var out []*seq.Table
-	for _, p := range all {
-		if p.tab != nil {
-			out = append(out, p.tab)
-			continue
-		}
-		t, err := seq.Compile(p.tree, a)
-		if err != nil {
-			return nil, err
-		}
-		if len(t.Conflicts) > 0 {
-			return nil, errors.New(strings.Join(t.Conflicts, "\n"))
-		}
-		compiled = append(compiled, t)
-		out = append(out, t)
+	if len(trees) == 0 {
+		return out, nil
 	}
-	if len(compiled) > 0 {
-		if _, err := seq.Link(compiled, "trees", keypad.Answered); err != nil {
-			return nil, err
-		}
+	t, err := keypad.Compile(trees...)
+	if err != nil {
+		return nil, err
 	}
-	return out, nil
+	if len(t.Conflicts) > 0 {
+		return nil, errors.New(strings.Join(t.Conflicts, "\n"))
+	}
+	return append(out, t), nil
 }

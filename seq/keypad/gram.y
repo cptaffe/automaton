@@ -10,7 +10,7 @@ import "github.com/cptaffe/automaton/seq"
 	sym  symv
 	pat  pat
 	cond seq.Cond
-	rule seq.Rule
+	rule rule
 	any  seq.Any
 }
 
@@ -50,18 +50,18 @@ decl:
 rule:
 	  syms action goto_ handoff when_ NEWLINE
 		{
-			$$ = seq.Rule{Pattern: $1.text, Elems: $1.elems, Line: $1.line, Action: $2, Goto: $3, Hands: $4, When: $5}
+			$$ = rule{seq.Rule{Pattern: yylex.(*lexer).text($1), Elems: $1.elems, Line: $1.line, Action: $2, Goto: $3, When: $5}, $4}
 		}
 	;
 
 anyrule:
 	  DOTS syms action goto_ when_ NEWLINE
 		{
-			$$ = seq.Any{Pattern: $2.text, Line: $2.line, Action: $3, Goto: $4, When: $5}
+			$$ = seq.Any{Pattern: yylex.(*lexer).text($2), Line: $2.line, Action: $3, Goto: $4, When: $5}
 			if len($2.elems) == 1 {
 				$$.Elem = $2.elems[0]
 			} else {
-				yylex.(*lexer).FailAt($2.line, "`... %s` is more than one symbol", $2.text)
+				yylex.(*lexer).FailAt($2.line, "`... %s` is more than one symbol", yylex.(*lexer).text($2))
 			}
 		}
 	;

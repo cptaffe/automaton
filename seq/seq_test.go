@@ -183,41 +183,6 @@ func TestCheck(t *testing.T) {
 	}
 }
 
-func TestLink(t *testing.T) {
-	a := NewAlphabet([]string{"1", "2"}, "answered")
-	one, two, ans := a.Of("1"), a.Of("2"), a.Of("answered")
-	first := &Grammar{Name: "first", Scopes: []string{"s"}, Rules: []Rule{{Scope: "s", Pattern: "1", Elems: []Class{{Syms: []Sym{one}}}, Action: "dial", Hands: "second"}}}
-	second := &Grammar{Name: "second", Scopes: []string{"s"}, Rules: []Rule{{Scope: "s", Pattern: "2", Elems: []Class{{Syms: []Sym{two}}}, Action: "menu"}}}
-	t1, _ := Compile(first, a)
-	t2, _ := Compile(second, a)
-	tab, err := Link([]*Table{t2, t1}, "all", "answered")
-	if err != nil {
-		t.Fatal(err)
-	}
-	m := machine(t, tab, "")
-	if m.Scope() != "first.s" {
-		t.Errorf("the link begins in %s; first hands to second, so first is the root", m.Scope())
-	}
-	if ok, _ := m.Step(two, nil); ok {
-		t.Error("the second tree's key worked before the hand-off")
-	}
-	if _, f := m.Step(one, nil); actions(f) != "dial" {
-		t.Fatalf("first tree fired %q", actions(f))
-	}
-	if ok, _ := m.Step(ans, nil); !ok || m.Scope() != "second.s" {
-		t.Errorf("answered after dial took the machine to %s", m.Scope())
-	}
-	if _, f := m.Step(two, nil); actions(f) != "menu" {
-		t.Errorf("after the hand-off, 2 fired %q", actions(f))
-	}
-	if _, err := Link([]*Table{t1}, "all", "answered"); err == nil {
-		t.Error("a hand-off to a missing tree linked")
-	}
-	if _, err := Link([]*Table{t1, t1, t2}, "all", "answered"); err == nil {
-		t.Error("two trees of one name linked")
-	}
-}
-
 func TestCond(t *testing.T) {
 	re, err := NewCompare("app", Match, "^(a|b)$")
 	if err != nil {

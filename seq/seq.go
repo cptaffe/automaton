@@ -84,7 +84,6 @@ type Rule struct {
 	Elems   []Class
 	Action  string
 	Goto    string
-	Hands   string
 	Include string
 	When    Cond
 	Label   string

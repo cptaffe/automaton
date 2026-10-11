@@ -21,7 +21,7 @@ func TestGenseq(t *testing.T) {
 	}{
 		{nil, 2, "usage: genseq"},
 		{[]string{"-d", "nope", "../../examples/dial.tree"}, 1, "no dialect called nope"},
-		{[]string{bad}, 1, `hands to "nowhere"`},
+		{[]string{bad}, 1, "hands to nowhere"},
 		{[]string{"-v", "-dot", dir, "../../examples/dial.tree", "../../examples/hotkeys"}, 0, "dial, "},
 	} {
 		var stderr bytes.Buffer

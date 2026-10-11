@@ -5,6 +5,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/cptaffe/automaton"
 )
 
 type Slice struct {
@@ -15,7 +17,6 @@ type Slice struct {
 type Accept struct {
 	Action  string
 	Goto    string
-	Hands   string
 	When    Cond
 	Pattern string
 	Line    int
@@ -35,8 +36,6 @@ type Table struct {
 	Settle    []Sym
 	Any       [][][]*Accept
 	Delays    map[string]time.Duration
-	Handoff   Sym
-	Roots     map[string]string
 	Conflicts []string
 }
 
@@ -60,6 +59,7 @@ type compiler struct {
 	anys    []Any
 	entries []entry
 	seen    map[string]int
+	sig     []string
 }
 
 func Compile(g *Grammar, a *Alphabet) (*Table, error) {
@@ -97,14 +97,66 @@ func Compile(g *Grammar, a *Alphabet) (*Table, error) {
 		}
 	}
 
-	t := &Table{Name: g.Name, Note: g.Note, Alpha: a, Scopes: append([]string(nil), g.Scopes...), Start: map[string]int{}, Delays: g.Delays}
-	t.state("")
+	t := &Table{Name: g.Name, Note: g.Note, Alpha: a, Scopes: positions(g), Start: map[string]int{}, Delays: g.Delays}
 	c := &compiler{t: t, g: g, rules: rules, anys: anys, seen: map[string]int{}}
-	for _, scope := range g.Scopes {
+	c.state("", "")
+	for _, scope := range t.Scopes {
 		c.scope(scope)
 	}
 	sort.Strings(t.Conflicts)
-	return t, nil
+	return c.minimal(), nil
+}
+
+func positions(g *Grammar) []string {
+	at := map[string]bool{g.Scopes[0]: true}
+	for _, r := range g.Rules {
+		if r.Goto != "" {
+			at[r.Goto] = true
+		}
+	}
+	for _, x := range g.Any {
+		if x.Goto != "" {
+			at[x.Goto] = true
+		}
+	}
+	var out []string
+	for _, s := range g.Scopes {
+		if at[s] {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+func (c *compiler) minimal() *Table {
+	t := c.t
+	var starts []int
+	for _, scope := range t.Scopes {
+		starts = append(starts, t.Start[scope])
+	}
+	to := automaton.Reachable(t.Next, automaton.Equivalent(t.Next, c.sig), starts...)
+	n := 0
+	for _, s := range to {
+		n = max(n, s)
+	}
+	out := &Table{Name: t.Name, Note: t.Note, Alpha: t.Alpha, Scopes: t.Scopes, Start: map[string]int{}, Delays: t.Delays, Conflicts: t.Conflicts,
+		Scope: make([]string, n+1), Next: make([][]int, n+1), Accept: make([][]*Accept, n+1), Live: make([][]Cond, n+1),
+		Settle: make([]Sym, n+1), Any: make([][][]*Accept, n+1)}
+	for s := range t.Next {
+		if s != 0 && to[s] == 0 {
+			continue
+		}
+		m := to[s]
+		out.Next[m] = make([]int, len(t.Next[s]))
+		for sym, n := range t.Next[s] {
+			out.Next[m][sym] = to[n]
+		}
+		out.Scope[m], out.Accept[m], out.Live[m], out.Settle[m], out.Any[m] = t.Scope[s], t.Accept[s], t.Live[s], t.Settle[s], t.Any[s]
+	}
+	for scope, s := range t.Start {
+		out.Start[scope] = to[s]
+	}
+	return out
 }
 
 func (c *compiler) scope(scope string) {
@@ -156,7 +208,7 @@ func (c *compiler) add(scope string, items []item, wilds []wild) int {
 		return s
 	}
 	t := c.t
-	s := t.state(scope)
+	s := c.state(scope, signature(items, wilds, c.entries))
 	c.seen[key] = s
 
 	c.finish(s, items)
@@ -197,7 +249,7 @@ func (c *compiler) finish(s int, items []item) {
 		if it.i < len(e.rule.Elems) {
 			continue
 		}
-		acc := &Accept{Action: e.rule.Action, Goto: e.rule.Goto, Hands: e.rule.Hands, When: e.when,
+		acc := &Accept{Action: e.rule.Action, Goto: e.rule.Goto, When: e.when,
 			Pattern: e.rule.Pattern, Line: e.rule.Line, Operand: operand(e.rule)}
 		if was, ok := done[e.origin]; ok {
 			c.conflict(acc.Line, "%q and %q both finish here -- two rules, one key sequence", was.Pattern, acc.Pattern)
@@ -262,6 +314,27 @@ func operand(r Rule) *Slice {
 		at++
 	}
 	return o
+}
+
+func signature(items []item, wilds []wild, entries []entry) string {
+	var b strings.Builder
+	seen := map[string]bool{}
+	for _, it := range items {
+		k := fmt.Sprintf("%d:%t ", it.e, it.i >= len(entries[it.e].rule.Elems))
+		if !seen[k] {
+			seen[k] = true
+			b.WriteString(k)
+		}
+	}
+	for _, w := range wilds {
+		fmt.Fprintf(&b, "%p ", w.acc)
+	}
+	return b.String()
+}
+
+func (c *compiler) state(scope, sig string) int {
+	c.sig = append(c.sig, sig)
+	return c.t.state(scope)
 }
 
 func (t *Table) state(scope string) int {

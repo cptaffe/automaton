@@ -25,11 +25,11 @@ mailbox:
 
 func compile(t *testing.T, src string) *seq.Table {
 	t.Helper()
-	g, err := Parse(strings.NewReader(src), "plan.tree")
+	tree, err := Parse(strings.NewReader(src), "plan.tree")
 	if err != nil {
 		t.Fatal(err)
 	}
-	tab, err := seq.Compile(g, Alphabet(g))
+	tab, err := Compile(tree)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,55 +65,78 @@ func TestPlan(t *testing.T) {
 		keys   string
 		action string
 	}{
-		{"start", "* 9 8", "voicemail"},
-		{"start", "0", "operator"},
-		{"start", "4 8 2 1 2 3 4", "line"},
-		{"start", "9 6 0 1 2 3 4 T", "line"},
-		{"start", "9 6 0 4 8 2 1 2 3 4", "line-ten"},
-		{"start", "4 abandon", "dial-again"},
-		{"mailbox", "1", "play"},
+		{"plan.start", "* 9 8", "voicemail"},
+		{"plan.start", "0", "operator"},
+		{"plan.start", "4 8 2 1 2 3 4", "line"},
+		{"plan.start", "9 6 0 1 2 3 4 T", "line"},
+		{"plan.start", "9 6 0 4 8 2 1 2 3 4", "line-ten"},
+		{"plan.start", "4 abandon", "dial-again"},
+		{"plan.mailbox", "1", "play"},
 	} {
 		a := walk(t, tab, c.scope, strings.Fields(c.keys)...)
 		if a == nil || a.Action != c.action {
 			t.Errorf("%s %s: got %+v, want %s", c.scope, c.keys, a, c.action)
 		}
 	}
-	if a := walk(t, tab, "start", "*", "9", "8"); a.Goto != "mailbox" {
+	if a := walk(t, tab, "plan.start", "*", "9", "8"); a.Goto != "plan.mailbox" {
 		t.Errorf("*98 goes to %q", a.Goto)
 	}
-	if a := walk(t, tab, "mailbox", "1"); a == nil || a.When == nil || a.When.String() != "holding" {
+	if a := walk(t, tab, "plan.mailbox", "1"); a == nil || a.When == nil || a.When.String() != "holding" {
 		t.Errorf("when %v", a.When)
 	}
-	if a := walk(t, tab, "start", "4", "8", "2", "1", "2", "3", "4"); a == nil || a.Operand == nil || *a.Operand != (seq.Slice{From: 0, To: 0}) {
+	if a := walk(t, tab, "plan.start", "4", "8", "2", "1", "2", "3", "4"); a == nil || a.Operand == nil || *a.Operand != (seq.Slice{From: 0, To: 0}) {
 		t.Errorf("operand %+v", a.Operand)
 	}
 	if got := strings.Join(tab.Waiting(), " "); got != "T abandon" {
 		t.Errorf("waiting %v", got)
 	}
-	m, _ := seq.NewMachine(tab, "mailbox")
+	m, _ := seq.NewMachine(tab, "plan.mailbox")
 	if ok, _ := m.Step(tab.Alpha.Of("1"), nil); ok {
 		t.Error("1 in the mailbox was taken while nothing is holding")
 	}
 }
 
 func TestATreeHandsOff(t *testing.T) {
-	g1, err := Parse(strings.NewReader("start:\n  0  do operator  => menu\n"), "dial.tree")
+	dial, err := Parse(strings.NewReader("%delay T 1s\nstart:\n  %settles T\n  0  do operator  => menu\n  1  do one\n  ... T  do idle\n"), "dial.tree")
 	if err != nil {
 		t.Fatal(err)
 	}
-	g2, err := Parse(strings.NewReader("start:\n  1  do one\n"), "menu.tree")
+	menu, err := Parse(strings.NewReader("start:\n  1  do menu-one\n"), "menu.tree")
 	if err != nil {
 		t.Fatal(err)
 	}
-	a := Alphabet(g1, g2)
-	t1, _ := seq.Compile(g1, a)
-	t2, _ := seq.Compile(g2, a)
-	tab, err := seq.Link([]*seq.Table{t2, t1}, "all", Answered)
+	tab, err := Compile(menu, dial)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if a := walk(t, tab, "", "0", Answered, "1"); a == nil || a.Action != "one" {
-		t.Errorf("0, answered, 1 fired %+v; want the menu's one", a)
+	m, err := seq.NewMachine(tab, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range []struct {
+		sym, fired, scope string
+	}{
+		{"0", "operator", "dial.start => menu"},
+		{"1", "one", "dial.start => menu"},
+		{"T", "idle", "dial.start => menu"},
+		{Answered, "", "menu.start"},
+		{"1", "menu-one", "menu.start"},
+		{"T", "", "menu.start"},
+	} {
+		_, fired := m.Step(tab.Alpha.Of(c.sym), nil)
+		var got []string
+		for _, a := range fired {
+			got = append(got, a.Action)
+		}
+		if strings.Join(got, ",") != c.fired || m.Scope() != c.scope {
+			t.Errorf("%s fired %v in %s; want %q in %s", c.sym, got, m.Scope(), c.fired, c.scope)
+		}
+	}
+	if _, err := Compile(dial); err == nil || !strings.Contains(err.Error(), "hands to menu, and there is no such tree") {
+		t.Errorf("a hand-off to a missing tree: %v", err)
+	}
+	if _, err := Compile(dial, dial); err == nil || !strings.Contains(err.Error(), "two trees are called dial") {
+		t.Errorf("two trees of one name: %v", err)
 	}
 }
 
@@ -148,10 +171,11 @@ func TestErrors(t *testing.T) {
 }
 
 func TestCommentsLabelAndNote(t *testing.T) {
-	g, err := Parse(strings.NewReader("; dial plan\n\nstart:\n  ; label: the operator\n  0  do operator\n  ; a remark\n  1  do one  when a and (b or not c)\n"), "p.tree")
+	tree, err := Parse(strings.NewReader("; dial plan\n\nstart:\n  ; label: the operator\n  0  do operator\n  ; a remark\n  1  do one  when a and (b or not c)\n"), "p.tree")
 	if err != nil {
 		t.Fatal(err)
 	}
+	g := tree.Grammar
 	if g.Note != "dial plan" {
 		t.Errorf("note %q", g.Note)
 	}

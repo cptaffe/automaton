@@ -131,3 +131,23 @@ func TestMinimisingDoesNotChangeWhatIsRead(t *testing.T) {
 		})
 	}
 }
+
+func TestEquivalentMergesWhatNothingTellsApart(t *testing.T) {
+	next := [][]int{
+		{0, 0},
+		{2, 3},
+		{4, 0},
+		{4, 0},
+		{0, 0},
+		{0, 0},
+	}
+	sig := []string{"", "", "", "", "end", "unreached"}
+	eq := Equivalent(next, sig)
+	if eq[0] != 0 || eq[2] != eq[3] || eq[1] == eq[2] || eq[4] == eq[2] {
+		t.Errorf("classes %v: 2 and 3 are alike, and nothing else", eq)
+	}
+	to := Reachable(next, eq, 1)
+	if to[5] != 0 || to[1] != 1 || to[2] != to[3] || to[4] == 0 {
+		t.Errorf("reachable %v: 5 is never reached, and 2 and 3 are one state", to)
+	}
+}

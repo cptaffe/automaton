@@ -6,7 +6,6 @@ type Machine struct {
 	t     *Table
 	scope string
 	state int
-	hands string
 }
 
 func NewMachine(t *Table, scope string) (*Machine, error) {
@@ -49,9 +48,6 @@ func (m *Machine) event(s Sym, env Env) (bool, []*Accept) {
 		return true, m.Settle(env)
 	case m.state != 0:
 		return m.from(m.state, s, env)
-	case m.hands != "" && s == m.t.Handoff:
-		m.scope, m.hands = m.t.Roots[m.hands], ""
-		return true, nil
 	}
 	return m.from(m.t.Start[m.scope], s, env)
 }
@@ -119,9 +115,6 @@ func (m *Machine) fire(a *Accept) []*Accept {
 	m.state = 0
 	if a.Goto != "" {
 		m.scope = a.Goto
-	}
-	if a.Hands != "" {
-		m.hands = a.Hands
 	}
 	return []*Accept{a}
 }

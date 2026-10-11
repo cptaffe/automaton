@@ -12,7 +12,7 @@ type yySymType struct {
 	sym  symv
 	pat  pat
 	cond seq.Cond
-	rule seq.Rule
+	rule rule
 	any  seq.Any
 }
 
@@ -502,16 +502,16 @@ yydefault:
 	case 11:
 		yyDollar = yyS[yypt-6 : yypt+1]
 		{
-			yyVAL.rule = seq.Rule{Pattern: yyDollar[1].pat.text, Elems: yyDollar[1].pat.elems, Line: yyDollar[1].pat.line, Action: yyDollar[2].str, Goto: yyDollar[3].str, Hands: yyDollar[4].str, When: yyDollar[5].cond}
+			yyVAL.rule = rule{seq.Rule{Pattern: yylex.(*lexer).text(yyDollar[1].pat), Elems: yyDollar[1].pat.elems, Line: yyDollar[1].pat.line, Action: yyDollar[2].str, Goto: yyDollar[3].str, When: yyDollar[5].cond}, yyDollar[4].str}
 		}
 	case 12:
 		yyDollar = yyS[yypt-6 : yypt+1]
 		{
-			yyVAL.any = seq.Any{Pattern: yyDollar[2].pat.text, Line: yyDollar[2].pat.line, Action: yyDollar[3].str, Goto: yyDollar[4].str, When: yyDollar[5].cond}
+			yyVAL.any = seq.Any{Pattern: yylex.(*lexer).text(yyDollar[2].pat), Line: yyDollar[2].pat.line, Action: yyDollar[3].str, Goto: yyDollar[4].str, When: yyDollar[5].cond}
 			if len(yyDollar[2].pat.elems) == 1 {
 				yyVAL.any.Elem = yyDollar[2].pat.elems[0]
 			} else {
-				yylex.(*lexer).FailAt(yyDollar[2].pat.line, "`... %s` is more than one symbol", yyDollar[2].pat.text)
+				yylex.(*lexer).FailAt(yyDollar[2].pat.line, "`... %s` is more than one symbol", yylex.(*lexer).text(yyDollar[2].pat))
 			}
 		}
 	case 13:

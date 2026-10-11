@@ -19,15 +19,11 @@ const keys = "0123456789*#"
 
 const Answered = "answered"
 
-func Alphabet(gs ...*seq.Grammar) *seq.Alphabet {
+func Alphabet(g *seq.Grammar) *seq.Alphabet {
 	var delays []string
-	seen := map[string]bool{Answered: true}
-	for _, g := range gs {
-		for name := range g.Delays {
-			if !seen[name] {
-				seen[name] = true
-				delays = append(delays, name)
-			}
+	for name := range g.Delays {
+		if name != Answered {
+			delays = append(delays, name)
 		}
 	}
 	sort.Strings(delays)
@@ -74,40 +70,56 @@ var kinds = map[int]int{
 }
 
 type word struct {
-	text string
-	raw  string
-	line int
+	text       string
+	line       int
+	start, end int
 }
 
 type symv struct {
-	c    seq.Class
-	line int
+	c          seq.Class
+	line       int
+	start, end int
 }
 
 type pat struct {
-	elems []seq.Class
-	text  string
-	line  int
+	elems      []seq.Class
+	line       int
+	start, end int
 }
 
 type lexer struct {
 	*lex.Reader
-	held    string
+	src     string
 	tok     int
 	tokText string
 	tokLine int
 	block   []string
 	bare    bool
 	g       *seq.Grammar
+	hands   map[int]string
 	cur     string
 }
 
-func Parse(r io.Reader, from string) (*seq.Grammar, error) {
-	in, err := lex.Open(scan.Spec, r, "start", from, scan.TokNewline)
+type rule struct {
+	seq.Rule
+	hands string
+}
+
+type Tree struct {
+	Grammar *seq.Grammar
+	hands   map[int]string
+}
+
+func Parse(r io.Reader, from string) (*Tree, error) {
+	b, err := io.ReadAll(r)
 	if err != nil {
 		return nil, err
 	}
-	l := &lexer{Reader: in, bare: true, g: &seq.Grammar{Name: in.Name()}}
+	in, err := lex.Open(scan.Spec, strings.NewReader(string(b)), "start", from, scan.TokNewline)
+	if err != nil {
+		return nil, err
+	}
+	l := &lexer{Reader: in, src: string(b), bare: true, g: &seq.Grammar{Name: in.Name()}, hands: map[int]string{}}
 	if yyParse(l) != 0 && l.Err() == nil {
 		l.FailAt(l.tokLine, "%s", l.unexpected())
 	}
@@ -117,7 +129,7 @@ func Parse(r io.Reader, from string) (*seq.Grammar, error) {
 	if err := seq.Check(l.g); err != nil {
 		return nil, err
 	}
-	return l.g, nil
+	return &Tree{Grammar: l.g, hands: l.hands}, nil
 }
 
 func (l *lexer) Lex(v *yySymType) int {
@@ -134,19 +146,12 @@ func (l *lexer) lex(v *yySymType) (int, string) {
 		if !ok {
 			return 0, ""
 		}
-		switch tok.Kind {
-		case scan.TokBlank, scan.TokDash:
-			l.held += tok.Text
-			l.Skip()
-			continue
-		case scan.TokComment:
+		if tok.Kind == scan.TokComment {
 			l.comment(tok.Text, l.bare)
 			l.bare = false
 			l.Skip()
 			continue
 		}
-		held := l.held
-		l.held = ""
 		if tok.Kind != scan.TokNewline {
 			l.bare = false
 		}
@@ -158,59 +163,39 @@ func (l *lexer) lex(v *yySymType) (int, string) {
 			l.bare = true
 			return NEWLINE, "a new line"
 		case scan.TokDelay, scan.TokSettles:
-			v.word = word{tok.Text, held + tok.Text, tok.At.Line}
+			v.word = word{tok.Text, tok.At.Line, tok.Start, tok.End}
 		case scan.TokSym:
-			c, ok := symbolOf(held + tok.Text)
-			if !ok {
-				l.Fail("%q is not a pattern symbol", tok.Text)
-				return 0, ""
-			}
-			v.sym = symv{c, tok.At.Line}
+			v.sym = symv{symbolOf(tok.Text), tok.At.Line, tok.Start, tok.End}
 			return SYM, tok.Text
 		case scan.TokDeclaration:
 			l.Fail("%s is not a declaration", tok.Text)
 			return 0, ""
 		case scan.TokName:
-			v.word = word{tok.Text, held + tok.Text, tok.At.Line}
+			v.word = word{tok.Text, tok.At.Line, tok.Start, tok.End}
 			return IDENT, tok.Text
 		}
 		return kinds[tok.Kind], tok.Text
 	}
 }
 
-func symbolOf(raw string) (seq.Class, bool) {
-	rs := []rune(raw)
-	at := 0
-	for at < len(rs) && (rs[at] == ' ' || rs[at] == '\t' || rs[at] == '-') {
-		at++
-	}
-	if at >= len(rs) {
-		return seq.Class{}, false
-	}
-	syms, ok := classOf(rs[at])
-	if !ok {
-		return seq.Class{}, false
-	}
-	c := seq.Class{Syms: syms}
-	c.Text = string(rs[:at+1])
-	if at+1 < len(rs) && rs[at+1] == '+' {
-		c.Many = true
-		c.Text += "+"
-	}
-	return c, true
+func symbolOf(text string) seq.Class {
+	syms, _ := classOf(rune(text[0]))
+	return seq.Class{Syms: syms, Many: strings.HasSuffix(text, "+"), Text: text}
 }
 
 func one(s symv) pat {
-	return pat{elems: []seq.Class{s.c}, text: strings.TrimLeft(s.c.Text, " \t"), line: s.line}
+	return pat{elems: []seq.Class{s.c}, line: s.line, start: s.start, end: s.end}
 }
 
 func add(p pat, s symv) pat {
-	return pat{elems: append(p.elems, s.c), text: p.text + s.c.Text, line: p.line}
+	return pat{elems: append(p.elems, s.c), line: p.line, start: p.start, end: s.end}
 }
 
 func event(t word) symv {
-	return symv{seq.Class{Event: t.text, Text: t.raw}, t.line}
+	return symv{seq.Class{Event: t.text, Text: t.text}, t.line, t.start, t.end}
 }
+
+func (l *lexer) text(p pat) string { return l.src[p.start:p.end] }
 
 func (l *lexer) unexpected() string {
 	switch l.tok {
@@ -298,13 +283,13 @@ func (l *lexer) scope(name string) {
 	l.g.Scopes = append(l.g.Scopes, name)
 }
 
-func (l *lexer) rule(r seq.Rule) {
+func (l *lexer) rule(r rule) {
 	label := l.says()
 	if l.cur == "" {
 		l.FailAt(r.Line, "%q is above every scope, where only a `...` rule can be", r.Pattern)
 		return
 	}
-	if r.Action == "" && r.Goto == "" && r.Hands == "" {
+	if r.Action == "" && r.Goto == "" && r.hands == "" {
 		l.FailAt(r.Line, "%q has a pattern and nowhere to go", r.Pattern)
 		return
 	}
@@ -313,7 +298,10 @@ func (l *lexer) rule(r seq.Rule) {
 		return
 	}
 	r.Scope, r.Label = l.cur, label
-	l.g.Rules = append(l.g.Rules, r)
+	if r.hands != "" {
+		l.hands[len(l.g.Rules)] = r.hands
+	}
+	l.g.Rules = append(l.g.Rules, r.Rule)
 }
 
 func (l *lexer) anyRule(a seq.Any) {

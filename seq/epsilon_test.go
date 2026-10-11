@@ -185,3 +185,13 @@ func TestAnUnknownKeySettlesAndPasses(t *testing.T) {
 		t.Error("the machine still waits after an unknown key")
 	}
 }
+
+func TestOnlyAPlaceAMachineCanBeIsCompiled(t *testing.T) {
+	tab := modes(t)
+	if strings.Join(tab.Scopes, " ") != "main marks" {
+		t.Errorf("the scopes are %v; acme and safari are only read in", tab.Scopes)
+	}
+	if _, err := NewMachine(tab, "acme"); err == nil {
+		t.Error("a machine began in a scope nothing goes to")
+	}
+}

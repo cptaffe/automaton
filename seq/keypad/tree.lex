@@ -6,7 +6,7 @@ ident  = inner* plain inner*
 
 start {
   ";" [^\n]*  emit comment
-  blank+      emit blank
+  blank+      ignore
   "\n"        emit newline
 
   "..."       emit dots
@@ -28,7 +28,7 @@ start {
   "("         emit lparen
   ")"         emit rparen
 
-  "-"* (key | class) "+"?  emit sym
-  "-"+        emit dash
+  (key | class) "+"?  emit sym
+  "-"+        ignore
   ident       emit name
 }

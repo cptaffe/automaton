@@ -3,8 +3,6 @@ package keypad
 import (
 	"os"
 	"testing"
-
-	"github.com/cptaffe/automaton/seq"
 )
 
 func TestTheExampleCompiles(t *testing.T) {
@@ -13,12 +11,15 @@ func TestTheExampleCompiles(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer f.Close()
-	g, err := Parse(f, "dial.tree")
+	tree, err := Parse(f, "dial.tree")
 	if err != nil {
 		t.Fatal(err)
 	}
-	tab, err := seq.Compile(g, Alphabet(g))
-	if err != nil || len(tab.Conflicts) > 0 {
-		t.Fatal(err, tab.Conflicts)
+	tab, err := Compile(tree)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(tab.Conflicts) > 0 || tab.Scopes[0] != "dial.start" {
+		t.Fatal(tab.Scopes, tab.Conflicts)
 	}
 }
