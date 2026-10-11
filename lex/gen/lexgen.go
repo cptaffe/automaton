@@ -1,6 +1,6 @@
 //go:generate go tool goyacc -l -p yy -o gram.go -v /dev/null gram.y
 
-package lexgen
+package gen
 
 import "github.com/cptaffe/automaton"
 

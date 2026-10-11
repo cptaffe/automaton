@@ -1,5 +1,5 @@
 %{
-package lexgen
+package gen
 %}
 
 %union {

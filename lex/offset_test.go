@@ -1,12 +1,12 @@
-package lexrun_test
+package lex_test
 
 import (
 	"io"
 	"strings"
 	"testing"
 
-	"github.com/cptaffe/automaton/internal/lexlex"
-	"github.com/cptaffe/automaton/lexrun"
+	"github.com/cptaffe/automaton/lex"
+	"github.com/cptaffe/automaton/lex/gen"
 )
 
 type drip struct {
@@ -25,6 +25,37 @@ func (d *drip) Read(p []byte) (int, error) {
 	return 1, nil
 }
 
+func spec(t *testing.T) *lex.Spec {
+	t.Helper()
+	f, err := gen.Parse(strings.NewReader(`start {
+  ";" [^\n]*   ignore
+  blank+       ignore
+  "\n"         emit newline
+  [a-z]+       emit word
+  "="          emit define
+  "+"          emit plus
+  "{"          emit lbrace
+  "}"          emit rbrace
+}
+`), "t.lex")
+	if err != nil {
+		t.Fatal(err)
+	}
+	flat, err := gen.Expand(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ms, _, err := gen.Build(flat)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, bad := gen.Spec(flat, ms)
+	if len(bad) > 0 {
+		t.Fatal(bad)
+	}
+	return s
+}
+
 func TestWhereATokenIsDoesNotDependOnHowItArrived(t *testing.T) {
 	src := "word = alpha+  ; a comment\nstart {\n  word  emit word\n}\n"
 
@@ -35,7 +66,7 @@ func TestWhereATokenIsDoesNotDependOnHowItArrived(t *testing.T) {
 		{"all at once", strings.NewReader(src)},
 		{"a byte at a time", &drip{s: src}},
 	} {
-		l, err := lexrun.New(lexlex.Spec, c.in, "start")
+		l, err := lex.New(spec(t), c.in, "start")
 
 		if err != nil {
 			t.Fatal(err)

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cptaffe/automaton/lexrun"
+	"github.com/cptaffe/automaton/lex"
 	"github.com/cptaffe/automaton/seq"
 	"github.com/cptaffe/automaton/seq/hotkey/internal/scan"
 )
@@ -40,7 +40,7 @@ type rule struct {
 }
 
 type lexer struct {
-	*lexrun.Reader
+	*lex.Reader
 	src    string
 	tok    int
 	text   string
@@ -86,7 +86,7 @@ func Parse(r io.Reader, from string, known func(name string) error) (*Rules, err
 		return nil, err
 	}
 	src := string(b)
-	in, err := lexrun.Open(scan.Spec, strings.NewReader(src), "start", from, scan.TokNewline)
+	in, err := lex.Open(scan.Spec, strings.NewReader(src), "start", from, scan.TokNewline)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +98,7 @@ func Parse(r io.Reader, from string, known func(name string) error) (*Rules, err
 	case l.Depth() > 0:
 		l.FailAt(l.line, "a block is never closed")
 	case failed:
-		l.FailAt(l.line, "%s", lexrun.Unexpected(l.tok, l.text))
+		l.FailAt(l.line, "%s", lex.Unexpected(l.tok, l.text))
 	}
 	if err := l.Err(); err != nil {
 		return nil, err

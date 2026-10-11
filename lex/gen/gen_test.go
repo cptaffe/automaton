@@ -1,4 +1,4 @@
-package lexgen_test
+package gen_test
 
 import (
 	"os"
@@ -6,31 +6,31 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cptaffe/automaton/lexgen"
-	"github.com/cptaffe/automaton/lexrun"
+	"github.com/cptaffe/automaton/lex"
+	"github.com/cptaffe/automaton/lex/gen"
 )
 
-func build(t *testing.T, src string) *lexrun.Spec {
+func build(t *testing.T, src string) *lex.Spec {
 	t.Helper()
-	f, err := lexgen.Parse(strings.NewReader(src), "t.lex")
+	f, err := gen.Parse(strings.NewReader(src), "t.lex")
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	flat, err := lexgen.Expand(f)
+	flat, err := gen.Expand(f)
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	ms, dead, err := lexgen.Build(flat)
+	ms, dead, err := gen.Build(flat)
 
 	if err != nil || len(dead) != 0 {
 		t.Fatalf("%v %v", err, dead)
 	}
 
-	spec, bad := lexgen.Spec(flat, ms)
+	spec, bad := gen.Spec(flat, ms)
 
 	if len(bad) != 0 {
 		t.Fatalf("%v", bad)
@@ -39,9 +39,9 @@ func build(t *testing.T, src string) *lexrun.Spec {
 	return spec
 }
 
-func kinds(t *testing.T, spec *lexrun.Spec, src string) []string {
+func kinds(t *testing.T, spec *lex.Spec, src string) []string {
 	t.Helper()
-	l, err := lexrun.New(spec, strings.NewReader(src), spec.Scopes[0].Name)
+	l, err := lex.New(spec, strings.NewReader(src), spec.Scopes[0].Name)
 
 	if err != nil {
 		t.Fatal(err)
@@ -98,7 +98,7 @@ func TestADifferenceNeedsTwoSets(t *testing.T) {
 		{"plain = alpha - (alpha alpha)\n\nstart {\n  plain emit a\n}\n", "right of a - reads more than one rune"},
 		{"plain = [NX] - alpha\n\nstart {\n  plain emit a\n}\n", "reads nothing at all"},
 	} {
-		_, err := lexgen.Parse(strings.NewReader(c.src), "d.lex")
+		_, err := gen.Parse(strings.NewReader(c.src), "d.lex")
 
 		if err == nil || !strings.Contains(err.Error(), c.want) {
 			t.Errorf("the refusal is %v; want %s", err, c.want)
@@ -107,26 +107,26 @@ func TestADifferenceNeedsTwoSets(t *testing.T) {
 }
 
 func TestADifferenceReadsWhatIsLeft(t *testing.T) {
-	f, err := lexgen.Parse(strings.NewReader(
+	f, err := gen.Parse(strings.NewReader(
 		"plain = alpha - [NX]\n\nstart {\n  plain+ emit word\n  [NX]+ emit class\n}\n"), "d.lex")
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	flat, err := lexgen.Expand(f)
+	flat, err := gen.Expand(f)
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	ms, dead, err := lexgen.Build(flat)
+	ms, dead, err := gen.Build(flat)
 
 	if err != nil || len(dead) != 0 {
 		t.Fatalf("%v %v", err, dead)
 	}
 
-	spec, bad := lexgen.Spec(flat, ms)
+	spec, bad := gen.Spec(flat, ms)
 
 	if len(bad) != 0 {
 		t.Fatalf("%v", bad)
@@ -145,7 +145,7 @@ func TestAHyphenInsideANameIsPartOfIt(t *testing.T) {
 		"plain = alpha- [NX]\n\nstart {\n  plain emit x\n}\n",
 		"plain = alpha -[NX]\n\nstart {\n  plain emit x\n}\n",
 	} {
-		if _, err := lexgen.Parse(strings.NewReader(src), "h.lex"); err != nil {
+		if _, err := gen.Parse(strings.NewReader(src), "h.lex"); err != nil {
 			t.Errorf("%q: %v", src, err)
 		}
 	}
@@ -160,25 +160,25 @@ func TestTheSpacingOfADifferenceDoesNotMatter(t *testing.T) {
 		"plain = alpha- [NX]\n\nstart {\n  plain+ emit word\n  [NX]+ emit class\n}\n",
 		"plain = alpha -[NX]\n\nstart {\n  plain+ emit word\n  [NX]+ emit class\n}\n",
 	} {
-		f, err := lexgen.Parse(strings.NewReader(src), "h.lex")
+		f, err := gen.Parse(strings.NewReader(src), "h.lex")
 
 		if err != nil {
 			t.Fatalf("%q: %v", src, err)
 		}
 
-		flat, err := lexgen.Expand(f)
+		flat, err := gen.Expand(f)
 
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		ms, _, err := lexgen.Build(flat)
+		ms, _, err := gen.Build(flat)
 
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		spec, bad := lexgen.Spec(flat, ms)
+		spec, bad := gen.Spec(flat, ms)
 
 		if len(bad) != 0 {
 			t.Fatalf("%v", bad)
@@ -219,7 +219,7 @@ func TestNoRulePointsAtABlankLine(t *testing.T) {
 		}
 
 		src := string(b)
-		f, err := lexgen.Parse(strings.NewReader(src), at)
+		f, err := gen.Parse(strings.NewReader(src), at)
 
 		if err != nil {
 			t.Fatalf("%s: %v", at, err)

@@ -1,4 +1,4 @@
-package lexgen
+package gen
 
 type FlatActs struct {
 	Emit string

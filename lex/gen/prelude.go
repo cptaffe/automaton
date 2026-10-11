@@ -1,4 +1,4 @@
-package lexgen
+package gen
 
 import (
 	_ "embed"
@@ -23,7 +23,7 @@ func prelude() []Def {
 
 		if err != nil {
 
-			panic("lexgen: the prelude does not parse: " + err.Error())
+			panic("gen: the prelude does not parse: " + err.Error())
 		}
 
 		defs = f.Defs

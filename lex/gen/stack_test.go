@@ -1,17 +1,17 @@
-package lexgen_test
+package gen_test
 
 import (
 	"reflect"
 	"strings"
 	"testing"
 
-	"github.com/cptaffe/automaton/lexgen"
-	"github.com/cptaffe/automaton/lexrun"
+	"github.com/cptaffe/automaton/lex"
+	"github.com/cptaffe/automaton/lex/gen"
 )
 
-func run(t *testing.T, spec *lexrun.Spec, src string) ([]string, int, error) {
+func run(t *testing.T, spec *lex.Spec, src string) ([]string, int, error) {
 	t.Helper()
-	l, err := lexrun.New(spec, strings.NewReader(src), spec.Scopes[0].Name)
+	l, err := lex.New(spec, strings.NewReader(src), spec.Scopes[0].Name)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,7 +111,7 @@ inner(then) {
 }
 
 func TestATemplateThatDoesNotRecurIsStillCopied(t *testing.T) {
-	f, err := lexgen.Parse(strings.NewReader(`
+	f, err := gen.Parse(strings.NewReader(`
 start {
   "a"  -> klass(this)
   "b"  -> other
@@ -128,7 +128,7 @@ klass(then) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	flat, err := lexgen.Expand(f)
+	flat, err := gen.Expand(f)
 	if err != nil {
 		t.Fatal(err)
 	}

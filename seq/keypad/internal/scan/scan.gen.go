@@ -2,7 +2,7 @@
 
 package scan
 
-import "github.com/cptaffe/automaton/lexrun"
+import "github.com/cptaffe/automaton/lex"
 
 const (
 	TokAnd         = 0
@@ -27,9 +27,9 @@ const (
 	TokWhen        = 19
 )
 
-var Spec = &lexrun.Spec{
+var Spec = &lex.Spec{
 	Tokens: []string{"and", "arrow", "blank", "colon", "comment", "dash", "declaration", "delay", "do", "dots", "handoff", "lparen", "name", "newline", "not", "or", "rparen", "settles", "sym", "when"},
-	Ranges: []lexrun.Range{
+	Ranges: []lex.Range{
 		{Lo: 0, Hi: 8, Class: 0},
 		{Lo: 9, Hi: 9, Class: 1},
 		{Lo: 10, Hi: 10, Class: 2},
@@ -1601,7 +1601,7 @@ var Spec = &lexrun.Spec{
 		{Lo: 201552, Hi: 210041, Class: 15},
 		{Lo: 210042, Hi: 1114111, Class: 0},
 	},
-	Scopes: []lexrun.Scope{
+	Scopes: []lex.Scope{
 		{
 			Name: "start", Start: 29,
 			Next: [][]int{
@@ -1656,27 +1656,27 @@ var Spec = &lexrun.Spec{
 				{-1, -1, -1, -1, -1, -1, -1, -1, 47, -1, 47, -1, -1, -1, -1, 47, 47, 47, 47, 47, 39, 47, 47, 47, 47, 47, 47, 47},
 			},
 			Accept: []int{-1, 1, 2, 17, 8, 6, 7, 15, 16, 18, 19, 4, 3, 14, 0, 5, 11, 9, 13, 12, 10, 19, 17, 19, 19, 19, 19, 19, 19, -1, 19, 19, 17, -1, 18, -1, -1, -1, 8, 8, 8, 8, 8, 8, 8, -1, 8, 8, 8},
-			Acts: []lexrun.Act{
-				{Emit: 4, Do: lexrun.None, Goto: lexrun.None, Push: lexrun.None, Pop: false, Drop: false},
-				{Emit: 2, Do: lexrun.None, Goto: lexrun.None, Push: lexrun.None, Pop: false, Drop: false},
-				{Emit: 13, Do: lexrun.None, Goto: lexrun.None, Push: lexrun.None, Pop: false, Drop: false},
-				{Emit: 9, Do: lexrun.None, Goto: lexrun.None, Push: lexrun.None, Pop: false, Drop: false},
-				{Emit: 1, Do: lexrun.None, Goto: lexrun.None, Push: lexrun.None, Pop: false, Drop: false},
-				{Emit: 10, Do: lexrun.None, Goto: lexrun.None, Push: lexrun.None, Pop: false, Drop: false},
-				{Emit: 7, Do: lexrun.None, Goto: lexrun.None, Push: lexrun.None, Pop: false, Drop: false},
-				{Emit: 17, Do: lexrun.None, Goto: lexrun.None, Push: lexrun.None, Pop: false, Drop: false},
-				{Emit: 6, Do: lexrun.None, Goto: lexrun.None, Push: lexrun.None, Pop: false, Drop: false},
-				{Emit: 8, Do: lexrun.None, Goto: lexrun.None, Push: lexrun.None, Pop: false, Drop: false},
-				{Emit: 19, Do: lexrun.None, Goto: lexrun.None, Push: lexrun.None, Pop: false, Drop: false},
-				{Emit: 0, Do: lexrun.None, Goto: lexrun.None, Push: lexrun.None, Pop: false, Drop: false},
-				{Emit: 15, Do: lexrun.None, Goto: lexrun.None, Push: lexrun.None, Pop: false, Drop: false},
-				{Emit: 14, Do: lexrun.None, Goto: lexrun.None, Push: lexrun.None, Pop: false, Drop: false},
-				{Emit: 3, Do: lexrun.None, Goto: lexrun.None, Push: lexrun.None, Pop: false, Drop: false},
-				{Emit: 11, Do: lexrun.None, Goto: lexrun.None, Push: lexrun.None, Pop: false, Drop: false},
-				{Emit: 16, Do: lexrun.None, Goto: lexrun.None, Push: lexrun.None, Pop: false, Drop: false},
-				{Emit: 18, Do: 1, Goto: lexrun.None, Push: lexrun.None, Pop: false, Drop: false},
-				{Emit: 5, Do: lexrun.None, Goto: lexrun.None, Push: lexrun.None, Pop: false, Drop: false},
-				{Emit: 12, Do: 0, Goto: lexrun.None, Push: lexrun.None, Pop: false, Drop: false},
+			Acts: []lex.Act{
+				{Emit: 4, Do: lex.None, Goto: lex.None, Push: lex.None, Pop: false, Drop: false},
+				{Emit: 2, Do: lex.None, Goto: lex.None, Push: lex.None, Pop: false, Drop: false},
+				{Emit: 13, Do: lex.None, Goto: lex.None, Push: lex.None, Pop: false, Drop: false},
+				{Emit: 9, Do: lex.None, Goto: lex.None, Push: lex.None, Pop: false, Drop: false},
+				{Emit: 1, Do: lex.None, Goto: lex.None, Push: lex.None, Pop: false, Drop: false},
+				{Emit: 10, Do: lex.None, Goto: lex.None, Push: lex.None, Pop: false, Drop: false},
+				{Emit: 7, Do: lex.None, Goto: lex.None, Push: lex.None, Pop: false, Drop: false},
+				{Emit: 17, Do: lex.None, Goto: lex.None, Push: lex.None, Pop: false, Drop: false},
+				{Emit: 6, Do: lex.None, Goto: lex.None, Push: lex.None, Pop: false, Drop: false},
+				{Emit: 8, Do: lex.None, Goto: lex.None, Push: lex.None, Pop: false, Drop: false},
+				{Emit: 19, Do: lex.None, Goto: lex.None, Push: lex.None, Pop: false, Drop: false},
+				{Emit: 0, Do: lex.None, Goto: lex.None, Push: lex.None, Pop: false, Drop: false},
+				{Emit: 15, Do: lex.None, Goto: lex.None, Push: lex.None, Pop: false, Drop: false},
+				{Emit: 14, Do: lex.None, Goto: lex.None, Push: lex.None, Pop: false, Drop: false},
+				{Emit: 3, Do: lex.None, Goto: lex.None, Push: lex.None, Pop: false, Drop: false},
+				{Emit: 11, Do: lex.None, Goto: lex.None, Push: lex.None, Pop: false, Drop: false},
+				{Emit: 16, Do: lex.None, Goto: lex.None, Push: lex.None, Pop: false, Drop: false},
+				{Emit: 18, Do: 1, Goto: lex.None, Push: lex.None, Pop: false, Drop: false},
+				{Emit: 5, Do: lex.None, Goto: lex.None, Push: lex.None, Pop: false, Drop: false},
+				{Emit: 12, Do: 0, Goto: lex.None, Push: lex.None, Pop: false, Drop: false},
 			},
 		},
 	},

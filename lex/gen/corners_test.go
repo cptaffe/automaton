@@ -1,4 +1,4 @@
-package lexgen_test
+package gen_test
 
 import (
 	"fmt"
@@ -6,14 +6,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cptaffe/automaton/internal/lexlex"
-	"github.com/cptaffe/automaton/lexgen"
-	"github.com/cptaffe/automaton/lexrun"
+	"github.com/cptaffe/automaton/lex"
+	"github.com/cptaffe/automaton/lex/gen"
+	"github.com/cptaffe/automaton/lex/gen/internal/scan"
 )
 
 func read(t *testing.T, src string) []string {
 	t.Helper()
-	l, err := lexrun.New(lexlex.Spec, strings.NewReader(src), "start")
+	l, err := lex.New(scan.Spec, strings.NewReader(src), "start")
 
 	if err != nil {
 		t.Fatal(err)
@@ -28,7 +28,7 @@ func read(t *testing.T, src string) []string {
 			break
 		}
 
-		out = append(out, lexlex.Spec.Tokens[tok.Kind]+"("+tok.Text+")")
+		out = append(out, scan.Spec.Tokens[tok.Kind]+"("+tok.Text+")")
 	}
 
 	if err := l.Err(); err != nil {
@@ -104,19 +104,19 @@ func TestTheLexerLanguageReadsItself(t *testing.T) {
 	}
 
 	defer f.Close()
-	got, err := lexgen.Parse(f, "lex.lex")
+	got, err := gen.Parse(f, "lex.lex")
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	flat, err := lexgen.Expand(got)
+	flat, err := gen.Expand(got)
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	ms, dead, err := lexgen.Build(flat)
+	ms, dead, err := gen.Build(flat)
 
 	if err != nil {
 		t.Fatal(err)
@@ -126,13 +126,13 @@ func TestTheLexerLanguageReadsItself(t *testing.T) {
 		t.Fatalf("dead rules in lex.lex: %v", dead)
 	}
 
-	want, bad := lexgen.Spec(flat, ms)
+	want, bad := gen.Spec(flat, ms)
 
 	if len(bad) != 0 {
 		t.Fatalf("%v", bad)
 	}
 
-	if fmt.Sprint(want) != fmt.Sprint(lexlex.Spec) {
+	if fmt.Sprint(want) != fmt.Sprint(scan.Spec) {
 		t.Error("the table compiled from lex.lex is not the table this package is reading with; run go generate")
 	}
 }
@@ -145,19 +145,19 @@ func TestTheCheckedInTableIsCurrent(t *testing.T) {
 	}
 
 	defer f.Close()
-	got, err := lexgen.Parse(f, "lex.lex")
+	got, err := gen.Parse(f, "lex.lex")
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	flat, err := lexgen.Expand(got)
+	flat, err := gen.Expand(got)
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	ms, dead, err := lexgen.Build(flat)
+	ms, dead, err := gen.Build(flat)
 
 	if err != nil {
 		t.Fatal(err)
@@ -167,29 +167,29 @@ func TestTheCheckedInTableIsCurrent(t *testing.T) {
 		t.Fatalf("dead rules in lex.lex: %v", dead)
 	}
 
-	want, bad := lexgen.Spec(flat, ms)
+	want, bad := gen.Spec(flat, ms)
 
 	if len(bad) != 0 {
 		t.Fatalf("%v", bad)
 	}
 
-	if got := strings.Join(lexlex.Spec.Tokens, " "); got != strings.Join(want.Tokens, " ") {
+	if got := strings.Join(scan.Spec.Tokens, " "); got != strings.Join(want.Tokens, " ") {
 		t.Errorf("tokens differ; run go generate\n got %s\nwant %s", got, strings.Join(want.Tokens, " "))
 	}
 
-	if len(lexlex.Spec.Ranges) != len(want.Ranges) {
+	if len(scan.Spec.Ranges) != len(want.Ranges) {
 		t.Fatalf("the table has %d ranges and the source compiles to %d; run go generate",
-			len(lexlex.Spec.Ranges), len(want.Ranges))
+			len(scan.Spec.Ranges), len(want.Ranges))
 	}
 
-	for i, r := range lexlex.Spec.Ranges {
+	for i, r := range scan.Spec.Ranges {
 		if r != want.Ranges[i] {
 			t.Fatalf("range %d is %v and should be %v; run go generate", i, r, want.Ranges[i])
 		}
 	}
 
-	if len(lexlex.Spec.Scopes) != len(want.Scopes) {
+	if len(scan.Spec.Scopes) != len(want.Scopes) {
 		t.Fatalf("the table has %d scopes and the source compiles to %d; run go generate",
-			len(lexlex.Spec.Scopes), len(want.Scopes))
+			len(scan.Spec.Scopes), len(want.Scopes))
 	}
 }

@@ -2,10 +2,10 @@ package main
 
 import (
 	"github.com/cptaffe/automaton/dot"
-	"github.com/cptaffe/automaton/lexgen"
+	"github.com/cptaffe/automaton/lex/gen"
 )
 
-func shapeOf(f *lexgen.Flat) []byte {
+func shapeOf(f *gen.Flat) []byte {
 	var rs []dot.Rule
 
 	for i, s := range f.Scopes {

@@ -1,4 +1,4 @@
-package lexgen
+package gen
 
 import (
 	"sort"

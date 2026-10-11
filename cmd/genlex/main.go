@@ -9,12 +9,12 @@ import (
 
 	"github.com/cptaffe/automaton"
 	"github.com/cptaffe/automaton/dot"
-	"github.com/cptaffe/automaton/lexgen"
+	"github.com/cptaffe/automaton/lex/gen"
 )
 
 type drawn struct {
-	m     lexgen.Machine
-	names []lexgen.Def
+	m     gen.Machine
+	names []gen.Def
 }
 
 func (d drawn) Named(s automaton.Set) (string, bool) {
@@ -132,17 +132,17 @@ func plural(n int, what string) string {
 
 func main() {
 	out := flag.String("dot", "", "write Graphviz here")
-	gen := flag.String("go", "", "write the table here, as Go")
+	goOut := flag.String("go", "", "write the table here, as Go")
 	pkg := flag.String("package", "", "the package the table belongs to")
 	flag.Parse()
 
-	if err := run(flag.Args(), *out, *gen, *pkg); err != nil {
+	if err := run(flag.Args(), *out, *goOut, *pkg); err != nil {
 		fmt.Fprintln(os.Stderr, "genlex:", err)
 		os.Exit(1)
 	}
 }
 
-func run(paths []string, dir, gen, pkg string) error {
+func run(paths []string, dir, goOut, pkg string) error {
 	for _, path := range paths {
 		f, err := os.Open(path)
 
@@ -150,20 +150,20 @@ func run(paths []string, dir, gen, pkg string) error {
 			return err
 		}
 
-		got, err := lexgen.Parse(f, path)
+		got, err := gen.Parse(f, path)
 		f.Close()
 
 		if err != nil {
 			return err
 		}
 
-		flat, err := lexgen.Expand(got)
+		flat, err := gen.Expand(got)
 
 		if err != nil {
 			return err
 		}
 
-		ms, dead, err := lexgen.Build(flat)
+		ms, dead, err := gen.Build(flat)
 
 		if err != nil {
 			return err
@@ -221,25 +221,25 @@ func run(paths []string, dir, gen, pkg string) error {
 			return fmt.Errorf("%s", d)
 		}
 
-		if gen == "" {
+		if goOut == "" {
 			continue
 		}
 
-		spec, bad := lexgen.Spec(flat, ms)
+		spec, bad := gen.Spec(flat, ms)
 
 		if len(bad) != 0 {
 			return fmt.Errorf("%s", strings.Join(bad, "; "))
 		}
 
-		if err := os.MkdirAll(filepath.Dir(gen), 0o755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(goOut), 0o755); err != nil {
 			return err
 		}
 
-		if err := os.WriteFile(gen, lexgen.Go(flat, spec, pkg), 0o644); err != nil {
+		if err := os.WriteFile(goOut, gen.Go(flat, spec, pkg), 0o644); err != nil {
 			return err
 		}
 
-		fmt.Printf("genlex:   %s\n", gen)
+		fmt.Printf("genlex:   %s\n", goOut)
 	}
 
 	return nil

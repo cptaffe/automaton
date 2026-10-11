@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cptaffe/automaton/lexrun"
+	"github.com/cptaffe/automaton/lex"
 	"github.com/cptaffe/automaton/seq"
 	"github.com/cptaffe/automaton/seq/keypad/internal/scan"
 )
@@ -81,7 +81,7 @@ type pat struct {
 }
 
 type lexer struct {
-	*lexrun.Reader
+	*lex.Reader
 	held    string
 	tok     int
 	tokText string
@@ -93,7 +93,7 @@ type lexer struct {
 }
 
 func Parse(r io.Reader, from string) (*seq.Grammar, error) {
-	in, err := lexrun.Open(scan.Spec, r, "start", from, scan.TokNewline)
+	in, err := lex.Open(scan.Spec, r, "start", from, scan.TokNewline)
 	if err != nil {
 		return nil, err
 	}
@@ -228,7 +228,7 @@ func (l *lexer) unexpected() string {
 	case IDENT:
 		return fmt.Sprintf("%q is a name, and one cannot stand here", l.tokText)
 	}
-	return lexrun.Unexpected(l.tok, l.tokText)
+	return lex.Unexpected(l.tok, l.tokText)
 }
 
 func (l *lexer) comment(text string, bol bool) {

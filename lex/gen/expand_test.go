@@ -1,21 +1,21 @@
-package lexgen_test
+package gen_test
 
 import (
 	"strings"
 	"testing"
 
-	"github.com/cptaffe/automaton/lexgen"
+	"github.com/cptaffe/automaton/lex/gen"
 )
 
-func expand(t *testing.T, src string) *lexgen.Flat {
+func expand(t *testing.T, src string) *gen.Flat {
 	t.Helper()
-	f, err := lexgen.Parse(strings.NewReader(src), "x.lex")
+	f, err := gen.Parse(strings.NewReader(src), "x.lex")
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	got, err := lexgen.Expand(f)
+	got, err := gen.Expand(f)
 
 	if err != nil {
 		t.Fatal(err)
@@ -76,13 +76,13 @@ clause {
 }
 
 func TestATemplateUsedWithNoArgumentIsRefused(t *testing.T) {
-	f, err := lexgen.Parse(strings.NewReader("start {\n  \"a\" -> klass\n}\n\nklass(then) {\n  \"b\" -> then\n}\n"), "x.lex")
+	f, err := gen.Parse(strings.NewReader("start {\n  \"a\" -> klass\n}\n\nklass(then) {\n  \"b\" -> then\n}\n"), "x.lex")
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = lexgen.Expand(f)
+	_, err = gen.Expand(f)
 
 	if err == nil || !strings.Contains(err.Error(), "used without one") {
 		t.Errorf("the refusal is %v", err)
@@ -90,13 +90,13 @@ func TestATemplateUsedWithNoArgumentIsRefused(t *testing.T) {
 }
 
 func TestAPlainScopeGivenAnArgumentIsRefused(t *testing.T) {
-	f, err := lexgen.Parse(strings.NewReader("start {\n  \"a\" -> other(start)\n}\n\nother {\n  \"b\" emit b\n}\n"), "x.lex")
+	f, err := gen.Parse(strings.NewReader("start {\n  \"a\" -> other(start)\n}\n\nother {\n  \"b\" emit b\n}\n"), "x.lex")
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = lexgen.Expand(f)
+	_, err = gen.Expand(f)
 
 	if err == nil || !strings.Contains(err.Error(), "takes no parameter") {
 		t.Errorf("the refusal is %v", err)

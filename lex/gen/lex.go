@@ -1,17 +1,17 @@
-package lexgen
+package gen
 
-//go:generate go run ../cmd/genlex -go ../internal/lexlex/lex.gen.go -package lexlex lex.lex
+//go:generate go run ../../cmd/genlex -go internal/scan/scan.gen.go -package scan lex.lex
 
 import (
 	"io"
 	"strings"
 
-	"github.com/cptaffe/automaton/internal/lexlex"
-	"github.com/cptaffe/automaton/lexrun"
+	"github.com/cptaffe/automaton/lex"
+	"github.com/cptaffe/automaton/lex/gen/internal/scan"
 )
 
 type parser struct {
-	*lexrun.Reader
+	*lex.Reader
 
 	named map[string]Expr
 
@@ -28,7 +28,7 @@ type parser struct {
 }
 
 func newParser(r io.Reader, from string) (*parser, error) {
-	in, err := lexrun.Open(lexlex.Spec, r, "start", from, lexlex.TokNewline)
+	in, err := lex.Open(scan.Spec, r, "start", from, scan.TokNewline)
 
 	if err != nil {
 		return nil, err
@@ -56,31 +56,31 @@ func (p *parser) Lex(v *yySymType) int {
 }
 
 var kinds = map[int]int{
-	lexlex.TokNewline:  NEWLINE,
-	lexlex.TokArrow:    ARROW,
-	lexlex.TokDefine:   DEFINE,
-	lexlex.TokLbrace:   LBRACE,
-	lexlex.TokRbrace:   RBRACE,
-	lexlex.TokOr:       OR,
-	lexlex.TokStar:     STAR,
-	lexlex.TokPlus:     PLUS,
-	lexlex.TokOpt:      OPT,
-	lexlex.TokLparen:   LPAREN,
-	lexlex.TokRparen:   RPAREN,
-	lexlex.TokLbrack:   LBRACK,
-	lexlex.TokRbrack:   RBRACK,
-	lexlex.TokCaret:    CARET,
-	lexlex.TokDash:     DASH,
-	lexlex.TokMinus:    MINUS,
-	lexlex.TokClass:    CLASS,
-	lexlex.TokText:     TEXT,
-	lexlex.TokAnycase:  ANYCASE,
-	lexlex.TokIncludes: INCLUDES,
-	lexlex.TokEmit:     EMIT,
-	lexlex.TokIgnore:   IGNORE,
-	lexlex.TokDo:       DO,
-	lexlex.TokWhen:     WHEN,
-	lexlex.TokName:     NAME,
+	scan.TokNewline:  NEWLINE,
+	scan.TokArrow:    ARROW,
+	scan.TokDefine:   DEFINE,
+	scan.TokLbrace:   LBRACE,
+	scan.TokRbrace:   RBRACE,
+	scan.TokOr:       OR,
+	scan.TokStar:     STAR,
+	scan.TokPlus:     PLUS,
+	scan.TokOpt:      OPT,
+	scan.TokLparen:   LPAREN,
+	scan.TokRparen:   RPAREN,
+	scan.TokLbrack:   LBRACK,
+	scan.TokRbrack:   RBRACK,
+	scan.TokCaret:    CARET,
+	scan.TokDash:     DASH,
+	scan.TokMinus:    MINUS,
+	scan.TokClass:    CLASS,
+	scan.TokText:     TEXT,
+	scan.TokAnycase:  ANYCASE,
+	scan.TokIncludes: INCLUDES,
+	scan.TokEmit:     EMIT,
+	scan.TokIgnore:   IGNORE,
+	scan.TokDo:       DO,
+	scan.TokWhen:     WHEN,
+	scan.TokName:     NAME,
 }
 
 func (p *parser) lex(v *yySymType) (int, string) {
@@ -91,19 +91,19 @@ func (p *parser) lex(v *yySymType) (int, string) {
 	}
 
 	switch tok.Kind {
-	case lexlex.TokNewline:
+	case scan.TokNewline:
 		return NEWLINE, "a new line"
-	case lexlex.TokDefine, lexlex.TokLbrace:
+	case scan.TokDefine, scan.TokLbrace:
 		p.declLine = tok.At.Line
-	case lexlex.TokName:
+	case scan.TokName:
 		v.str = tok.Text
-	case lexlex.TokClass:
+	case scan.TokClass:
 		v.str = strings.TrimSuffix(strings.TrimPrefix(tok.Text, "[:"), ":]")
-	case lexlex.TokText:
+	case scan.TokText:
 		v.str = literalOf(tok.Text)
-	case lexlex.TokAnycase:
+	case scan.TokAnycase:
 		v.str = literalOf(strings.TrimSuffix(tok.Text, "i"))
-	case lexlex.TokUnterminated:
+	case scan.TokUnterminated:
 		if strings.HasSuffix(tok.Text, `\\`) {
 			p.Fail("a backslash with nothing after it")
 		} else {
@@ -159,4 +159,4 @@ func escape(r rune) rune {
 	return r
 }
 
-func (p *parser) unexpected() string { return lexrun.Unexpected(p.tok, p.tokText) }
+func (p *parser) unexpected() string { return lex.Unexpected(p.tok, p.tokText) }

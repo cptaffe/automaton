@@ -1,4 +1,4 @@
-package lexrun
+package lex
 
 import (
 	"bufio"
