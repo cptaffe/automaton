@@ -2,6 +2,7 @@ package seq
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -50,15 +51,12 @@ type wild struct {
 	acc *Accept
 }
 
-type item struct{ e, i int }
-
 type compiler struct {
 	t       *Table
 	g       *Grammar
 	rules   []Rule
 	anys    []Any
 	entries []entry
-	seen    map[string]int
 	sig     []string
 }
 
@@ -102,12 +100,15 @@ func Compile(g *Grammar, a *Alphabet) (*Table, error) {
 	}
 
 	t := &Table{Name: g.Name, Note: g.Note, Alpha: a, Scopes: positions(g), Start: map[string]int{}, Delays: g.Delays}
-	c := &compiler{t: t, g: g, rules: rules, anys: anys, seen: map[string]int{}}
+	c := &compiler{t: t, g: g, rules: rules, anys: anys}
 	c.state("", "")
 	for _, scope := range t.Scopes {
-		c.scope(scope)
+		if err := c.scope(scope); err != nil {
+			return nil, err
+		}
 	}
 	sort.Strings(t.Conflicts)
+	t.Conflicts = slices.Compact(t.Conflicts)
 	return c.minimal(), nil
 }
 
@@ -163,7 +164,7 @@ func (c *compiler) minimal() *Table {
 	return out
 }
 
-func (c *compiler) scope(scope string) {
+func (c *compiler) scope(scope string) error {
 	first := len(c.entries)
 	var wilds []wild
 	wildcard := func(x Any, when Cond) {
@@ -193,101 +194,89 @@ func (c *compiler) scope(scope string) {
 		}
 	}
 
-	var items []item
-	for e := first; e < len(c.entries); e++ {
-		items = append(items, item{e, 0})
-	}
-	c.t.Start[scope] = c.add(scope, items, wilds)
+	start, err := c.build(scope, c.entries[first:], first, wilds)
+	c.t.Start[scope] = start
+	return err
 }
 
-func (c *compiler) add(scope string, items []item, wilds []wild) int {
-	sort.Slice(items, func(x, y int) bool {
-		if items[x].e != items[y].e {
-			return items[x].e < items[y].e
-		}
-		return items[x].i < items[y].i
-	})
-	key := scope + fmt.Sprint(items)
-	if s, ok := c.seen[key]; ok {
-		return s
-	}
+func (c *compiler) build(scope string, entries []entry, first int, wilds []wild) (int, error) {
 	t := c.t
-	s := c.state(scope, signature(items, wilds, c.entries))
-	c.seen[key] = s
+	rules := make([]automaton.Rule[Sym], len(entries))
+	for i, e := range entries {
+		var es []automaton.Expr[Sym]
+		for _, el := range e.rule.Elems {
+			x := automaton.Lit(el.set())
+			if el.Many {
+				x = automaton.Plus(x)
+			}
+			es = append(es, x)
+		}
+		rules[i] = automaton.Rule[Sym]{Expr: automaton.Cat(es...), Name: e.rule.Pattern}
+	}
+	every := automaton.Span(Sym(1), Sym(t.Alpha.Size()))
+	d, err := automaton.BuildWith(rules, automaton.Partition(append(automaton.Sets(rules), every)))
+	if err != nil {
+		return 0, fmt.Errorf("%s: %s: %w", c.g.Name, scope, err)
+	}
 
-	c.finish(s, items)
-	for _, w := range wilds {
-		t.Any[s][w.key] = append(t.Any[s][w.key], w.acc)
-	}
-	for sym := Sym(1); int(sym) <= t.Alpha.Size(); sym++ {
-		var next []item
-		for _, it := range items {
-			r := c.entries[it.e].rule
-			if it.i >= len(r.Elems) || !r.Elems[it.i].has(sym) {
-				continue
-			}
-			if r.Elems[it.i].Many {
-				next = append(next, it)
-			}
-			next = append(next, item{it.e, it.i + 1})
+	base := len(t.Next) - 1
+	at := func(s automaton.State) int {
+		if s == automaton.NoState {
+			return 0
 		}
-		if len(next) > 0 {
-			t.Next[s][sym] = c.add(scope, unique(next), wilds)
+		return base + int(s)
+	}
+	for s := automaton.State(1); int(s) <= d.States(); s++ {
+		n := c.state(scope, "")
+		for sym := Sym(1); int(sym) <= t.Alpha.Size(); sym++ {
+			t.Next[n][sym] = at(d.Step(s, sym))
 		}
+		for _, w := range wilds {
+			t.Any[n][w.key] = append(t.Any[n][w.key], w.acc)
+		}
+		done, going := shift(d.Done(s), first), shift(d.Going(s), first)
+		c.finish(n, done, going)
+		c.sig[n] = signature(done, going, wilds)
 	}
-	if settle := t.Settle[s]; settle != 0 && t.Next[s][settle] != 0 {
-		c.conflict(c.entries[items[0].e].rule.Line, "%s settles here and a rule reads %s next -- which is meant", t.Alpha.Name(settle), t.Alpha.Name(settle))
-	}
-	return s
+	return at(d.Start()), nil
 }
 
-func unique(items []item) []item {
-	seen := map[item]bool{}
-	out := items[:0]
-	for _, it := range items {
-		if !seen[it] {
-			seen[it] = true
-			out = append(out, it)
-		}
+func shift(ms []automaton.Match, first int) []int {
+	out := make([]int, len(ms))
+	for i, m := range ms {
+		out[i] = first + int(m) - 1
 	}
 	return out
 }
 
-func (c *compiler) finish(s int, items []item) {
+func (c *compiler) finish(s int, done, going []int) {
 	t := c.t
-	going := map[string][]string{}
-	anyGoing := false
-	for _, it := range items {
-		if e := c.entries[it.e]; it.i < len(e.rule.Elems) {
-			t.Live[s] = append(t.Live[s], e.when)
-			going[e.origin] = append(going[e.origin], e.rule.Pattern)
-			anyGoing = true
-		}
+	live := map[string][]string{}
+	for _, e := range going {
+		t.Live[s] = append(t.Live[s], c.entries[e].when)
+		live[c.entries[e].origin] = append(live[c.entries[e].origin], c.entries[e].rule.Pattern)
 	}
-	done := map[string]*Accept{}
-	for _, it := range items {
-		e := c.entries[it.e]
-		if it.i < len(e.rule.Elems) {
-			continue
-		}
+	finished := map[string]*Accept{}
+	for _, i := range done {
+		e := c.entries[i]
 		acc := &Accept{Action: e.rule.Action, Goto: e.rule.Goto, When: e.when,
 			Pattern: e.rule.Pattern, Line: e.rule.Line, Operand: operand(e.rule)}
-		if was, ok := done[e.origin]; ok {
+		if was, ok := finished[e.origin]; ok {
 			c.conflict(acc.Line, "%q and %q both finish here -- two rules, one key sequence", was.Pattern, acc.Pattern)
 			continue
 		}
-		done[e.origin] = acc
+		finished[e.origin] = acc
 		t.Accept[s] = append(t.Accept[s], acc)
-		if !anyGoing {
+		if len(going) == 0 {
 			continue
 		}
 		name, ok := c.g.Settles[e.rule.Scope]
-		if !ok && len(going[e.origin]) == 0 {
+		if !ok && len(live[e.origin]) == 0 {
 			continue
 		}
 		if !ok {
 			c.conflict(acc.Line, "%q is complete, and %s can still follow -- %s has no %%settles to say which was meant",
-				acc.Pattern, strings.Join(going[e.origin], ", "), e.rule.Scope)
+				acc.Pattern, strings.Join(live[e.origin], ", "), e.rule.Scope)
 			continue
 		}
 		switch sym := t.Alpha.Of(name); t.Settle[s] {
@@ -297,6 +286,9 @@ func (c *compiler) finish(s int, items []item) {
 		default:
 			c.conflict(acc.Line, "%q settles on %s, and another rule here on %s", acc.Pattern, name, t.Alpha.Name(t.Settle[s]))
 		}
+	}
+	if settle := t.Settle[s]; settle != 0 && t.Next[s][settle] != 0 {
+		c.conflict(t.Accept[s][0].Line, "%s settles here and a rule reads %s next -- which is meant", t.Alpha.Name(settle), t.Alpha.Name(settle))
 	}
 }
 
@@ -340,18 +332,11 @@ func operand(r Rule) *Slice {
 	return o
 }
 
-func signature(items []item, wilds []wild, entries []entry) string {
+func signature(done, going []int, wilds []wild) string {
 	var b strings.Builder
-	seen := map[string]bool{}
-	for _, it := range items {
-		k := fmt.Sprintf("%d:%t ", it.e, it.i >= len(entries[it.e].rule.Elems))
-		if !seen[k] {
-			seen[k] = true
-			b.WriteString(k)
-		}
-	}
+	fmt.Fprint(&b, done, going)
 	for _, w := range wilds {
-		fmt.Fprintf(&b, "%p ", w.acc)
+		fmt.Fprintf(&b, " %p", w.acc)
 	}
 	return b.String()
 }

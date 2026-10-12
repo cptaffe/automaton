@@ -21,7 +21,7 @@ type parser struct {
 	*lex.Reader
 
 	bare  bool
-	named map[string]automaton.Expr
+	named map[string]automaton.Expr[rune]
 
 	given map[string]string
 	order []string

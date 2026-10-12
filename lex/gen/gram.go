@@ -9,8 +9,8 @@ type yySymType struct {
 	yys  int
 	word word
 	str  string
-	set  automaton.Set
-	expr automaton.Expr
+	set  automaton.Set[rune]
+	expr automaton.Expr[rune]
 	rule Rule
 	acts Acts
 }
@@ -657,7 +657,7 @@ yydefault:
 	case 40:
 		yyDollar = yyS[yypt-4 : yypt+1]
 		{
-			yyVAL.set = yyDollar[3].set.Negate()
+			yyVAL.set = yylex.(*parser).negate(yyDollar[3].set)
 		}
 	case 41:
 		yyDollar = yyS[yypt-1 : yypt+1]

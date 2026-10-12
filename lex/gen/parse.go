@@ -24,8 +24,8 @@ func table(name string) (*unicode.RangeTable, bool) {
 	return nil, false
 }
 
-func predefined(bare bool) map[string]automaton.Expr {
-	out := map[string]automaton.Expr{"any": automaton.Lit(automaton.Span(0, utf8.MaxRune))}
+func predefined(bare bool) map[string]automaton.Expr[rune] {
+	out := map[string]automaton.Expr[rune]{"any": automaton.Lit(automaton.Span(0, utf8.MaxRune))}
 
 	if bare {
 		return out
@@ -52,7 +52,7 @@ func given(bare bool) map[string]string {
 	return out
 }
 
-func (p *parser) define(w word, e automaton.Expr) {
+func (p *parser) define(w word, e automaton.Expr[rune]) {
 	name := w.text
 
 	if was := p.given[name]; was != "" {
@@ -89,7 +89,7 @@ func (p *parser) define(w word, e automaton.Expr) {
 	p.file.Defs = append(p.file.Defs, Def{Name: name, Expr: e})
 }
 
-func (p *parser) use(w word) automaton.Expr {
+func (p *parser) use(w word) automaton.Expr[rune] {
 	name := w.text
 
 	if e, ok := p.named[name]; ok {
@@ -106,7 +106,7 @@ func (p *parser) use(w word) automaton.Expr {
 		p.FailAt(w.line, "%s is not defined yet; there is %s", name, known(p.bare))
 	}
 
-	return automaton.Empty()
+	return automaton.Empty[rune]()
 }
 
 func (p *parser) scope(w word, param string) {
@@ -155,8 +155,8 @@ func (p *parser) rule(r Rule) {
 	p.file.Rules = append(p.file.Rules, r)
 }
 
-func (p *parser) text(s string) automaton.Expr {
-	var e []automaton.Expr
+func (p *parser) text(s string) automaton.Expr[rune] {
+	var e []automaton.Expr[rune]
 
 	for _, r := range s {
 		e = append(e, automaton.Lit(automaton.One(r)))
@@ -165,13 +165,13 @@ func (p *parser) text(s string) automaton.Expr {
 	if len(e) == 0 {
 		p.FailAt(p.Line(), "an empty literal matches nothing, so it would never advance")
 
-		return automaton.Empty()
+		return automaton.Empty[rune]()
 	}
 
 	return automaton.Cat(e...)
 }
 
-func (p *parser) without(a, b automaton.Expr) automaton.Expr {
+func (p *parser) without(a, b automaton.Expr[rune]) automaton.Expr[rune] {
 	x, ok := a.Single()
 
 	if !ok {
@@ -199,8 +199,8 @@ func (p *parser) without(a, b automaton.Expr) automaton.Expr {
 	return automaton.Lit(got)
 }
 
-func (p *parser) anycase(s string) automaton.Expr {
-	var e []automaton.Expr
+func (p *parser) anycase(s string) automaton.Expr[rune] {
+	var e []automaton.Expr[rune]
 
 	for _, r := range s {
 		e = append(e, automaton.Lit(automaton.Text(string(unicode.ToLower(r))+string(unicode.ToUpper(r)))))
@@ -209,39 +209,39 @@ func (p *parser) anycase(s string) automaton.Expr {
 	if len(e) == 0 {
 		p.FailAt(p.Line(), "an empty literal matches nothing, so it would never advance")
 
-		return automaton.Empty()
+		return automaton.Empty[rune]()
 	}
 
 	return automaton.Cat(e...)
 }
 
-func (p *parser) runes(s string) automaton.Set { return automaton.Text(s) }
+func (p *parser) runes(s string) automaton.Set[rune] { return automaton.Text(s) }
 
-func (p *parser) span(lo, hi string) automaton.Set {
+func (p *parser) span(lo, hi string) automaton.Set[rune] {
 	a, b := []rune(lo), []rune(hi)
 
 	if len(a) != 1 || len(b) != 1 {
 		p.FailAt(p.Line(), "a range runs between one rune and one rune, not %q and %q", lo, hi)
 
-		return automaton.Set{}
+		return automaton.Set[rune]{}
 	}
 
 	if a[0] > b[0] {
 		p.FailAt(p.Line(), "the range %q to %q runs backwards", lo, hi)
 
-		return automaton.Set{}
+		return automaton.Set[rune]{}
 	}
 
 	return automaton.Span(a[0], b[0])
 }
 
-func (p *parser) category(name string) automaton.Set {
+func (p *parser) category(name string) automaton.Set[rune] {
 	t, ok := table(name)
 
 	if !ok {
 		p.FailAt(p.Line(), "%s is not a unicode category, script or property", name)
 
-		return automaton.Set{}
+		return automaton.Set[rune]{}
 	}
 
 	return automaton.Category(t)
@@ -302,4 +302,8 @@ func parse(r io.Reader, from string, bare bool) (*File, error) {
 	}
 
 	return p.file, nil
+}
+
+func (p *parser) negate(s automaton.Set[rune]) automaton.Set[rune] {
+	return automaton.Span[rune](0, utf8.MaxRune).Without(s)
 }

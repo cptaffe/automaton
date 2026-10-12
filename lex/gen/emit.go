@@ -95,7 +95,7 @@ func numbered(f *Flat, of func(FlatActs) string) ([]string, map[string]int) {
 	return out, at
 }
 
-func ranges(c *automaton.Classes) []lex.Range {
+func ranges(c *automaton.Classes[rune]) []lex.Range {
 	var out []lex.Range
 
 	for i := 1; i <= c.Len(); i++ {

@@ -8,7 +8,7 @@ import (
 )
 
 func TestTheTableHasNoEmptyTransitions(t *testing.T) {
-	d, err := automaton.Build([]automaton.Rule{
+	d, err := automaton.Build([]automaton.Rule[rune]{
 		{Name: "word", Expr: automaton.Star(automaton.Alt(
 			automaton.Lit(automaton.Span('a', 'b')),
 			automaton.Lit(automaton.Span('0', '9')),

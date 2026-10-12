@@ -1,22 +1,43 @@
 package automaton
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 	"unicode"
-	"unicode/utf8"
+	"unsafe"
 )
 
-type Range struct {
-	Lo, Hi rune
+type Symbol interface {
+	~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr
 }
 
-type Set struct {
-	r []Range
+func top[S Symbol]() S {
+	var z S
+	if ^z > z {
+		return ^z
+	}
+	return S(^uint64(0) >> (65 - 8*unsafe.Sizeof(z)))
 }
 
-func Of(rs ...Range) Set {
-	out := make([]Range, 0, len(rs))
+func bottom[S Symbol]() S {
+	var z S
+	if ^z > z {
+		return 0
+	}
+	return -top[S]() - 1
+}
+
+type Range[S Symbol] struct {
+	Lo, Hi S
+}
+
+type Set[S Symbol] struct {
+	r []Range[S]
+}
+
+func Of[S Symbol](rs ...Range[S]) Set[S] {
+	out := make([]Range[S], 0, len(rs))
 
 	for _, x := range rs {
 		if x.Lo <= x.Hi {
@@ -32,13 +53,11 @@ func Of(rs ...Range) Set {
 		return out[i].Hi < out[j].Hi
 	})
 
-	var norm []Range
+	var norm []Range[S]
 
 	for _, x := range out {
-		if n := len(norm); n > 0 && x.Lo <= norm[n-1].Hi+1 {
-			if x.Hi > norm[n-1].Hi {
-				norm[n-1].Hi = x.Hi
-			}
+		if n := len(norm); n > 0 && (x.Lo <= norm[n-1].Hi || norm[n-1].Hi != top[S]() && x.Lo == norm[n-1].Hi+1) {
+			norm[n-1].Hi = max(norm[n-1].Hi, x.Hi)
 
 			continue
 		}
@@ -46,86 +65,84 @@ func Of(rs ...Range) Set {
 		norm = append(norm, x)
 	}
 
-	return Set{r: norm}
+	return Set[S]{r: norm}
 }
 
-func One(r rune) Set { return Of(Range{r, r}) }
+func One[S Symbol](x S) Set[S] { return Of(Range[S]{x, x}) }
 
-func Span(lo, hi rune) Set { return Of(Range{lo, hi}) }
+func Span[S Symbol](lo, hi S) Set[S] { return Of(Range[S]{lo, hi}) }
 
-func Text(s string) Set {
-	var rs []Range
+func All[S Symbol]() Set[S] { return Span(bottom[S](), top[S]()) }
+
+func Text(s string) Set[rune] {
+	var rs []Range[rune]
 
 	for _, r := range s {
-		rs = append(rs, Range{r, r})
+		rs = append(rs, Range[rune]{r, r})
 	}
 
 	return Of(rs...)
 }
 
-func Category(t *unicode.RangeTable) Set {
-	var rs []Range
+func Category(t *unicode.RangeTable) Set[rune] {
+	var rs []Range[rune]
 
-	for _, x := range t.R16 {
-		if x.Stride != 1 {
-			for r := rune(x.Lo); r <= rune(x.Hi); r += rune(x.Stride) {
-				rs = append(rs, Range{r, r})
-			}
+	add := func(lo, hi, stride rune) {
+		if stride == 1 {
+			rs = append(rs, Range[rune]{lo, hi})
 
-			continue
+			return
 		}
 
-		rs = append(rs, Range{rune(x.Lo), rune(x.Hi)})
+		for r := lo; r <= hi; r += stride {
+			rs = append(rs, Range[rune]{r, r})
+		}
+	}
+
+	for _, x := range t.R16 {
+		add(rune(x.Lo), rune(x.Hi), rune(x.Stride))
 	}
 
 	for _, x := range t.R32 {
-		if x.Stride != 1 {
-			for r := rune(x.Lo); r <= rune(x.Hi); r += rune(x.Stride) {
-				rs = append(rs, Range{r, r})
-			}
-
-			continue
-		}
-
-		rs = append(rs, Range{rune(x.Lo), rune(x.Hi)})
+		add(rune(x.Lo), rune(x.Hi), rune(x.Stride))
 	}
 
 	return Of(rs...)
 }
 
-func (s Set) Ranges() []Range { return append([]Range(nil), s.r...) }
+func (s Set[S]) Ranges() []Range[S] { return append([]Range[S](nil), s.r...) }
 
-func (s Set) Empty() bool { return len(s.r) == 0 }
+func (s Set[S]) Empty() bool { return len(s.r) == 0 }
 
-func (s Set) Has(r rune) bool {
-	at := sort.Search(len(s.r), func(i int) bool { return s.r[i].Hi >= r })
+func (s Set[S]) Has(x S) bool {
+	at := sort.Search(len(s.r), func(i int) bool { return s.r[i].Hi >= x })
 
-	return at < len(s.r) && s.r[at].Lo <= r
+	return at < len(s.r) && s.r[at].Lo <= x
 }
 
-func (s Set) Size() int {
-	n := 0
+func (s Set[S]) Size() uint64 {
+	var n uint64
 
 	for _, x := range s.r {
-		n += int(x.Hi-x.Lo) + 1
+		n += uint64(x.Hi) - uint64(x.Lo) + 1
 	}
 
 	return n
 }
 
-func (s Set) Union(t Set) Set {
-	return Of(append(append([]Range(nil), s.r...), t.r...)...)
+func (s Set[S]) Union(t Set[S]) Set[S] {
+	return Of(append(append([]Range[S](nil), s.r...), t.r...)...)
 }
 
-func (s Set) Intersect(t Set) Set {
-	var out []Range
+func (s Set[S]) Intersect(t Set[S]) Set[S] {
+	var out []Range[S]
 	i, j := 0, 0
 
 	for i < len(s.r) && j < len(t.r) {
 		lo, hi := max(s.r[i].Lo, t.r[j].Lo), min(s.r[i].Hi, t.r[j].Hi)
 
 		if lo <= hi {
-			out = append(out, Range{lo, hi})
+			out = append(out, Range[S]{lo, hi})
 		}
 
 		if s.r[i].Hi < t.r[j].Hi {
@@ -140,30 +157,34 @@ func (s Set) Intersect(t Set) Set {
 	return Of(out...)
 }
 
-func (s Set) Without(t Set) Set { return s.Intersect(t.Negate()) }
+func (s Set[S]) Without(t Set[S]) Set[S] { return s.Intersect(t.Negate()) }
 
-func (s Set) Negate() Set {
-	var out []Range
-	at := rune(0)
+func (s Set[S]) Negate() Set[S] {
+	var out []Range[S]
+	at, open := bottom[S](), true
 
 	for _, x := range s.r {
 		if x.Lo > at {
-			out = append(out, Range{at, x.Lo - 1})
+			out = append(out, Range[S]{at, x.Lo - 1})
 		}
 
-		if x.Hi+1 > at {
-			at = x.Hi + 1
+		if x.Hi == top[S]() {
+			open = false
+
+			break
 		}
+
+		at = x.Hi + 1
 	}
 
-	if at <= utf8.MaxRune {
-		out = append(out, Range{at, utf8.MaxRune})
+	if open {
+		out = append(out, Range[S]{at, top[S]()})
 	}
 
 	return Of(out...)
 }
 
-func (s Set) Equal(t Set) bool {
+func (s Set[S]) Equal(t Set[S]) bool {
 	if len(s.r) != len(t.r) {
 		return false
 	}
@@ -177,28 +198,42 @@ func (s Set) Equal(t Set) bool {
 	return true
 }
 
-func (s Set) String() string {
+func (s Set[S]) String() string {
 	if s.Empty() {
 		return "nothing"
 	}
 
 	var b strings.Builder
 
-	for _, x := range s.r {
+	for i, x := range s.r {
+		_, runes := any(x.Lo).(rune)
+
+		if i > 0 && !runes {
+			b.WriteByte(' ')
+		}
+
 		switch {
 		case x.Lo == x.Hi:
 			b.WriteString(show(x.Lo))
-		case x.Hi == x.Lo+1:
+		case runes && x.Hi == x.Lo+1:
 			b.WriteString(show(x.Lo) + show(x.Hi))
-		default:
+		case runes:
 			b.WriteString(show(x.Lo) + "-" + show(x.Hi))
+		default:
+			b.WriteString(show(x.Lo) + ".." + show(x.Hi))
 		}
 	}
 
 	return b.String()
 }
 
-func show(r rune) string {
+func show[S Symbol](x S) string {
+	r, ok := any(x).(rune)
+
+	if !ok {
+		return fmt.Sprint(x)
+	}
+
 	switch r {
 	case '\n':
 		return `\n`

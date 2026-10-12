@@ -17,23 +17,29 @@ const (
 	NoMatch Match = 0
 )
 
-type Classes struct {
-	parts []Set
-	by    []Range
+type Classes[S Symbol] struct {
+	parts []Set[S]
+	by    []Range[S]
 	at    []Class
 }
 
-func Partition(sets []Set) *Classes {
-	cuts := map[rune]bool{}
+func Partition[S Symbol](sets []Set[S]) *Classes[S] {
+	cuts := map[S]bool{}
+	reachesTop := false
 
 	for _, s := range sets {
-		for _, x := range s.Ranges() {
+		for _, x := range s.r {
 			cuts[x.Lo] = true
-			cuts[x.Hi+1] = true
+
+			if x.Hi == top[S]() {
+				reachesTop = true
+			} else {
+				cuts[x.Hi+1] = true
+			}
 		}
 	}
 
-	edges := make([]rune, 0, len(cuts))
+	edges := make([]S, 0, len(cuts))
 
 	for r := range cuts {
 		edges = append(edges, r)
@@ -42,16 +48,21 @@ func Partition(sets []Set) *Classes {
 	sort.Slice(edges, func(i, j int) bool { return edges[i] < edges[j] })
 
 	type atom struct {
-		Range
+		Range[S]
 		sig string
 	}
 
 	var atoms []atom
 
-	for i := 0; i+1 <= len(edges)-1; i++ {
-		a := atom{Range: Range{edges[i], edges[i+1] - 1}}
+	for i := range edges {
+		var a atom
 
-		if a.Lo > a.Hi {
+		switch {
+		case i+1 < len(edges):
+			a.Range = Range[S]{edges[i], edges[i+1] - 1}
+		case reachesTop:
+			a.Range = Range[S]{edges[i], top[S]()}
+		default:
 			continue
 		}
 
@@ -67,11 +78,11 @@ func Partition(sets []Set) *Classes {
 		atoms = append(atoms, a)
 	}
 
-	c := &Classes{}
+	c := &Classes[S]{}
 	seen := map[string]int{}
 	none := string(make([]byte, len(sets)))
 
-	var held [][]Range
+	var held [][]Range[S]
 
 	for _, a := range atoms {
 		if a.sig == none {
@@ -89,7 +100,7 @@ func Partition(sets []Set) *Classes {
 		held[at] = append(held[at], a.Range)
 	}
 
-	c.parts = []Set{{}}
+	c.parts = []Set[S]{{}}
 
 	for _, rs := range held {
 		c.parts = append(c.parts, Of(rs...))
@@ -109,7 +120,7 @@ func Partition(sets []Set) *Classes {
 	}
 
 	sort.Slice(order, func(i, j int) bool { return c.by[order[i]].Lo < c.by[order[j]].Lo })
-	by, at := make([]Range, len(order)), make([]Class, len(order))
+	by, at := make([]Range[S], len(order)), make([]Class, len(order))
 
 	for i, o := range order {
 		by[i], at[i] = c.by[o], c.at[o]
@@ -120,21 +131,21 @@ func Partition(sets []Set) *Classes {
 	return c
 }
 
-func (c *Classes) Len() int { return len(c.parts) - 1 }
+func (c *Classes[S]) Len() int { return len(c.parts) - 1 }
 
-func (c *Classes) Part(at Class) Set { return c.parts[at] }
+func (c *Classes[S]) Part(at Class) Set[S] { return c.parts[at] }
 
-func (c *Classes) Of(r rune) Class {
-	at := sort.Search(len(c.by), func(i int) bool { return c.by[i].Hi >= r })
+func (c *Classes[S]) Of(x S) Class {
+	at := sort.Search(len(c.by), func(i int) bool { return c.by[i].Hi >= x })
 
-	if at < len(c.by) && c.by[at].Lo <= r {
+	if at < len(c.by) && c.by[at].Lo <= x {
 		return c.at[at]
 	}
 
 	return NoClass
 }
 
-func (c *Classes) Covers(s Set) []Class {
+func (c *Classes[S]) Covers(s Set[S]) []Class {
 	var out []Class
 
 	for i := 1; i < len(c.parts); i++ {
@@ -146,9 +157,9 @@ func (c *Classes) Covers(s Set) []Class {
 	return out
 }
 
-func (c *Classes) refine(sets []Set) error {
+func (c *Classes[S]) refine(sets []Set[S]) error {
 	for _, set := range sets {
-		var got Set
+		var got Set[S]
 
 		for _, at := range c.Covers(set) {
 			got = got.Union(c.parts[at])

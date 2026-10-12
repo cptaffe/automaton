@@ -80,7 +80,7 @@ func Reachable(next [][]int, eq []int, starts ...int) []int {
 	return out
 }
 
-func (d *DFA) Minimise() *DFA {
+func (d *DFA[S]) Minimise() *DFA[S] {
 	next := make([][]int, len(d.next))
 	sig := make([]string, len(d.next))
 	for s, row := range d.next {
@@ -96,7 +96,8 @@ func (d *DFA) Minimise() *DFA {
 	for _, t := range to {
 		n = max(n, t)
 	}
-	out := &DFA{classes: d.classes, start: State(to[d.start]), next: make([][]State, n+1), accept: make([]Match, n+1)}
+	out := &DFA[S]{classes: d.classes, start: State(to[d.start]), next: make([][]State, n+1), accept: make([]Match, n+1),
+		done: make([][]Match, n+1), going: make([][]Match, n+1)}
 	for s := range out.next {
 		out.next[s] = make([]State, d.classes.Len()+1)
 	}
@@ -108,6 +109,22 @@ func (d *DFA) Minimise() *DFA {
 			out.next[to[s]][c] = State(to[t])
 		}
 		out.accept[to[s]] = d.accept[s]
+		out.done[to[s]] = union(out.done[to[s]], d.done[s])
+		out.going[to[s]] = union(out.going[to[s]], d.going[s])
 	}
 	return out
+}
+
+func union(a, b []Match) []Match {
+	in := map[Match]bool{}
+
+	for _, m := range a {
+		in[m] = true
+	}
+
+	for _, m := range b {
+		in[m] = true
+	}
+
+	return sorted(in)
 }

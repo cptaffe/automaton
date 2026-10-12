@@ -1,32 +1,35 @@
 package automaton
 
-type edge struct {
-	set Set
+type edge[S Symbol] struct {
+	set Set[S]
 	to  int
 	eps bool
 }
 
-type nfa struct {
-	out    [][]edge
+type nfa[S Symbol] struct {
+	out    [][]edge[S]
 	accept []Match
+	owner  []Match
+	rule   Match
 }
 
-func (n *nfa) state() int {
+func (n *nfa[S]) state() int {
 	n.out = append(n.out, nil)
 	n.accept = append(n.accept, NoMatch)
+	n.owner = append(n.owner, n.rule)
 
 	return len(n.out) - 1
 }
 
-func (n *nfa) on(from int, s Set, to int) {
-	n.out[from] = append(n.out[from], edge{set: s, to: to})
+func (n *nfa[S]) on(from int, s Set[S], to int) {
+	n.out[from] = append(n.out[from], edge[S]{set: s, to: to})
 }
 
-func (n *nfa) eps(from, to int) {
-	n.out[from] = append(n.out[from], edge{to: to, eps: true})
+func (n *nfa[S]) eps(from, to int) {
+	n.out[from] = append(n.out[from], edge[S]{to: to, eps: true})
 }
 
-func (n *nfa) build(e Expr, from int) int {
+func (n *nfa[S]) build(e Expr[S], from int) int {
 	switch e.kind {
 	case empty:
 		return from
@@ -75,7 +78,7 @@ func (n *nfa) build(e Expr, from int) int {
 	return from
 }
 
-func (n *nfa) closure(of []int) []int {
+func (n *nfa[S]) closure(of []int) []int {
 	seen := make([]bool, len(n.out))
 	todo := append([]int(nil), of...)
 	var out []int
@@ -101,13 +104,13 @@ func (n *nfa) closure(of []int) []int {
 	return out
 }
 
-type NFA struct {
-	n     nfa
+type NFA[S Symbol] struct {
+	n     nfa[S]
 	start int
 	begun bool
 }
 
-func (a *NFA) State() int {
+func (a *NFA[S]) State() int {
 	s := a.n.state()
 
 	if !a.begun {
@@ -117,16 +120,16 @@ func (a *NFA) State() int {
 	return s
 }
 
-func (a *NFA) On(from int, s Set, to int) { a.n.on(from, s, to) }
+func (a *NFA[S]) On(from int, s Set[S], to int) { a.n.on(from, s, to) }
 
-func (a *NFA) Eps(from, to int) { a.n.eps(from, to) }
+func (a *NFA[S]) Eps(from, to int) { a.n.eps(from, to) }
 
-func (a *NFA) Accepts(s int, m Match) { a.n.accept[s] = m }
+func (a *NFA[S]) Accepts(s int, m Match) { a.n.accept[s] = m }
 
-func (a *NFA) Start(s int) { a.start, a.begun = s, true }
+func (a *NFA[S]) Start(s int) { a.start, a.begun = s, true }
 
-func (a *NFA) Sets() []Set {
-	var out []Set
+func (a *NFA[S]) Sets() []Set[S] {
+	var out []Set[S]
 
 	for _, es := range a.n.out {
 		for _, e := range es {
@@ -139,7 +142,7 @@ func (a *NFA) Sets() []Set {
 	return out
 }
 
-func (a *NFA) Determinise(classes *Classes) (*DFA, error) {
+func (a *NFA[S]) Determinise(classes *Classes[S]) (*DFA[S], error) {
 	if err := classes.refine(a.Sets()); err != nil {
 		return nil, err
 	}
@@ -147,4 +150,4 @@ func (a *NFA) Determinise(classes *Classes) (*DFA, error) {
 	return a.n.determinise(a.start, classes), nil
 }
 
-func (a *NFA) DFA() *DFA { return a.n.determinise(a.start, Partition(a.Sets())) }
+func (a *NFA[S]) DFA() *DFA[S] { return a.n.determinise(a.start, Partition(a.Sets())) }

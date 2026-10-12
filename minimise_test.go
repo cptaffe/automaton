@@ -5,8 +5,8 @@ import (
 )
 
 func TestMinimisingDoesNotChangeWhatIsRead(t *testing.T) {
-	lit := func(s string) Expr {
-		var out Expr
+	lit := func(s string) Expr[rune] {
+		var out Expr[rune]
 		first := true
 
 		for _, r := range s {
@@ -22,8 +22,8 @@ func TestMinimisingDoesNotChangeWhatIsRead(t *testing.T) {
 		return out
 	}
 
-	alt := func(ss ...string) Expr {
-		var out Expr
+	alt := func(ss ...string) Expr[rune] {
+		var out Expr[rune]
 
 		for i, s := range ss {
 			if i == 0 {
@@ -40,19 +40,19 @@ func TestMinimisingDoesNotChangeWhatIsRead(t *testing.T) {
 
 	for _, c := range []struct {
 		name  string
-		rules []Rule
+		rules []Rule[rune]
 		runes string
 	}{
 		{
 
 			"punctuators",
-			[]Rule{{Name: "op", Expr: alt("<<=", ">>=", "++", "--", "<<", ">>",
+			[]Rule[rune]{{Name: "op", Expr: alt("<<=", ">>=", "++", "--", "<<", ">>",
 				"<=", ">=", "+", "-", "<", ">", "(", ")", "&", "=")}},
 			"<>+-()&=",
 		},
 		{
 			"words and a prefix of one",
-			[]Rule{
+			[]Rule[rune]{
 				{Name: "kw", Expr: alt("if", "in", "int")},
 				{Name: "id", Expr: Plus(Lit(Span('a', 'z')))},
 			},
@@ -61,7 +61,7 @@ func TestMinimisingDoesNotChangeWhatIsRead(t *testing.T) {
 		{
 
 			"punctuators beside names and keywords",
-			[]Rule{
+			[]Rule[rune]{
 				{Name: "op", Expr: alt("<<=", ">>=", "++", "--", "<<", ">>", "<=", ">=",
 					"==", "!=", "&&", "||", "+=", "-=", "->", "+", "-", "*", "/", "&",
 					"|", "^", "~", "!", "<", ">", "=", "(", ")", "[", "]", "{", "}",
@@ -74,7 +74,7 @@ func TestMinimisingDoesNotChangeWhatIsRead(t *testing.T) {
 		},
 		{
 			"one rule that continues and one that does not",
-			[]Rule{
+			[]Rule[rune]{
 				{Name: "a", Expr: alt("x", "xy")},
 				{Name: "b", Expr: lit("z")},
 			},

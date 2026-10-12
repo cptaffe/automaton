@@ -11,7 +11,7 @@ import (
 	"github.com/cptaffe/automaton"
 )
 
-func same(a, b *automaton.DFA, words []string) (bool, string) {
+func same(a, b *automaton.DFA[int], words []string) (bool, string) {
 	type pair struct{ x, y automaton.State }
 
 	seen := map[pair]bool{}
@@ -30,7 +30,7 @@ func same(a, b *automaton.DFA, words []string) (bool, string) {
 		}
 
 		for i, name := range words {
-			r := rune(i + 1)
+			r := i + 1
 			x, y := a.Step(p.x, r), b.Step(p.y, r)
 
 			if (x == automaton.NoState) != (y == automaton.NoState) {

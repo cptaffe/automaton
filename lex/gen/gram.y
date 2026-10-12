@@ -7,8 +7,8 @@ import "github.com/cptaffe/automaton"
 %union {
 	word word
 	str  string
-	set  automaton.Set
-	expr automaton.Expr
+	set  automaton.Set[rune]
+	expr automaton.Expr[rune]
 	rule Rule
 	acts Acts
 }
@@ -112,7 +112,7 @@ atom:
 
 klass:
 	  LBRACK items RBRACK             { $$ = $2 }
-	| LBRACK CARET items RBRACK       { $$ = $3.Negate() }
+	| LBRACK CARET items RBRACK       { $$ = yylex.(*parser).negate($3) }
 	;
 
 items:

@@ -2,18 +2,19 @@ package draw
 
 import (
 	"fmt"
+	"unicode/utf8"
 
 	"github.com/cptaffe/automaton"
 )
 
 const wide = 24
 
-func label(s automaton.Set) string {
+func label(s automaton.Set[rune]) string {
 	if s.Empty() {
 		return "nothing"
 	}
 	direct, whole := spell(s)
-	not := s.Negate()
+	not := automaton.Span[rune](0, utf8.MaxRune).Without(s)
 	if not.Empty() {
 		return direct
 	}
@@ -30,12 +31,12 @@ func label(s automaton.Set) string {
 	return direct
 }
 
-func spelled(s automaton.Set) string {
+func spelled(s automaton.Set[rune]) string {
 	out, _ := spell(s)
 	return out
 }
 
-func spell(s automaton.Set) (string, bool) {
+func spell(s automaton.Set[rune]) (string, bool) {
 	if whole := s.String(); len(whole) <= wide {
 		return whole, true
 	}

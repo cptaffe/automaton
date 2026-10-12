@@ -8,8 +8,8 @@ import (
 	"github.com/cptaffe/automaton"
 )
 
-func text(s string) automaton.Expr {
-	var e []automaton.Expr
+func text(s string) automaton.Expr[rune] {
+	var e []automaton.Expr[rune]
 
 	for _, r := range s {
 		e = append(e, automaton.Lit(automaton.One(r)))
@@ -18,7 +18,7 @@ func text(s string) automaton.Expr {
 	return automaton.Cat(e...)
 }
 
-func run(d *automaton.DFA, in string) (automaton.Match, int) {
+func run(d *automaton.DFA[rune], in string) (automaton.Match, int) {
 	at, rule, upto := d.Start(), automaton.NoMatch, 0
 
 	if a := d.Accept(at); a != automaton.NoMatch {
@@ -43,7 +43,7 @@ func run(d *automaton.DFA, in string) (automaton.Match, int) {
 }
 
 func TestLongestMatchThenRuleOrder(t *testing.T) {
-	rules := []automaton.Rule{
+	rules := []automaton.Rule[rune]{
 		{Name: "do", Expr: text("do")},
 		{Name: "name", Expr: automaton.Plus(automaton.Lit(automaton.Span('a', 'z')))},
 	}
@@ -73,7 +73,7 @@ func TestLongestMatchThenRuleOrder(t *testing.T) {
 }
 
 func TestItReadsPastTheMatchAndReturns(t *testing.T) {
-	d, err := automaton.Build([]automaton.Rule{
+	d, err := automaton.Build([]automaton.Rule[rune]{
 		{Name: "arrow", Expr: text("->")},
 		{Name: "dash", Expr: text("-")},
 	})
@@ -93,7 +93,7 @@ func TestItReadsPastTheMatchAndReturns(t *testing.T) {
 
 func TestTheOverrunIsUnbounded(t *testing.T) {
 	digits := automaton.Plus(automaton.Lit(automaton.Span('0', '9')))
-	d, err := automaton.Build([]automaton.Rule{
+	d, err := automaton.Build([]automaton.Rule[rune]{
 		{Name: "float", Expr: automaton.Cat(digits, text("."), digits)},
 		{Name: "int", Expr: digits},
 	})
@@ -112,7 +112,7 @@ func TestTheOverrunIsUnbounded(t *testing.T) {
 }
 
 func TestARuleCoveredEverywhereIsReported(t *testing.T) {
-	rules := []automaton.Rule{
+	rules := []automaton.Rule[rune]{
 		{Name: "name", Expr: automaton.Plus(automaton.Lit(automaton.Span('a', 'z')))},
 		{Name: "do", Expr: text("do")},
 	}
@@ -129,7 +129,7 @@ func TestARuleCoveredEverywhereIsReported(t *testing.T) {
 }
 
 func TestALiveRuleIsNotReported(t *testing.T) {
-	rules := []automaton.Rule{
+	rules := []automaton.Rule[rune]{
 		{Name: "do", Expr: text("do")},
 		{Name: "name", Expr: automaton.Plus(automaton.Lit(automaton.Span('a', 'z')))},
 	}
@@ -146,7 +146,7 @@ func TestALiveRuleIsNotReported(t *testing.T) {
 }
 
 func TestARuleThatMatchesNothingIsRefused(t *testing.T) {
-	_, err := automaton.Build([]automaton.Rule{{Name: "nothing", Expr: automaton.Empty()}})
+	_, err := automaton.Build([]automaton.Rule[rune]{{Name: "nothing", Expr: automaton.Empty[rune]()}})
 
 	if err == nil || !strings.Contains(err.Error(), "never advance") {
 		t.Errorf("the refusal is %v", err)
@@ -154,7 +154,7 @@ func TestARuleThatMatchesNothingIsRefused(t *testing.T) {
 }
 
 func TestStarDoesNotDuplicateItsBody(t *testing.T) {
-	d, err := automaton.Build([]automaton.Rule{
+	d, err := automaton.Build([]automaton.Rule[rune]{
 		{Name: "word", Expr: automaton.Plus(automaton.Lit(automaton.Span('a', 'z')))},
 	})
 
@@ -168,7 +168,7 @@ func TestStarDoesNotDuplicateItsBody(t *testing.T) {
 }
 
 func TestMinimisingMergesStatesNothingTellsApart(t *testing.T) {
-	rules := []automaton.Rule{
+	rules := []automaton.Rule[rune]{
 		{Name: "word", Expr: automaton.Alt(text("ab"), text("cb"))},
 	}
 
@@ -201,7 +201,7 @@ func TestMinimisingMergesStatesNothingTellsApart(t *testing.T) {
 }
 
 func TestMinimisingKeepsRulesApart(t *testing.T) {
-	rules := []automaton.Rule{
+	rules := []automaton.Rule[rune]{
 		{Name: "ab", Expr: text("ab")},
 		{Name: "ac", Expr: text("ac")},
 	}
@@ -232,7 +232,7 @@ func TestAUnicodeRuleStaysSmall(t *testing.T) {
 	letter := automaton.Lit(automaton.Category(unicode.L))
 	digit := automaton.Lit(automaton.Category(unicode.Nd))
 
-	d, err := automaton.Build([]automaton.Rule{
+	d, err := automaton.Build([]automaton.Rule[rune]{
 		{Name: "name", Expr: automaton.Cat(letter, automaton.Star(automaton.Alt(letter, digit)))},
 		{Name: "number", Expr: automaton.Plus(digit)},
 	})

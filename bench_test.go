@@ -8,7 +8,7 @@ import (
 )
 
 func BenchmarkPartitionUnicode(b *testing.B) {
-	sets := []automaton.Set{
+	sets := []automaton.Set[rune]{
 		automaton.Category(unicode.L),
 		automaton.Category(unicode.Nd),
 		automaton.Category(unicode.Space),

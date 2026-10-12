@@ -60,7 +60,7 @@ func (d machine) Starts() []dot.Start {
 }
 
 func (d machine) Moves(s int) []dot.Move {
-	by := map[automaton.State]automaton.Set{}
+	by := map[automaton.State]automaton.Set[rune]{}
 	var order []automaton.State
 	c := d.m.DFA.Classes()
 	for k := automaton.Class(1); int(k) <= c.Len(); k++ {
@@ -115,14 +115,14 @@ func (d machine) Leaves(s int) (string, bool) {
 	return r.Acts.Goto, ok && r.Acts.Goto != "" && r.Acts.Goto != d.m.Scope
 }
 
-func (d machine) label(s automaton.Set) string {
+func (d machine) label(s automaton.Set[rune]) string {
 	if got, ok := d.named(s); ok {
 		return got
 	}
 	return label(s)
 }
 
-func (d machine) named(s automaton.Set) (string, bool) {
+func (d machine) named(s automaton.Set[rune]) (string, bool) {
 	best := ""
 	for _, def := range d.names {
 		got, ok := def.Expr.Single()
@@ -146,7 +146,7 @@ func (d machine) named(s automaton.Set) (string, bool) {
 	return best, true
 }
 
-func (d machine) name(s automaton.Set) string {
+func (d machine) name(s automaton.Set[rune]) string {
 	for _, def := range d.names {
 		if got, ok := def.Expr.Single(); ok && got.Equal(s) {
 			return def.Name

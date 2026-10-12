@@ -11,42 +11,42 @@ const (
 	plus
 )
 
-type Expr struct {
+type Expr[S Symbol] struct {
 	kind kind
-	set  Set
-	sub  []Expr
+	set  Set[S]
+	sub  []Expr[S]
 }
 
-func Lit(s Set) Expr { return Expr{kind: lit, set: s} }
+func Lit[S Symbol](s Set[S]) Expr[S] { return Expr[S]{kind: lit, set: s} }
 
-func Empty() Expr { return Expr{} }
+func Empty[S Symbol]() Expr[S] { return Expr[S]{} }
 
-func Cat(e ...Expr) Expr {
+func Cat[S Symbol](e ...Expr[S]) Expr[S] {
 	switch len(e) {
 	case 0:
-		return Empty()
+		return Empty[S]()
 	case 1:
 		return e[0]
 	}
 
-	return Expr{kind: cat, sub: e}
+	return Expr[S]{kind: cat, sub: e}
 }
 
-func Alt(e ...Expr) Expr {
+func Alt[S Symbol](e ...Expr[S]) Expr[S] {
 	switch len(e) {
 	case 0:
-		return Empty()
+		return Empty[S]()
 	case 1:
 		return e[0]
 	}
 
-	var one Set
+	var one Set[S]
 
 	for _, s := range e {
 		got, ok := s.Single()
 
 		if !ok {
-			return Expr{kind: alt, sub: e}
+			return Expr[S]{kind: alt, sub: e}
 		}
 
 		one = one.Union(got)
@@ -55,21 +55,21 @@ func Alt(e ...Expr) Expr {
 	return Lit(one)
 }
 
-func Star(e Expr) Expr { return Expr{kind: star, sub: []Expr{e}} }
+func Star[S Symbol](e Expr[S]) Expr[S] { return Expr[S]{kind: star, sub: []Expr[S]{e}} }
 
-func Plus(e Expr) Expr { return Expr{kind: plus, sub: []Expr{e}} }
+func Plus[S Symbol](e Expr[S]) Expr[S] { return Expr[S]{kind: plus, sub: []Expr[S]{e}} }
 
-func Opt(e Expr) Expr { return Alt(e, Empty()) }
+func Opt[S Symbol](e Expr[S]) Expr[S] { return Alt(e, Empty[S]()) }
 
-func (e Expr) Single() (Set, bool) {
+func (e Expr[S]) Single() (Set[S], bool) {
 	if e.kind == lit {
 		return e.set, true
 	}
 
-	return Set{}, false
+	return Set[S]{}, false
 }
 
-func (e Expr) sets(out []Set) []Set {
+func (e Expr[S]) sets(out []Set[S]) []Set[S] {
 	if e.kind == lit {
 		return append(out, e.set)
 	}

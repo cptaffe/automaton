@@ -1,8 +1,9 @@
 package seq
 
 import (
-	"sort"
 	"time"
+
+	"github.com/cptaffe/automaton"
 )
 
 type Sym int
@@ -56,12 +57,15 @@ type Class struct {
 
 func (c Class) IsEvent() bool { return c.Event != "" }
 
-func (c Class) has(s Sym) bool {
+func (c Class) set() automaton.Set[Sym] {
 	if c.Event != "" {
-		return c.sym == s
+		return automaton.One(c.sym)
 	}
-	i := sort.Search(len(c.Syms), func(i int) bool { return c.Syms[i] >= s })
-	return i < len(c.Syms) && c.Syms[i] == s
+	var rs []automaton.Range[Sym]
+	for _, s := range c.Syms {
+		rs = append(rs, automaton.Range[Sym]{Lo: s, Hi: s})
+	}
+	return automaton.Of(rs...)
 }
 
 func (c Class) wide() bool {

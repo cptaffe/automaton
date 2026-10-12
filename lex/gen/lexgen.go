@@ -37,7 +37,7 @@ func (a Acts) and(b Acts) Acts {
 }
 
 type Rule struct {
-	Expr    automaton.Expr
+	Expr    automaton.Expr[rune]
 	Acts    Acts
 	Include string
 	Scope   string
@@ -53,7 +53,7 @@ type Scope struct {
 
 type Def struct {
 	Name string
-	Expr automaton.Expr
+	Expr automaton.Expr[rune]
 }
 
 type File struct {

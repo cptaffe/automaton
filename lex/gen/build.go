@@ -10,7 +10,7 @@ import (
 
 type Machine struct {
 	Scope string
-	DFA   *automaton.DFA
+	DFA   *automaton.DFA[rune]
 	Rules []FlatRule
 
 	Covered []string
@@ -20,11 +20,11 @@ func Build(f *Flat) ([]Machine, []string, error) {
 	var out []Machine
 	live := map[int]bool{}
 
-	var all []automaton.Rule
+	var all []automaton.Rule[rune]
 
 	for _, s := range f.Scopes {
 		for _, r := range f.Of(s.Name) {
-			all = append(all, automaton.Rule{Expr: r.Expr})
+			all = append(all, automaton.Rule[rune]{Expr: r.Expr})
 		}
 	}
 
@@ -37,10 +37,10 @@ func Build(f *Flat) ([]Machine, []string, error) {
 			return nil, nil, fmt.Errorf("%s:%d: %s has no rules", f.Path, s.Line, s.Name)
 		}
 
-		in := make([]automaton.Rule, len(rules))
+		in := make([]automaton.Rule[rune], len(rules))
 
 		for i, r := range rules {
-			in[i] = automaton.Rule{Expr: r.Expr, Name: label(r)}
+			in[i] = automaton.Rule[rune]{Expr: r.Expr, Name: label(r)}
 		}
 
 		d, err := automaton.BuildWith(in, classes)
@@ -86,7 +86,7 @@ func Build(f *Flat) ([]Machine, []string, error) {
 	return out, dead, nil
 }
 
-func reaches(d *automaton.DFA, rule int) bool {
+func reaches(d *automaton.DFA[rune], rule int) bool {
 	for s := automaton.State(1); int(s) <= d.States(); s++ {
 		if d.Accept(s) == automaton.Match(rule+1) {
 			return true
@@ -96,7 +96,7 @@ func reaches(d *automaton.DFA, rule int) bool {
 	return false
 }
 
-func covers(rules []FlatRule, d *automaton.DFA, rule int) string {
+func covers(rules []FlatRule, d *automaton.DFA[rune], rule int) string {
 	var out []string
 	seen := map[string]bool{}
 

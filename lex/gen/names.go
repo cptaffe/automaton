@@ -25,8 +25,8 @@ func kebab(name string) string {
 	return b.String()
 }
 
-var unicodeClasses = func() map[string]automaton.Set {
-	out := map[string]automaton.Set{}
+var unicodeClasses = func() map[string]automaton.Set[rune] {
+	out := map[string]automaton.Set[rune]{}
 
 	for _, from := range []map[string]*unicode.RangeTable{
 		unicode.Categories, unicode.Scripts, unicode.Properties,
@@ -39,11 +39,11 @@ var unicodeClasses = func() map[string]automaton.Set {
 	return out
 }()
 
-func unicodeClass(name string) (automaton.Set, bool) {
+func unicodeClass(name string) (automaton.Set[rune], bool) {
 	rest, ok := strings.CutPrefix(name, namespace)
 
 	if !ok {
-		return automaton.Set{}, false
+		return automaton.Set[rune]{}, false
 	}
 
 	s, found := unicodeClasses[rest]

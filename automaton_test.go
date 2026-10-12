@@ -9,14 +9,14 @@ import (
 
 func TestASetNormalises(t *testing.T) {
 	for _, c := range []struct {
-		of   automaton.Set
+		of   automaton.Set[rune]
 		want string
 	}{
-		{automaton.Of(automaton.Range{'a', 'c'}, automaton.Range{'b', 'e'}), "a-e"},
-		{automaton.Of(automaton.Range{'a', 'b'}, automaton.Range{'c', 'd'}), "a-d"},
-		{automaton.Of(automaton.Range{'c', 'd'}, automaton.Range{'a', 'a'}), "acd"},
+		{automaton.Of(automaton.Range[rune]{'a', 'c'}, automaton.Range[rune]{'b', 'e'}), "a-e"},
+		{automaton.Of(automaton.Range[rune]{'a', 'b'}, automaton.Range[rune]{'c', 'd'}), "a-d"},
+		{automaton.Of(automaton.Range[rune]{'c', 'd'}, automaton.Range[rune]{'a', 'a'}), "acd"},
 		{automaton.Text("*#0123456789"), "#*0-9"},
-		{automaton.Of(automaton.Range{'z', 'a'}), "nothing"},
+		{automaton.Of(automaton.Range[rune]{'z', 'a'}), "nothing"},
 	} {
 		if got := c.of.String(); got != c.want {
 			t.Errorf("%v is %q; want %q", c.of.Ranges(), got, c.want)
@@ -56,7 +56,7 @@ func TestIntersectAndWithout(t *testing.T) {
 
 func TestThePartitionIsCoarsest(t *testing.T) {
 	letters, digits := automaton.Span('a', 'z'), automaton.Span('0', '9')
-	c := automaton.Partition([]automaton.Set{letters, digits})
+	c := automaton.Partition([]automaton.Set[rune]{letters, digits})
 
 	if c.Len() != 2 {
 		t.Fatalf("letters and digits make %d parts; want 2", c.Len())
@@ -76,7 +76,7 @@ func TestThePartitionIsCoarsest(t *testing.T) {
 }
 
 func TestAnOverlapSplits(t *testing.T) {
-	c := automaton.Partition([]automaton.Set{automaton.Span('a', 'm'), automaton.Span('h', 'z')})
+	c := automaton.Partition([]automaton.Set[rune]{automaton.Span('a', 'm'), automaton.Span('h', 'z')})
 
 	if c.Len() != 3 {
 		t.Fatalf("a-m and h-z make %d parts; want 3 (a-g, h-m, n-z)", c.Len())
@@ -92,7 +92,7 @@ func TestAnOverlapSplits(t *testing.T) {
 }
 
 func TestEverySetIsAUnionOfParts(t *testing.T) {
-	sets := []automaton.Set{
+	sets := []automaton.Set[rune]{
 		automaton.Span('a', 'm'),
 		automaton.Span('h', 'z'),
 		automaton.Text("*#-"),
@@ -101,7 +101,7 @@ func TestEverySetIsAUnionOfParts(t *testing.T) {
 	c := automaton.Partition(sets)
 
 	for _, s := range sets {
-		var built automaton.Set
+		var built automaton.Set[rune]
 
 		for _, at := range c.Covers(s) {
 			part := c.Part(at)
@@ -126,7 +126,7 @@ func TestUnicodeStaysTwoColumns(t *testing.T) {
 		t.Fatalf("unicode letters are %d runes; the table is not loaded", n)
 	}
 
-	c := automaton.Partition([]automaton.Set{letters, automaton.Category(unicode.Nd)})
+	c := automaton.Partition([]automaton.Set[rune]{letters, automaton.Category(unicode.Nd)})
 
 	if c.Len() != 2 {
 		t.Errorf("letters and decimal digits make %d parts; want 2", c.Len())

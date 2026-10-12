@@ -4,8 +4,8 @@ import (
 	"github.com/cptaffe/automaton"
 )
 
-func stackless(ss []state, of map[string]rune) *automaton.DFA {
-	var n automaton.NFA
+func stackless(ss []state, of map[string]int) *automaton.DFA[int] {
+	var n automaton.NFA[int]
 
 	at := map[int]int{}
 

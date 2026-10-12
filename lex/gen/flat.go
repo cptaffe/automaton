@@ -12,7 +12,7 @@ type FlatActs struct {
 }
 
 type FlatRule struct {
-	Expr    automaton.Expr
+	Expr    automaton.Expr[rune]
 	Acts    FlatActs
 	Include string
 	Inlined bool

@@ -8,9 +8,9 @@ import (
 )
 
 type Tokens struct {
-	dfa   *automaton.DFA
+	dfa   *automaton.DFA[int]
 	words []string
-	at    map[string]rune
+	at    map[string]int
 }
 
 func (g *Grammar) Tokens() *Tokens { return tokensOf(g.Rules) }
@@ -22,7 +22,7 @@ func tokensOf(rs []Rule) *Tokens {
 		is[r.Name] = true
 	}
 
-	at := map[string]rune{}
+	at := map[string]int{}
 	var words []string
 
 	for _, r := range rs {
@@ -34,7 +34,7 @@ func tokensOf(rs []Rule) *Tokens {
 
 				if _, seen := at[w]; !seen {
 					words = append(words, w)
-					at[w] = rune(len(words))
+					at[w] = len(words)
 				}
 			}
 		}
@@ -44,7 +44,7 @@ func tokensOf(rs []Rule) *Tokens {
 		return nil
 	}
 
-	var n automaton.NFA
+	var n automaton.NFA[int]
 
 	open := map[string]int{}
 	shut := map[string]int{}
@@ -88,7 +88,7 @@ func tokensOf(rs []Rule) *Tokens {
 	return &Tokens{dfa: d, words: words, at: at}
 }
 
-func (t *Tokens) DFA() *automaton.DFA { return t.dfa }
+func (t *Tokens) DFA() *automaton.DFA[int] { return t.dfa }
 
 func (t *Tokens) Words() []string { return append([]string(nil), t.words...) }
 
@@ -106,8 +106,8 @@ func (t *Tokens) In(c automaton.Class) []string {
 	var out []string
 
 	for _, x := range t.dfa.Classes().Part(c).Ranges() {
-		for r := x.Lo; r <= x.Hi; r++ {
-			out = append(out, t.words[r-1])
+		for w := x.Lo; w <= x.Hi; w++ {
+			out = append(out, t.words[w-1])
 		}
 	}
 
