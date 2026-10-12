@@ -217,3 +217,47 @@ func press(m *seq.Machine, a *seq.Alphabet, key string, env seq.Env) (bool, []*s
 	}
 	return m.Step(s, env)
 }
+
+func TestAnyTakesWhatNoOtherRuleNames(t *testing.T) {
+	r := parse(t, `%delay settle 1s
+
+main:
+	control-x control-s	{ put }
+	control-x any		{ }
+	command-m		-> mode
+
+mode:
+	j			{ down }
+	escape			-> main
+	... any			{ }
+`)
+	m, err := seq.NewMachine(r.Table, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range []struct {
+		key   string
+		taken bool
+		fired string
+	}{
+		{"control-x", true, ""},
+		{"control-s", true, "put"},
+		{"control-x", true, ""},
+		{"j", true, ""},
+		{"command-s", false, ""},
+		{"command-m", true, ""},
+		{"j", true, "down"},
+		{"k", true, ""},
+		{"command-s", true, ""},
+		{"escape", true, ""},
+		{"k", false, ""},
+	} {
+		taken, fired := press(m, r.Table.Alpha, c.key, nil)
+		if taken != c.taken || actions(fired) != c.fired {
+			t.Errorf("%s in %s: took %v and fired %q; want %v and %q", c.key, m.Scope(), taken, actions(fired), c.taken, c.fired)
+		}
+	}
+	if waits := r.Table.Waiting(); len(waits) != 0 {
+		t.Errorf("any reads the delays %v; it reads keys", waits)
+	}
+}

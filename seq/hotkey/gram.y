@@ -21,7 +21,7 @@ import (
 %token NEWLINE COLON ARROW WHEN EQ NE MATCH AND OR NOT LPAREN RPAREN LBRACE RBRACE OPEN CLOSE
 
 %type <pat> keys
-%type <str> action goto_ block body text
+%type <str> goto_ block body text
 %type <cond> when_ expr term factor
 %type <rule> rule
 
@@ -61,17 +61,13 @@ decl:
 	;
 
 rule:
-	  keys action goto_ NEWLINE   { $$ = rule{keys: $1, action: $2, to: $3} }
+	  keys goto_ NEWLINE         { $$ = rule{keys: $1, to: $2} }
+	| keys block goto_ NEWLINE   { $$ = rule{keys: $1, action: $2, block: true, to: $3} }
 	;
 
 keys:
 	  WORD        { $$ = pat{words: []word{$1}, line: $1.line} }
 	| keys WORD   { $$ = pat{words: append($1.words, $2), line: $1.line} }
-	;
-
-action:
-		{ $$ = "" }
-	| block       { $$ = $1 }
 	;
 
 block:

@@ -38,6 +38,7 @@ type pat struct {
 type rule struct {
 	keys   pat
 	action string
+	block  bool
 	to     string
 	at     int
 }
@@ -176,6 +177,10 @@ func (l *lexer) include(to word, when seq.Cond) {
 }
 
 func (l *lexer) delay(line int, name, of string) {
+	if name == "any" {
+		l.FailAt(line, "%%delay any: any is every key, not a delay")
+		return
+	}
 	if l.cur != "" {
 		l.FailAt(line, "%%delay %s belongs above every scope", name)
 		return
@@ -215,7 +220,7 @@ func (l *lexer) rule(r rule) {
 		l.FailAt(r.keys.line, "a rule above every scope; only a ... rule can be there")
 		return
 	}
-	if r.action == "" && r.to == "" {
+	if !r.block && r.to == "" {
 		l.FailAt(r.keys.line, "a rule with keys and nowhere to go")
 		return
 	}
@@ -248,6 +253,9 @@ func (l *lexer) resolve(kb Keyboard) (*seq.Alphabet, error) {
 		errs = append(errs, fmt.Sprintf("%s:%d: %s", l.g.Name, line, fmt.Sprintf(f, a...)))
 	}
 	keyOf := func(w word) (string, bool) {
+		if w.text == "any" {
+			return "", false
+		}
 		if _, ok := l.g.Delays[w.text]; ok {
 			return w.text, true
 		}
@@ -279,6 +287,9 @@ func (l *lexer) resolve(kb Keyboard) (*seq.Alphabet, error) {
 	a := seq.NewAlphabet(kb.chords(), events...)
 
 	class := func(w word) seq.Class {
+		if w.text == "any" {
+			return seq.Class{Any: true, Text: w.text}
+		}
 		k, event := keyOf(w)
 		if event {
 			return seq.Class{Event: k, Text: w.text}

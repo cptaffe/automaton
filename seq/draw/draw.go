@@ -54,9 +54,13 @@ func (m machine) Moves(s int) []dot.Move {
 	for _, syms := range by {
 		slices.Sort(syms)
 	}
+	rest := m.rest(by)
 	out := make([]dot.Move, len(order))
 	for i, to := range order {
 		out[i] = dot.Move{To: to, Label: m.names(by[to])}
+		if to == rest {
+			out[i].Label = "any"
+		}
 	}
 	if st.Settles {
 		out = append(out, dot.Move{To: s, Label: m.name(st.Settle), Dashed: true, Class: "settle"})
@@ -141,4 +145,24 @@ func wrap(s string, width int) string {
 		line += w
 	}
 	return strings.Join(append(lines, line), "\n")
+}
+
+func (m machine) rest(by map[int][]seq.Sym) int {
+	keys, most, rest := 0, 0, 0
+	for to, syms := range by {
+		n := 0
+		for _, s := range syms {
+			if m.t.Alpha.IsKey(s) {
+				n++
+			}
+		}
+		keys += n
+		if n > most || n == most && to < rest {
+			most, rest = n, to
+		}
+	}
+	if keys < m.t.Alpha.Keys() || most <= m.t.Alpha.Keys()/2 {
+		return 0
+	}
+	return rest
 }

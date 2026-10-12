@@ -6,6 +6,7 @@ import (
 
 	"github.com/cptaffe/automaton/seq"
 	"github.com/cptaffe/automaton/seq/draw"
+	"github.com/cptaffe/automaton/seq/hotkey"
 	"github.com/cptaffe/automaton/seq/keypad"
 )
 
@@ -38,5 +39,19 @@ func TestLabel(t *testing.T) {
 	multi := &seq.Accept{Action: "a\nb", Goto: 1}
 	if got := draw.Label(multi); got != "a..." {
 		t.Errorf("label %q", got)
+	}
+}
+
+func TestAFallbackIsDrawnAsAny(t *testing.T) {
+	r, err := hotkey.Parse(strings.NewReader("main:\n\tcontrol-x control-s { put }\n\tcontrol-x any { }\n"), "h", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := draw.Draw(r.Table)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out := string(b); !strings.Contains(out, `" any "`) || strings.Contains(out, "option-shift") {
+		t.Errorf("the fallback is not drawn as any:\n%s", out)
 	}
 }

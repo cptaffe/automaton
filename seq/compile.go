@@ -64,8 +64,8 @@ type entry struct {
 }
 
 type wild struct {
-	key Sym
-	acc *Accept
+	keys fa.Set[Sym]
+	acc  *Accept
 }
 
 type compiler struct {
@@ -104,11 +104,10 @@ func Compile(g *Grammar, a *Alphabet) (*Table, error) {
 		if err != nil {
 			return nil, fmt.Errorf("%s:%d: %w", g.Name, x.Line, err)
 		}
-		key, ok := got.only()
-		if !ok {
-			return nil, fmt.Errorf("%s:%d: `... %s` is not one symbol: a wildcard cannot say which arrived", g.Name, x.Line, x.Pattern)
+		if got.Many {
+			return nil, fmt.Errorf("%s:%d: `... %s` repeats, and a wildcard reads one key", g.Name, x.Line, x.Pattern)
 		}
-		x.Elem, x.key = got, key
+		x.Elem = got
 		anys[i] = x
 	}
 	for scope, name := range g.Settles {
@@ -124,7 +123,7 @@ func Compile(g *Grammar, a *Alphabet) (*Table, error) {
 		}
 	}
 	for _, x := range anys {
-		sets = append(sets, fa.One(x.key))
+		sets = append(sets, x.Elem.set())
 	}
 	for _, name := range g.Settles {
 		s, _ := a.Of(name)
@@ -203,7 +202,7 @@ func (c *compiler) scope(i int) error {
 	first := len(c.entries)
 	var wilds []wild
 	wildcard := func(x Any, when Cond) {
-		wilds = append(wilds, wild{x.key, &Accept{Action: x.Action, Goto: c.index[x.Goto], When: when, Pattern: "... " + x.Pattern, Line: x.Line}})
+		wilds = append(wilds, wild{x.Elem.set(), &Accept{Action: x.Action, Goto: c.index[x.Goto], When: when, Pattern: "... " + x.Pattern, Line: x.Line}})
 	}
 	var lower func(at string, when Cond, origin string)
 	lower = func(at string, when Cond, origin string) {
@@ -241,6 +240,9 @@ func (c *compiler) build(scope string, entries []entry, first int, wilds []wild)
 		var es []fa.Expr[Sym]
 		for _, el := range e.rule.Elems {
 			x := fa.Lit(el.set())
+			if el.Any {
+				x = fa.Fallback(el.set())
+			}
 			if el.Many {
 				x = fa.Plus(x)
 			}
@@ -266,8 +268,9 @@ func (c *compiler) build(scope string, entries []entry, first int, wilds []wild)
 			t.States[n].Next[k] = at(d.Next(s, k))
 		}
 		for _, w := range wilds {
-			k := t.Classes.Of(w.key)
-			t.States[n].Any[k] = append(t.States[n].Any[k], w.acc)
+			for _, k := range t.Classes.Covers(w.keys) {
+				t.States[n].Any[k] = append(t.States[n].Any[k], w.acc)
+			}
 		}
 		done, going := shift(d.Done(s), first), shift(d.Going(s), first)
 		c.finish(n, done, going)
@@ -332,6 +335,10 @@ func (c *compiler) conflict(line int, f string, args ...any) {
 }
 
 func resolve(c Class, a *Alphabet) (Class, error) {
+	if c.Any {
+		c.keys = fa.Span(0, Sym(a.Keys()-1))
+		return c, nil
+	}
 	if c.Event == "" {
 		return c, nil
 	}

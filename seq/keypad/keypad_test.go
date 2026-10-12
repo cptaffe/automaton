@@ -250,3 +250,16 @@ func sym(a *seq.Alphabet, name string) seq.Sym {
 	}
 	return s
 }
+
+func TestAStrayKeyIsThePlans(t *testing.T) {
+	tab := compile(t, "start:\n  NXX  do local\n  ... any  do reorder\n")
+	for _, c := range []struct{ keys, want string }{
+		{"9 6 0", "local"},
+		{"9 *", "reorder"},
+		{"#", "reorder"},
+	} {
+		if a := walk(t, tab, "start", strings.Fields(c.keys)...); a == nil || a.Action != c.want {
+			t.Errorf("%s fired %v; want %s", c.keys, a, c.want)
+		}
+	}
+}

@@ -188,6 +188,9 @@ func add(p pat, s symv) pat {
 }
 
 func event(t word) symv {
+	if t.text == "any" {
+		return symv{seq.Class{Any: true, Text: t.text}, t.line, t.lead}
+	}
 	return symv{seq.Class{Event: t.text, Text: t.text}, t.line, t.lead}
 }
 
@@ -227,6 +230,10 @@ func (l *lexer) says() string {
 
 func (l *lexer) delay(line int, name, of string) {
 	l.says()
+	if name == "any" {
+		l.FailAt(line, "%%delay any: any is every key, not a delay")
+		return
+	}
 	if l.cur != "" {
 		l.FailAt(line, "%%delay %s %s belongs above every scope: a symbol lasts as long wherever it is read", name, of)
 		return

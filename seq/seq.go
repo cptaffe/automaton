@@ -52,10 +52,12 @@ func (a *Alphabet) Name(s Sym) string {
 type Class struct {
 	Syms  []Sym
 	Event string
+	Any   bool
 	Many  bool
 	Text  string
 
-	sym Sym
+	sym  Sym
+	keys fa.Set[Sym]
 }
 
 func (c Class) IsEvent() bool { return c.Event != "" }
@@ -63,6 +65,9 @@ func (c Class) IsEvent() bool { return c.Event != "" }
 func (c Class) set() fa.Set[Sym] {
 	if c.Event != "" {
 		return fa.One(c.sym)
+	}
+	if c.Any {
+		return c.keys
 	}
 	var rs []fa.Range[Sym]
 	for _, s := range c.Syms {
@@ -72,17 +77,7 @@ func (c Class) set() fa.Set[Sym] {
 }
 
 func (c Class) wide() bool {
-	return len(c.Syms) > 1
-}
-
-func (c Class) only() (Sym, bool) {
-	if c.Event != "" {
-		return c.sym, !c.Many
-	}
-	if len(c.Syms) == 1 && !c.Many {
-		return c.Syms[0], true
-	}
-	return 0, false
+	return c.Any || len(c.Syms) > 1
 }
 
 type Rule struct {
@@ -108,8 +103,6 @@ type Any struct {
 	When    Cond
 	Label   string
 	Line    int
-
-	key Sym
 }
 
 type Grammar struct {
