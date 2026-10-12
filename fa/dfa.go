@@ -9,7 +9,6 @@ import (
 type DFA[S Symbol] struct {
 	classes *Classes[S]
 	next    [][]State
-	accept  []Match
 	done    [][]Match
 	going   [][]Match
 	start   State
@@ -65,7 +64,7 @@ func BuildWith[S Symbol](rules []Rule[S], classes *Classes[S]) (*DFA[S], error) 
 }
 
 func (n *nfa[S]) determinise(start int, classes *Classes[S]) *DFA[S] {
-	d := &DFA[S]{classes: classes, next: [][]State{make([]State, classes.Len()+1)}, accept: []Match{NoMatch}, done: [][]Match{nil}, going: [][]Match{nil}}
+	d := &DFA[S]{classes: classes, next: [][]State{make([]State, classes.Len()+1)}, done: [][]Match{nil}, going: [][]Match{nil}}
 	seen := map[string]int{}
 
 	var add func(of []int) State
@@ -82,7 +81,6 @@ func (n *nfa[S]) determinise(start int, classes *Classes[S]) *DFA[S] {
 		at := State(len(d.next))
 		seen[key] = int(at)
 		d.next = append(d.next, nil)
-		d.accept = append(d.accept, NoMatch)
 		d.done = append(d.done, nil)
 		d.going = append(d.going, nil)
 
@@ -93,10 +91,6 @@ func (n *nfa[S]) determinise(start int, classes *Classes[S]) *DFA[S] {
 		for _, s := range set {
 			if a := n.accept[s]; a != NoMatch {
 				done[a] = true
-
-				if d.accept[at] == NoMatch || a < d.accept[at] {
-					d.accept[at] = a
-				}
 			}
 
 			for _, e := range n.out[s] {
@@ -157,7 +151,13 @@ func (d *DFA[S]) Start() State { return d.start }
 
 func (d *DFA[S]) Next(state State, class Class) State { return d.next[state][class] }
 
-func (d *DFA[S]) Accept(state State) Match { return d.accept[state] }
+func (d *DFA[S]) Accept(state State) Match {
+	if done := d.done[state]; len(done) > 0 {
+		return done[0]
+	}
+
+	return NoMatch
+}
 
 func (d *DFA[S]) Done(state State) []Match { return append([]Match(nil), d.done[state]...) }
 
@@ -168,10 +168,8 @@ func (d *DFA[S]) Step(state State, x S) State { return d.next[state][d.classes.O
 func (d *DFA[S]) Unreachable(rules []Rule[S]) []string {
 	live := map[Match]bool{}
 
-	for _, a := range d.accept {
-		if a != NoMatch {
-			live[a] = true
-		}
+	for s := range d.done {
+		live[d.Accept(State(s))] = true
 	}
 
 	var out []string
@@ -193,7 +191,7 @@ func (d *DFA[S]) String() string {
 	for s := 1; s < len(d.next); s++ {
 		fmt.Fprintf(&b, "%d", s)
 
-		if a := d.accept[s]; a != NoMatch {
+		if a := d.Accept(State(s)); a != NoMatch {
 			fmt.Fprintf(&b, " accept %d", a)
 		}
 

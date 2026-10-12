@@ -88,7 +88,7 @@ func (d *DFA[S]) Minimise() *DFA[S] {
 		for c, to := range row {
 			next[s][c] = int(to)
 		}
-		sig[s] = fmt.Sprint(d.accept[s])
+		sig[s] = fmt.Sprint(d.Accept(State(s)))
 	}
 	to := Reachable(next, Equivalent(next, sig), int(d.start))
 
@@ -96,7 +96,7 @@ func (d *DFA[S]) Minimise() *DFA[S] {
 	for _, t := range to {
 		n = max(n, t)
 	}
-	out := &DFA[S]{classes: d.classes, start: State(to[d.start]), next: make([][]State, n+1), accept: make([]Match, n+1),
+	out := &DFA[S]{classes: d.classes, start: State(to[d.start]), next: make([][]State, n+1),
 		done: make([][]Match, n+1), going: make([][]Match, n+1)}
 	for s := range out.next {
 		out.next[s] = make([]State, d.classes.Len()+1)
@@ -108,7 +108,6 @@ func (d *DFA[S]) Minimise() *DFA[S] {
 		for c, t := range row {
 			out.next[to[s]][c] = State(to[t])
 		}
-		out.accept[to[s]] = d.accept[s]
 		out.done[to[s]] = union(out.done[to[s]], d.done[s])
 		out.going[to[s]] = union(out.going[to[s]], d.going[s])
 	}

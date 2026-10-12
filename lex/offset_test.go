@@ -84,25 +84,20 @@ func TestWhereATokenIsDoesNotDependOnHowItArrived(t *testing.T) {
 				break
 			}
 
-			if tok.Start > len(src) || tok.End > len(src) {
+			if tok.Start > len(src) || tok.End() > len(src) {
 				t.Fatalf("%s: %q says it is at %d:%d, and the input is %d long",
-					c.name, tok.Text, tok.Start, tok.End, len(src))
+					c.name, tok.Text, tok.Start, tok.End(), len(src))
 			}
 
-			if tok.End-tok.Start != len(tok.Text) {
-				t.Errorf("%s: %q is %d long and spans %d:%d",
-					c.name, tok.Text, len(tok.Text), tok.Start, tok.End)
-			}
-
-			if got := src[tok.Start:tok.End]; got != tok.Text {
-				t.Errorf("%s: %d:%d is %q and the token is %q", c.name, tok.Start, tok.End, got, tok.Text)
+			if got := src[tok.Start:tok.End()]; got != tok.Text {
+				t.Errorf("%s: %d:%d is %q and the token is %q", c.name, tok.Start, tok.End(), got, tok.Text)
 			}
 
 			if tok.Start < at {
 				t.Errorf("%s: %q starts at %d, behind the one before it", c.name, tok.Text, tok.Start)
 			}
 
-			at = tok.End
+			at = tok.End()
 		}
 
 		if err := l.Err(); err != nil {
@@ -132,8 +127,8 @@ func TestALongRunOfIgnoredTextNeedsNoBuffer(t *testing.T) {
 			kinds = append(kinds, tok.Text)
 		}
 
-		if tok.Text == "word" && src[tok.Start:tok.End] != "word" {
-			t.Errorf("the word is at %d:%d, which reads %q", tok.Start, tok.End, src[tok.Start:tok.End])
+		if tok.Text == "word" && src[tok.Start:tok.End()] != "word" {
+			t.Errorf("the word is at %d:%d, which reads %q", tok.Start, tok.End(), src[tok.Start:tok.End()])
 		}
 	}
 

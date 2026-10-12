@@ -96,10 +96,10 @@ func one(path, dir, goOut, pkg string, verbose bool, stderr io.Writer) error {
 		if err != nil {
 			return err
 		}
-		if err := write(filepath.Join(dir, flat.Name+"-shape.dot"), shape); err != nil {
+		if err := write(filepath.Join(dir, flat.Name()+"-shape.dot"), shape); err != nil {
 			return err
 		}
-		if err := write(filepath.Join(dir, flat.Name+".dot"), whole); err != nil {
+		if err := write(filepath.Join(dir, flat.Name()+".dot"), whole); err != nil {
 			return err
 		}
 	}

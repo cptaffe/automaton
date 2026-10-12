@@ -146,7 +146,7 @@ func (l *lexer) Lex(v *yySymType) int {
 		if tok.Kind == scan.TokString {
 			text = text[1 : len(text)-1]
 		}
-		v.word = word{text, tok.At.Line, tok.Start, tok.End}
+		v.word = word{text, tok.At.Line, tok.Start, tok.End()}
 		l.tok = kinds[tok.Kind]
 		return l.tok
 	}

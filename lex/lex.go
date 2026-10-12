@@ -50,10 +50,11 @@ type Token struct {
 	Text  string
 	Do    int
 	Start int
-	End   int
 
 	At Where
 }
+
+func (t Token) End() int { return t.Start + len(t.Text) }
 
 type Where struct {
 	File string
@@ -128,7 +129,6 @@ func (l *Lexer) split(data []byte, atEOF bool) (int, []byte, error) {
 
 		if tok != nil {
 			l.tok.Start += l.at + done - adv
-			l.tok.End += l.at + done - adv
 			l.at += done
 
 			return done, tok, nil
@@ -196,7 +196,7 @@ func (l *Lexer) one(data []byte, atEOF bool) (int, []byte, error) {
 		return back, nil, nil
 	}
 
-	l.tok = Token{Kind: act.Emit, Do: act.Do, Text: string(text), Start: 0, End: back}
+	l.tok = Token{Kind: act.Emit, Do: act.Do, Text: string(text)}
 
 	return back, text, nil
 }

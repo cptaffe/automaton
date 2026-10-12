@@ -79,7 +79,7 @@ func (r *Reader) Next() (Token, bool) {
 		r.began, r.started = tok.Start, true
 	}
 
-	r.at = tok.End
+	r.at = tok.End()
 
 	if tok.Kind == r.newline {
 		if r.content {

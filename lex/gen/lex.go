@@ -41,7 +41,7 @@ func newParser(r io.Reader, from string, bare bool) (*parser, error) {
 	}
 
 	p := &parser{Reader: in, bare: bare, named: predefined(bare), given: given(bare),
-		file: &File{Name: in.Name(), Path: from}}
+		file: &File{Path: from}}
 
 	if !bare {
 		for _, name := range builtinNames(bare) {

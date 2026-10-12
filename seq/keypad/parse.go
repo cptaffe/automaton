@@ -151,15 +151,15 @@ func (l *lexer) lex(v *yySymType) (int, string) {
 			l.bare = true
 			return NEWLINE, "a new line"
 		case scan.TokDelay, scan.TokSettles:
-			v.word = word{tok.Text, tok.At.Line, tok.Start, tok.End}
+			v.word = word{tok.Text, tok.At.Line, tok.Start, tok.End()}
 		case scan.TokSym:
-			v.sym = symv{symbolOf(tok.Text), tok.At.Line, tok.Start, tok.End}
+			v.sym = symv{symbolOf(tok.Text), tok.At.Line, tok.Start, tok.End()}
 			return SYM, tok.Text
 		case scan.TokDeclaration:
 			l.Fail("%s is not a declaration", tok.Text)
 			return 0, ""
 		case scan.TokName:
-			v.word = word{tok.Text, tok.At.Line, tok.Start, tok.End}
+			v.word = word{tok.Text, tok.At.Line, tok.Start, tok.End()}
 			return IDENT, tok.Text
 		}
 		return kinds[tok.Kind], tok.Text

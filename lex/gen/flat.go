@@ -28,12 +28,13 @@ type FlatScope struct {
 
 type Flat struct {
 	Defs     []Def
-	Name     string
 	Path     string
 	Scopes   []FlatScope
 	Rules    []FlatRule
 	Shadowed []string
 }
+
+func (f *Flat) Name() string { return base(f.Path) }
 
 func (f *Flat) Scope(name string) *FlatScope {
 	for i := range f.Scopes {

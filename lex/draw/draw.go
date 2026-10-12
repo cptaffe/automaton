@@ -15,7 +15,7 @@ func Whole(f *gen.Flat, ms []gen.Machine) ([]byte, error) {
 	for i, m := range ms {
 		all[i] = machine{m: m, names: f.Defs}
 	}
-	return dot.Whole(all, f.Name)
+	return dot.Whole(all, f.Name())
 }
 
 func Shape(f *gen.Flat) ([]byte, error) {
@@ -33,7 +33,7 @@ func Shape(f *gen.Flat) ([]byte, error) {
 		}
 		rs = append(rs, r)
 	}
-	return dot.Shape(rs, f.Name)
+	return dot.Shape(rs, f.Name())
 }
 
 func Summary(m gen.Machine) string {

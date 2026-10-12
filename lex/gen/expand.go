@@ -25,7 +25,7 @@ func Expand(f *File) (*Flat, error) {
 		return nil, fmt.Errorf("%s: every scope takes a parameter, so there is nowhere to begin", f.Path)
 	}
 
-	out := &Flat{Name: f.Name, Path: f.Path, Shadowed: f.Shadowed, Defs: f.Defs}
+	out := &Flat{Path: f.Path, Shadowed: f.Shadowed, Defs: f.Defs}
 	done := map[string]bool{}
 	dyn := dynamic(f)
 

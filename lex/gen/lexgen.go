@@ -2,7 +2,12 @@
 
 package gen
 
-import "github.com/cptaffe/automaton/fa"
+import (
+	"path/filepath"
+	"strings"
+
+	"github.com/cptaffe/automaton/fa"
+)
 
 type Acts struct {
 	Emit string
@@ -59,11 +64,16 @@ type Def struct {
 type File struct {
 	Defs []Def
 
-	Name     string
 	Path     string
 	Scopes   []Scope
 	Rules    []Rule
 	Shadowed []string
+}
+
+func (f *File) Name() string { return base(f.Path) }
+
+func base(path string) string {
+	return strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
 }
 
 func (f *File) Scope(name string) *Scope {
