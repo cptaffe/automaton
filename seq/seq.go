@@ -15,11 +15,11 @@ type Alphabet struct {
 }
 
 func NewAlphabet(keys []string, events ...string) *Alphabet {
-	a := &Alphabet{names: []string{""}, by: map[string]Sym{}}
+	a := &Alphabet{by: map[string]Sym{}}
 	for _, k := range keys {
 		a.add(k)
 	}
-	a.keys = len(a.names) - 1
+	a.keys = len(a.names)
 	for _, e := range events {
 		a.add(e)
 	}
@@ -30,20 +30,20 @@ func (a *Alphabet) add(name string) {
 	if _, ok := a.by[name]; ok {
 		return
 	}
-	a.by[name] = Sym(len(a.names))
 	a.names = append(a.names, name)
+	a.by[name] = Sym(len(a.names))
 }
 
-func (a *Alphabet) Size() int          { return len(a.names) - 1 }
+func (a *Alphabet) Size() int          { return len(a.names) }
 func (a *Alphabet) Keys() int          { return a.keys }
 func (a *Alphabet) IsKey(s Sym) bool   { return s >= 1 && int(s) <= a.keys }
-func (a *Alphabet) IsEvent(s Sym) bool { return int(s) > a.keys && int(s) < len(a.names) }
+func (a *Alphabet) IsEvent(s Sym) bool { return int(s) > a.keys && int(s) <= len(a.names) }
 func (a *Alphabet) Of(name string) Sym { return a.by[name] }
 func (a *Alphabet) Name(s Sym) string {
-	if s < 1 || int(s) >= len(a.names) {
+	if s < 1 || int(s) > len(a.names) {
 		return ""
 	}
-	return a.names[s]
+	return a.names[s-1]
 }
 
 type Class struct {
