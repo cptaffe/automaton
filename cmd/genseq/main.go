@@ -53,7 +53,7 @@ func draw(paths []string, dialect, dir string, verbose bool, stderr io.Writer) e
 		}
 		named[t.Name] = true
 		if verbose {
-			fmt.Fprintf(stderr, "genseq: %s, %d states, waits for %s\n", t.Name, len(t.Next)-1, strings.Join(t.Waiting(), " "))
+			fmt.Fprintf(stderr, "genseq: %s, %d states, waits for %s\n", t.Name, len(t.States)-1, strings.Join(t.Waiting(), " "))
 		}
 		if dir == "" {
 			continue

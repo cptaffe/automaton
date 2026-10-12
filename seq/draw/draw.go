@@ -21,7 +21,7 @@ func (m machine) Note() string {
 	return fmt.Sprintf("%s -- %s, %s", m.t.Name, dot.Plural(m.States(), "state"), dot.Plural(m.t.Alpha.Size(), "symbol"))
 }
 
-func (m machine) States() int { return len(m.t.Next) - 1 }
+func (m machine) States() int { return len(m.t.States) - 1 }
 
 func (m machine) Starts() []dot.Start {
 	out := make([]dot.Start, len(m.t.Scopes))
@@ -32,9 +32,10 @@ func (m machine) Starts() []dot.Start {
 }
 
 func (m machine) Moves(s int) []dot.Move {
+	st := &m.t.States[s]
 	by := map[int][]seq.Sym{}
 	var order []int
-	for sym, to := range m.t.Next[s] {
+	for sym, to := range st.Next {
 		if to == 0 {
 			continue
 		}
@@ -48,11 +49,11 @@ func (m machine) Moves(s int) []dot.Move {
 	for i, to := range order {
 		out[i] = dot.Move{To: to, Label: m.names(by[to])}
 	}
-	if settle, ok := m.t.Settle[s]; ok {
-		out = append(out, dot.Move{To: s, Label: m.name(settle), Dashed: true, Class: "settle"})
+	if st.Settles {
+		out = append(out, dot.Move{To: s, Label: m.name(st.Settle), Dashed: true, Class: "settle"})
 	}
 	gone := map[int]bool{}
-	for _, a := range m.t.Accept[s] {
+	for _, a := range st.Accept {
 		if a.Goto == 0 {
 			continue
 		}
@@ -65,7 +66,7 @@ func (m machine) Moves(s int) []dot.Move {
 }
 
 func (m machine) Accepts(s int) (string, bool) {
-	as := m.t.Accept[s]
+	as := m.t.States[s].Accept
 	if len(as) == 0 {
 		return "", false
 	}

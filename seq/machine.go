@@ -41,7 +41,7 @@ func (m *Machine) Step(s Sym, env Env) (bool, []*Accept) {
 }
 
 func (m *Machine) event(s Sym, env Env) (bool, []*Accept) {
-	if settle, ok := m.t.Settle[m.state]; ok && s == settle {
+	if st := &m.t.States[m.state]; st.Settles && s == st.Settle {
 		return true, m.Settle(env)
 	}
 	if m.state != 0 {
@@ -64,9 +64,9 @@ func (m *Machine) Waits() []string {
 		return nil
 	}
 	var out []string
-	settle, settles := m.t.Settle[m.state]
+	st := &m.t.States[m.state]
 	for s := Sym(m.t.Alpha.Keys()); int(s) < m.t.Alpha.Size(); s++ {
-		if settles && s == settle || m.t.Next[m.state][s] != 0 || len(m.t.Any[m.state][s]) > 0 {
+		if st.Settles && s == st.Settle || st.Next[s] != 0 || len(st.Any[s]) > 0 {
 			out = append(out, m.t.Alpha.Name(s))
 		}
 	}
@@ -74,18 +74,17 @@ func (m *Machine) Waits() []string {
 }
 
 func (m *Machine) from(at int, s Sym, env Env) (bool, []*Accept) {
-	if n := m.t.Next[at][s]; n != 0 {
+	if n := m.t.States[at].Next[s]; n != 0 {
 		ready, going := m.ready(n, env), m.going(n, env)
-		_, settles := m.t.Settle[n]
 		switch {
-		case ready != nil && (!going || !settles):
+		case ready != nil && (!going || !m.t.States[n].Settles):
 			return true, m.fire(ready)
 		case ready != nil || going:
 			m.state = n
 			return true, nil
 		}
 	}
-	for _, a := range m.t.Any[at][s] {
+	for _, a := range m.t.States[at].Any[s] {
 		if Holds(a.When, env) {
 			var fired []*Accept
 			if at == m.state {
@@ -98,7 +97,7 @@ func (m *Machine) from(at int, s Sym, env Env) (bool, []*Accept) {
 }
 
 func (m *Machine) ready(s int, env Env) *Accept {
-	for _, a := range m.t.Accept[s] {
+	for _, a := range m.t.States[s].Accept {
 		if Holds(a.When, env) {
 			return a
 		}
@@ -107,7 +106,7 @@ func (m *Machine) ready(s int, env Env) *Accept {
 }
 
 func (m *Machine) going(s int, env Env) bool {
-	for _, c := range m.t.Live[s] {
+	for _, c := range m.t.States[s].Live {
 		if Holds(c, env) {
 			return true
 		}

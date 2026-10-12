@@ -29,18 +29,31 @@ type Scope struct {
 	Start int
 }
 
+type State struct {
+	Next    []int
+	Any     [][]*Accept
+	Accept  []*Accept
+	Live    []Cond
+	Settle  Sym
+	Settles bool
+}
+
 type Table struct {
 	Name      string
 	Note      string
 	Alpha     *Alphabet
 	Scopes    []Scope
-	Next      [][]int
-	Accept    [][]*Accept
-	Live      [][]Cond
-	Settle    map[int]Sym
-	Any       [][][]*Accept
+	States    []State
 	Delays    map[string]time.Duration
 	Conflicts []string
+}
+
+func (t *Table) next() [][]int {
+	out := make([][]int, len(t.States))
+	for i := range t.States {
+		out[i] = t.States[i].Next
+	}
+	return out
 }
 
 type entry struct {
@@ -103,7 +116,7 @@ func Compile(g *Grammar, a *Alphabet) (*Table, error) {
 		}
 	}
 
-	t := &Table{Name: g.Name, Note: g.Note, Alpha: a, Settle: map[int]Sym{}, Delays: g.Delays}
+	t := &Table{Name: g.Name, Note: g.Note, Alpha: a, Delays: g.Delays}
 	c := &compiler{t: t, g: g, rules: rules, anys: anys, index: map[string]int{}}
 	for i, name := range positions(g) {
 		t.Scopes = append(t.Scopes, Scope{Name: name})
@@ -147,27 +160,22 @@ func (c *compiler) minimal() *Table {
 	for _, scope := range t.Scopes {
 		starts = append(starts, scope.Start)
 	}
-	to := fa.Reachable(t.Next, fa.Equivalent(t.Next, c.sig), starts...)
+	next := t.next()
+	to := fa.Reachable(next, fa.Equivalent(next, c.sig), starts...)
 	n := 0
 	for _, s := range to {
 		n = max(n, s)
 	}
-	out := &Table{Name: t.Name, Note: t.Note, Alpha: t.Alpha, Delays: t.Delays, Conflicts: t.Conflicts,
-		Next: make([][]int, n+1), Accept: make([][]*Accept, n+1), Live: make([][]Cond, n+1),
-		Settle: map[int]Sym{}, Any: make([][][]*Accept, n+1)}
-	for s := range t.Next {
+	out := &Table{Name: t.Name, Note: t.Note, Alpha: t.Alpha, Delays: t.Delays, Conflicts: t.Conflicts, States: make([]State, n+1)}
+	for s, st := range t.States {
 		if s != 0 && to[s] == 0 {
 			continue
 		}
-		m := to[s]
-		out.Next[m] = make([]int, len(t.Next[s]))
-		for sym, n := range t.Next[s] {
-			out.Next[m][sym] = to[n]
+		st.Next = make([]int, len(next[s]))
+		for sym, n := range next[s] {
+			st.Next[sym] = to[n]
 		}
-		out.Accept[m], out.Live[m], out.Any[m] = t.Accept[s], t.Live[s], t.Any[s]
-		if sym, ok := t.Settle[s]; ok {
-			out.Settle[m] = sym
-		}
+		out.States[to[s]] = st
 	}
 	for _, scope := range t.Scopes {
 		out.Scopes = append(out.Scopes, Scope{Name: scope.Name, Start: to[scope.Start]})
@@ -231,7 +239,7 @@ func (c *compiler) build(scope string, entries []entry, first int, wilds []wild)
 		return 0, fmt.Errorf("%s: %s: %w", c.g.Name, scope, err)
 	}
 
-	base := len(t.Next) - 1
+	base := len(t.States) - 1
 	at := func(s fa.State) int {
 		if s == fa.NoState {
 			return 0
@@ -241,10 +249,10 @@ func (c *compiler) build(scope string, entries []entry, first int, wilds []wild)
 	for s := fa.State(1); int(s) <= d.States(); s++ {
 		n := c.state("")
 		for sym := Sym(0); int(sym) < t.Alpha.Size(); sym++ {
-			t.Next[n][sym] = at(d.Step(s, sym))
+			t.States[n].Next[sym] = at(d.Step(s, sym))
 		}
 		for _, w := range wilds {
-			t.Any[n][w.key] = append(t.Any[n][w.key], w.acc)
+			t.States[n].Any[w.key] = append(t.States[n].Any[w.key], w.acc)
 		}
 		done, going := shift(d.Done(s), first), shift(d.Going(s), first)
 		c.finish(n, done, going)
@@ -263,9 +271,10 @@ func shift(ms []fa.Match, first int) []int {
 
 func (c *compiler) finish(s int, done, going []int) {
 	t := c.t
+	st := &t.States[s]
 	live := map[string][]string{}
 	for _, e := range going {
-		t.Live[s] = append(t.Live[s], c.entries[e].when)
+		st.Live = append(st.Live, c.entries[e].when)
 		live[c.entries[e].origin] = append(live[c.entries[e].origin], c.entries[e].rule.Pattern)
 	}
 	finished := map[string]*Accept{}
@@ -278,7 +287,7 @@ func (c *compiler) finish(s int, done, going []int) {
 			continue
 		}
 		finished[e.origin] = acc
-		t.Accept[s] = append(t.Accept[s], acc)
+		st.Accept = append(st.Accept, acc)
 		if len(going) == 0 {
 			continue
 		}
@@ -292,14 +301,14 @@ func (c *compiler) finish(s int, done, going []int) {
 			continue
 		}
 		sym, _ := t.Alpha.Of(name)
-		if was, ok := t.Settle[s]; !ok {
-			t.Settle[s] = sym
-		} else if was != sym {
-			c.conflict(acc.Line, "%q settles on %s, and another rule here on %s", acc.Pattern, name, t.Alpha.Name(was))
+		if !st.Settles {
+			st.Settle, st.Settles = sym, true
+		} else if st.Settle != sym {
+			c.conflict(acc.Line, "%q settles on %s, and another rule here on %s", acc.Pattern, name, t.Alpha.Name(st.Settle))
 		}
 	}
-	if settle, ok := t.Settle[s]; ok && t.Next[s][settle] != 0 {
-		c.conflict(t.Accept[s][0].Line, "%s settles here and a rule reads %s next -- which is meant", t.Alpha.Name(settle), t.Alpha.Name(settle))
+	if st.Settles && st.Next[st.Settle] != 0 {
+		c.conflict(st.Accept[0].Line, "%s settles here and a rule reads %s next -- which is meant", t.Alpha.Name(st.Settle), t.Alpha.Name(st.Settle))
 	}
 }
 
@@ -358,11 +367,8 @@ func (c *compiler) state(sig string) int {
 }
 
 func (t *Table) state() int {
-	s := len(t.Next)
-	t.Next = append(t.Next, make([]int, t.Alpha.Size()))
-	t.Any = append(t.Any, make([][]*Accept, t.Alpha.Size()))
-	t.Accept = append(t.Accept, nil)
-	t.Live = append(t.Live, nil)
+	s := len(t.States)
+	t.States = append(t.States, State{Next: make([]int, t.Alpha.Size()), Any: make([][]*Accept, t.Alpha.Size())})
 	return s
 }
 
@@ -387,8 +393,8 @@ func (t *Table) Waiting() []string {
 }
 
 func (t *Table) waits(sym Sym) bool {
-	for s := range t.Next {
-		if settle, ok := t.Settle[s]; ok && settle == sym || t.Next[s][sym] != 0 || len(t.Any[s][sym]) > 0 {
+	for _, st := range t.States {
+		if st.Settles && st.Settle == sym || st.Next[sym] != 0 || len(st.Any[sym]) > 0 {
 			return true
 		}
 	}
