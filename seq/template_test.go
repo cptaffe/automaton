@@ -31,7 +31,7 @@ func TestAParameterIsWhereTheScopeGoesNext(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := strings.Join(tab.Scopes, " "); got != "start dialing(other) dialing(start) other" {
+	if got := scopeNames(tab); got != "start dialing(other) dialing(start) other" {
 		t.Errorf("the scopes are %q", got)
 	}
 	m := machine(t, tab, "")

@@ -17,20 +17,23 @@ type Slice struct {
 
 type Accept struct {
 	Action  string
-	Goto    string
+	Goto    int
 	When    Cond
 	Pattern string
 	Line    int
 	Operand *Slice
 }
 
+type Scope struct {
+	Name  string
+	Start int
+}
+
 type Table struct {
 	Name      string
 	Note      string
 	Alpha     *Alphabet
-	Scopes    []string
-	Start     map[string]int
-	Scope     []string
+	Scopes    []Scope
 	Next      [][]int
 	Accept    [][]*Accept
 	Live      [][]Cond
@@ -58,6 +61,7 @@ type compiler struct {
 	anys    []Any
 	entries []entry
 	sig     []string
+	index   map[string]int
 }
 
 func Compile(g *Grammar, a *Alphabet) (*Table, error) {
@@ -99,11 +103,15 @@ func Compile(g *Grammar, a *Alphabet) (*Table, error) {
 		}
 	}
 
-	t := &Table{Name: g.Name, Note: g.Note, Alpha: a, Scopes: positions(g), Start: map[string]int{}, Delays: g.Delays}
-	c := &compiler{t: t, g: g, rules: rules, anys: anys}
-	c.state("", "")
-	for _, scope := range t.Scopes {
-		if err := c.scope(scope); err != nil {
+	t := &Table{Name: g.Name, Note: g.Note, Alpha: a, Delays: g.Delays}
+	c := &compiler{t: t, g: g, rules: rules, anys: anys, index: map[string]int{}}
+	for i, name := range positions(g) {
+		t.Scopes = append(t.Scopes, Scope{Name: name})
+		c.index[name] = i + 1
+	}
+	c.state("")
+	for i := range t.Scopes {
+		if err := c.scope(i); err != nil {
 			return nil, err
 		}
 	}
@@ -137,15 +145,15 @@ func (c *compiler) minimal() *Table {
 	t := c.t
 	var starts []int
 	for _, scope := range t.Scopes {
-		starts = append(starts, t.Start[scope])
+		starts = append(starts, scope.Start)
 	}
 	to := fa.Reachable(t.Next, fa.Equivalent(t.Next, c.sig), starts...)
 	n := 0
 	for _, s := range to {
 		n = max(n, s)
 	}
-	out := &Table{Name: t.Name, Note: t.Note, Alpha: t.Alpha, Scopes: t.Scopes, Start: map[string]int{}, Delays: t.Delays, Conflicts: t.Conflicts,
-		Scope: make([]string, n+1), Next: make([][]int, n+1), Accept: make([][]*Accept, n+1), Live: make([][]Cond, n+1),
+	out := &Table{Name: t.Name, Note: t.Note, Alpha: t.Alpha, Delays: t.Delays, Conflicts: t.Conflicts,
+		Next: make([][]int, n+1), Accept: make([][]*Accept, n+1), Live: make([][]Cond, n+1),
 		Settle: make([]Sym, n+1), Any: make([][][]*Accept, n+1)}
 	for s := range t.Next {
 		if s != 0 && to[s] == 0 {
@@ -156,19 +164,20 @@ func (c *compiler) minimal() *Table {
 		for sym, n := range t.Next[s] {
 			out.Next[m][sym] = to[n]
 		}
-		out.Scope[m], out.Accept[m], out.Live[m], out.Settle[m], out.Any[m] = t.Scope[s], t.Accept[s], t.Live[s], t.Settle[s], t.Any[s]
+		out.Accept[m], out.Live[m], out.Settle[m], out.Any[m] = t.Accept[s], t.Live[s], t.Settle[s], t.Any[s]
 	}
-	for scope, s := range t.Start {
-		out.Start[scope] = to[s]
+	for _, scope := range t.Scopes {
+		out.Scopes = append(out.Scopes, Scope{Name: scope.Name, Start: to[scope.Start]})
 	}
 	return out
 }
 
-func (c *compiler) scope(scope string) error {
+func (c *compiler) scope(i int) error {
+	scope := c.t.Scopes[i].Name
 	first := len(c.entries)
 	var wilds []wild
 	wildcard := func(x Any, when Cond) {
-		wilds = append(wilds, wild{x.key, &Accept{Action: x.Action, Goto: x.Goto, When: when, Pattern: "... " + x.Pattern, Line: x.Line}})
+		wilds = append(wilds, wild{x.key, &Accept{Action: x.Action, Goto: c.index[x.Goto], When: when, Pattern: "... " + x.Pattern, Line: x.Line}})
 	}
 	var lower func(at string, when Cond, origin string)
 	lower = func(at string, when Cond, origin string) {
@@ -195,7 +204,7 @@ func (c *compiler) scope(scope string) error {
 	}
 
 	start, err := c.build(scope, c.entries[first:], first, wilds)
-	c.t.Start[scope] = start
+	c.t.Scopes[i].Start = start
 	return err
 }
 
@@ -227,7 +236,7 @@ func (c *compiler) build(scope string, entries []entry, first int, wilds []wild)
 		return base + int(s)
 	}
 	for s := fa.State(1); int(s) <= d.States(); s++ {
-		n := c.state(scope, "")
+		n := c.state("")
 		for sym := Sym(1); int(sym) <= t.Alpha.Size(); sym++ {
 			t.Next[n][sym] = at(d.Step(s, sym))
 		}
@@ -259,7 +268,7 @@ func (c *compiler) finish(s int, done, going []int) {
 	finished := map[string]*Accept{}
 	for _, i := range done {
 		e := c.entries[i]
-		acc := &Accept{Action: e.rule.Action, Goto: e.rule.Goto, When: e.when,
+		acc := &Accept{Action: e.rule.Action, Goto: c.index[e.rule.Goto], When: e.when,
 			Pattern: e.rule.Pattern, Line: e.rule.Line, Operand: operand(e.rule)}
 		if was, ok := finished[e.origin]; ok {
 			c.conflict(acc.Line, "%q and %q both finish here -- two rules, one key sequence", was.Pattern, acc.Pattern)
@@ -341,20 +350,28 @@ func signature(done, going []int, wilds []wild) string {
 	return b.String()
 }
 
-func (c *compiler) state(scope, sig string) int {
+func (c *compiler) state(sig string) int {
 	c.sig = append(c.sig, sig)
-	return c.t.state(scope)
+	return c.t.state()
 }
 
-func (t *Table) state(scope string) int {
+func (t *Table) state() int {
 	s := len(t.Next)
 	t.Next = append(t.Next, make([]int, t.Alpha.Size()+1))
 	t.Any = append(t.Any, make([][]*Accept, t.Alpha.Size()+1))
-	t.Scope = append(t.Scope, scope)
 	t.Accept = append(t.Accept, nil)
 	t.Live = append(t.Live, nil)
 	t.Settle = append(t.Settle, 0)
 	return s
+}
+
+func (t *Table) Scope(name string) int {
+	for i, s := range t.Scopes {
+		if s.Name == name {
+			return i + 1
+		}
+	}
+	return 0
 }
 
 func (t *Table) Waiting() []string {

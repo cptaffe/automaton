@@ -188,7 +188,7 @@ func TestAnUnknownKeySettlesAndPasses(t *testing.T) {
 
 func TestOnlyAPlaceAMachineCanBeIsCompiled(t *testing.T) {
 	tab := modes(t)
-	if strings.Join(tab.Scopes, " ") != "main marks" {
+	if scopeNames(tab) != "main marks" {
 		t.Errorf("the scopes are %v; acme and safari are only read in", tab.Scopes)
 	}
 	if _, err := NewMachine(tab, "acme"); err == nil {
@@ -299,4 +299,12 @@ func TestARuleOnTheSettleEventConflicts(t *testing.T) {
 	if len(tab.Conflicts) == 0 || !strings.Contains(strings.Join(tab.Conflicts, "\n"), "T settles here and a rule reads T next") {
 		t.Errorf("conflicts %v", tab.Conflicts)
 	}
+}
+
+func scopeNames(tab *Table) string {
+	var names []string
+	for _, s := range tab.Scopes {
+		names = append(names, s.Name)
+	}
+	return strings.Join(names, " ")
 }

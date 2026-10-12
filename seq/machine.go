@@ -4,21 +4,24 @@ import "fmt"
 
 type Machine struct {
 	t     *Table
-	scope string
+	scope int
 	state int
 }
 
 func NewMachine(t *Table, scope string) (*Machine, error) {
+	at := t.Scope(scope)
 	if scope == "" && len(t.Scopes) > 0 {
-		scope = t.Scopes[0]
+		at = 1
 	}
-	if _, ok := t.Start[scope]; !ok {
+	if at == 0 {
 		return nil, fmt.Errorf("%s has no scope %q", t.Name, scope)
 	}
-	return &Machine{t: t, scope: scope}, nil
+	return &Machine{t: t, scope: at}, nil
 }
 
-func (m *Machine) Scope() string { return m.scope }
+func (m *Machine) Scope() string { return m.t.Scopes[m.scope-1].Name }
+
+func (m *Machine) start() int { return m.t.Scopes[m.scope-1].Start }
 
 func (m *Machine) Pending() bool { return m.state != 0 }
 
@@ -38,7 +41,7 @@ func (m *Machine) Step(s Sym, env Env) (bool, []*Accept) {
 	if s == 0 {
 		return false, fired
 	}
-	ok, f := m.from(m.t.Start[m.scope], s, env)
+	ok, f := m.from(m.start(), s, env)
 	return ok, append(fired, f...)
 }
 
@@ -49,7 +52,7 @@ func (m *Machine) event(s Sym, env Env) (bool, []*Accept) {
 	case m.state != 0:
 		return m.from(m.state, s, env)
 	}
-	return m.from(m.t.Start[m.scope], s, env)
+	return m.from(m.start(), s, env)
 }
 
 func (m *Machine) Settle(env Env) []*Accept {
@@ -117,7 +120,7 @@ func (m *Machine) going(s int, env Env) bool {
 
 func (m *Machine) fire(a *Accept) []*Accept {
 	m.state = 0
-	if a.Goto != "" {
+	if a.Goto != 0 {
 		m.scope = a.Goto
 	}
 	return []*Accept{a}

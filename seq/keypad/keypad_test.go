@@ -78,8 +78,8 @@ func TestPlan(t *testing.T) {
 			t.Errorf("%s %s: got %+v, want %s", c.scope, c.keys, a, c.action)
 		}
 	}
-	if a := walk(t, tab, "start", "*", "9", "8"); a.Goto != "mailbox" {
-		t.Errorf("*98 goes to %q", a.Goto)
+	if a := walk(t, tab, "start", "*", "9", "8"); a.Goto == 0 || tab.Scopes[a.Goto-1].Name != "mailbox" {
+		t.Errorf("*98 goes to scope %d", a.Goto)
 	}
 	if a := walk(t, tab, "mailbox", "1"); a == nil || a.When == nil || a.When.String() != "holding" {
 		t.Errorf("when %v", a.When)

@@ -19,7 +19,7 @@ func TestTheExampleCompiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(tab.Conflicts) > 0 || tab.Scopes[0] != "start" {
+	if len(tab.Conflicts) > 0 || tab.Scopes[0].Name != "start" {
 		t.Fatal(tab.Scopes, tab.Conflicts)
 	}
 }

@@ -35,7 +35,7 @@ func TestLabel(t *testing.T) {
 	if got := draw.Label(long); !strings.HasSuffix(got, "...") || len(got) > 24 {
 		t.Errorf("label %q", got)
 	}
-	multi := &seq.Accept{Action: "a\nb", Goto: "next"}
+	multi := &seq.Accept{Action: "a\nb", Goto: 1}
 	if got := draw.Label(multi); got != "a..." {
 		t.Errorf("label %q", got)
 	}

@@ -26,7 +26,7 @@ func (m machine) States() int { return len(m.t.Next) - 1 }
 func (m machine) Starts() []dot.Start {
 	out := make([]dot.Start, len(m.t.Scopes))
 	for i, scope := range m.t.Scopes {
-		out[i] = dot.Start{Name: scope, State: m.t.Start[scope]}
+		out[i] = dot.Start{Name: scope.Name, State: scope.Start}
 	}
 	return out
 }
@@ -53,7 +53,10 @@ func (m machine) Moves(s int) []dot.Move {
 	}
 	gone := map[int]bool{}
 	for _, a := range m.t.Accept[s] {
-		if to, ok := m.t.Start[a.Goto]; ok && !gone[to] {
+		if a.Goto == 0 {
+			continue
+		}
+		if to := m.t.Scopes[a.Goto-1].Start; !gone[to] {
 			gone[to] = true
 			out = append(out, dot.Move{To: to, Dashed: true, Class: "goto"})
 		}
