@@ -1,37 +1,37 @@
 # automaton
 
-Lexers and key-sequence languages, compiled to tables.
+Small languages for lexers, dial plans and keyboard shortcuts, compiled to
+tables you can run, check and draw.
 
-You describe a lexer, a dial plan, or a set of keyboard shortcuts in a small
-language. automaton checks it for conflicts, compiles it to a table, and runs
-it or draws it. The runtimes depend only on the standard library, so a
-program that uses a generated table pulls in nothing else.
-
-It started inside two projects: a payphone emulator, whose keypad menus are
-trees of key sequences, and an [Acme](https://9fans.github.io/plan9port/man/man1/acme.html)
-hotkey daemon, whose shortcuts are the same thing over a keyboard.
-
-| Package | What it does |
-|---|---|
-| [`automaton`](.) | Rune sets, regular expressions, NFA → DFA, minimisation |
-| [`lex`](lex) | The lexer runtime that generated lexers use |
-| [`lex/gen`](lex/gen), [`cmd/genlex`](cmd/genlex) | The `.lex` language → lexer tables, as Go |
-| [`seq`](seq) | Key-sequence grammars → tables, and a machine to step them |
-| [`seq/keypad`](seq/keypad), [`seq/hotkey`](seq/hotkey), [`cmd/genseq`](cmd/genseq) | Two languages for key sequences |
-| [`lr`](lr), [`cmd/lrdot`](cmd/lrdot) | goyacc's `y.output` → the grammar and its LR automaton |
-| [`dot`](dot), [`lex/draw`](lex/draw), [`seq/draw`](seq/draw), [`lr/draw`](lr/draw) | Graphviz drawings of all of the above |
+Each language is checked for conflicts when it compiles, so a rule that can
+never fire, or two rules on the same input, is an error rather than a
+surprise. The runtimes use only the standard library.
 
 ```sh
 go install github.com/cptaffe/automaton/cmd/...@latest
 ```
 
+## Packages
+
+| Package | |
+|---|---|
+| [`fa`](fa) | Finite automata over any integer symbol: sets, expressions, NFA → DFA, minimisation |
+| [`lex`](lex) | The runtime generated lexers use |
+| [`lex/gen`](lex/gen) | The `.lex` language, compiled to lexer tables |
+| [`seq`](seq) | Key-sequence grammars, compiled to tables, and a machine to run them |
+| [`seq/keypad`](seq/keypad) | Dial plans for a payphone keypad |
+| [`seq/hotkey`](seq/hotkey) | Keyboard shortcuts that run rc scripts |
+| [`lr`](lr) | The grammar in goyacc's `y.output`, and its machine over tokens |
+| [`dot`](dot) | Graphviz drawings; `lex/draw`, `seq/draw` and `lr/draw` adapt to it |
+| [`cmd/genlex`](cmd/genlex) | `.lex` → Go tables and drawings |
+| [`cmd/genseq`](cmd/genseq) | Dial plans and shortcuts → drawings |
+| [`cmd/lrdot`](cmd/lrdot) | `y.output` → drawings |
+
 ## Lexers
 
-A `.lex` file has scopes of rules; each rule matches the longest input it can
-and emits a token, ignores it, or moves to another scope. A rule that is only
-`-> scope` reads that scope's rules in where it stands. A scope that takes a
-parameter returns to whoever entered it, and may enter itself, so comments can
-nest:
+A `.lex` file is a set of scopes. Each rule reads the longest input it can,
+then emits a token, ignores the input, or moves to another scope. A scope with
+a parameter returns to wherever it was entered from, so comments can nest:
 
 ```
 start {
@@ -52,32 +52,36 @@ comment(then) {
 //go:generate go run github.com/cptaffe/automaton/cmd/genlex -go scan.gen.go -package scan comments.lex
 
 l, err := lex.New(scan.Spec, r, "start")
+if err != nil {
+	return err
+}
 for tok, ok := l.Next(); ok; tok, ok = l.Next() {
 	fmt.Println(scan.Spec.Token(tok.Kind), tok.Text)
 }
+return l.Err()
 ```
 
-![comments.lex as a machine](docs/comments.svg)
+![comments.lex](docs/comments.svg)
 
 ## Key sequences
 
-[`seq`](seq) compiles scopes of key sequences into a table, refusing two rules
-on the same keys and a rule that is also the start of a longer one unless the
-scope says how long to wait for the next key. A machine starts in the first
-scope and returns to its scope's start after each match; `-> scope` after a
-rule moves it, and `-> scope when ...` on a line of its own reads another
-scope's rules in, as long as the condition holds. A key is taken only when a
-rule that holds can use it. Both dialects share it.
+Both dialects compile to the same kind of table:
+
+- A machine starts in the first scope, and after each match returns to the
+  start of the scope it is in.
+- `-> scope` after a rule moves to that scope.
+- `-> scope` on a line of its own reads that scope's rules in, and
+  `-> scope when ...` does so only while the condition holds. A key is taken
+  only when a rule that holds can use it.
+- A rule that is also the start of a longer one is a conflict, unless the
+  scope says with `%settles` how long to wait for the next key.
+- A scope can take a parameter, `dialing(then)`, and `this` names the scope a
+  rule is in.
 
 ### Keypad
 
-A dial plan, where `N` is 2–9, `X` is 0–9, and `T` settles a number that
-could still grow. A scope can take a parameter: `dialing(then)` waits for the
-call to be answered and then goes wherever it was told, and
-`-> dialing(this)` would come back to the scope it was called from; and `connected`, with
-no rules, ends the plan once a number is dialled. Several trees compile
-together with `keypad.Compile`, and a `->` to another tree's name goes to its
-first scope:
+`N` is 2–9 and `X` is 0–9. `dialing(then)` waits for the call to be answered,
+and `connected`, with no rules, ends the plan:
 
 ```
 %delay T 5s
@@ -102,19 +106,30 @@ mailbox:
 ```
 
 ```go
-tree, err := keypad.Parse(f, "dial.tree")
-t, err := keypad.Compile(tree)
+plan, err := keypad.Parse(f, "dial.tree")
+if err != nil {
+	return err
+}
+t, err := keypad.Compile(plan)
+if err != nil {
+	return err
+}
 m, err := seq.NewMachine(t, "")
+if err != nil {
+	return err
+}
 taken, fired := m.Step(t.Alpha.Of("*"), seq.Env{"messages": "1"})
 ```
 
-![dial.tree as a machine](docs/dial.svg)
+Several plans compile together with `keypad.Compile`, and a `->` to another
+plan's name goes to its first scope.
+
+![dial.tree](docs/dial.svg)
 
 ### Hotkeys
 
-Keyboard shortcuts, each running an rc script, with a shared prelude. `main`
-reads in `acme`'s rules only while Acme has the keyboard, and `marks` is a mode
-that `escape` leaves:
+Shortcuts run rc scripts that share a prelude. `main` reads in `acme`'s rules
+only while Acme has the keyboard, and `marks` is a mode that `escape` leaves:
 
 ```
 %{
@@ -140,29 +155,34 @@ marks:
 
 ```go
 r, err := hotkey.Parse(f, "hotkeys", nil)
+if err != nil {
+	return err
+}
 m, err := seq.NewMachine(r.Table, "")
-env := seq.Env{"app": "devdraw"}
-taken, fired := m.Step(r.Table.Alpha.Of("control-x"), env)
+if err != nil {
+	return err
+}
+taken, fired := m.Step(r.Table.Alpha.Of("control-x"), seq.Env{"app": "devdraw"})
 for _, a := range fired {
 	exec.Command("rc", "-c", r.Prelude+"\n"+a.Action).Start()
 }
-for _, name := range m.Waits() {
-	time.AfterFunc(r.Table.Delays[name], func() { m.Step(r.Table.Alpha.Of(name), env) })
-}
 ```
 
-![hotkeys as a machine](docs/hotkeys.svg)
+`m.Waits()` names the delays to start a timer for. When one runs out, step
+the machine with it.
+
+![hotkeys](docs/hotkeys.svg)
 
 ## LR automata
 
-`lrdot` reads the report goyacc writes with `-v` and draws the grammar and the
-machine over its tokens, noting when the grammar is too nested for a machine
-to read it exactly:
+`lrdot` reads the report goyacc writes with `-v`, and draws the grammar and
+the machine over its tokens. It notes when the grammar nests too deeply for a
+machine to read it exactly:
 
 ```sh
 goyacc -o /dev/null -v y.output gram.y
 lrdot -name gram y.output gram.dot
 ```
 
-The drawings in [docs](docs) are made by [`docs/draw.sh`](docs/draw.sh) from
-the files in [examples](examples).
+The drawings are made by [`docs/draw.sh`](docs/draw.sh) from
+[`examples`](examples).
