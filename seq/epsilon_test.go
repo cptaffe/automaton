@@ -59,7 +59,7 @@ func run(t *testing.T, tab *Table, steps []step) {
 		if s.key == "" {
 			fired = m.Settle(Env{"app": s.app})
 		} else {
-			ok, fired = m.Step(tab.Alpha.Of(s.key), Env{"app": s.app})
+			ok, fired = m.Step(sym(tab.Alpha, s.key), Env{"app": s.app})
 		}
 		if ok != s.ok || actions(fired) != s.fired {
 			t.Errorf("step %d, %s in %s: took %v and fired %q; want %v and %q", i, s.key, s.app, ok, actions(fired), s.ok, s.fired)
@@ -114,15 +114,15 @@ func TestSettlingFiresTheCompleteRule(t *testing.T) {
 		t.Fatal(err)
 	}
 	m := machine(t, tab, "")
-	m.Step(a.Of("a"), nil)
+	m.Step(sym(a, "a"), nil)
 	if got := strings.Join(m.Waits(), " "); got != "hangup settle" {
 		t.Errorf("after a, the machine waits for %q", got)
 	}
 	if got := actions(m.Settle(nil)); got != "one" {
 		t.Errorf("settling after a fired %q; want one", got)
 	}
-	m.Step(a.Of("a"), nil)
-	if _, f := m.Step(a.Of("hangup"), nil); actions(f) != "hung" {
+	m.Step(sym(a, "a"), nil)
+	if _, f := m.Step(sym(a, "hangup"), nil); actions(f) != "hung" {
 		t.Errorf("a then hangup fired %q; want hung", actions(f))
 	}
 }
@@ -173,16 +173,16 @@ func TestAnEpsilonIsChecked(t *testing.T) {
 	}
 }
 
-func TestAnUnknownKeySettlesAndPasses(t *testing.T) {
+func TestAnUnknownKeyIsTheCallers(t *testing.T) {
 	tab := modes(t)
 	m := machine(t, tab, "")
 	env := Env{"app": "devdraw"}
-	m.Step(tab.Alpha.Of("x"), env)
-	if ok, f := m.Step(NoSym, env); ok || actions(f) != "show" {
-		t.Errorf("a key no rule names took %v and fired %q; want it passed and show settled", ok, actions(f))
+	m.Step(sym(tab.Alpha, "x"), env)
+	if _, ok := tab.Alpha.Of("f13"); ok {
+		t.Fatal("f13 is in the alphabet")
 	}
-	if m.Pending() {
-		t.Error("the machine still waits after an unknown key")
+	if f := m.Settle(env); actions(f) != "show" || m.Pending() {
+		t.Errorf("settling fired %q and left pending %v; want show and nothing pending", actions(f), m.Pending())
 	}
 }
 
@@ -235,18 +235,18 @@ func TestACompleteRuleAnotherOriginExtendsSettles(t *testing.T) {
 		}}
 	tab := hk(t, a, g)
 	m := machine(t, tab, "")
-	m.Step(a.Of("x"), nil)
+	m.Step(sym(a, "x"), nil)
 	if got := strings.Join(m.Waits(), " "); got != "settle" {
 		t.Errorf("after x the machine waits for %q; want settle", got)
 	}
-	if _, f := m.Step(a.Of("settle"), nil); actions(f) != "one" {
+	if _, f := m.Step(sym(a, "settle"), nil); actions(f) != "one" {
 		t.Errorf("settle fired %q; want one", actions(f))
 	}
 
 	delete(g.Settles, "a")
 	tab = hk(t, a, g)
 	m = machine(t, tab, "")
-	if _, f := m.Step(a.Of("x"), nil); actions(f) != "one" || m.Pending() {
+	if _, f := m.Step(sym(a, "x"), nil); actions(f) != "one" || m.Pending() {
 		t.Errorf("with nothing to settle on, x fired %q and pending is %v; want one at once", actions(f), m.Pending())
 	}
 }
@@ -264,7 +264,7 @@ func TestOneScopeReadInTwiceIsNoConflict(t *testing.T) {
 	}
 	for _, name := range []string{"Emacs", "Terminal"} {
 		m := machine(t, tab, "")
-		if ok, f := m.Step(a.Of("s"), Env{"app": name}); !ok || actions(f) != "save" {
+		if ok, f := m.Step(sym(a, "s"), Env{"app": name}); !ok || actions(f) != "save" {
 			t.Errorf("in %s, s took %v and fired %q", name, ok, actions(f))
 		}
 	}
@@ -282,8 +282,8 @@ func TestAWildcardSettlesWhatWasPending(t *testing.T) {
 		},
 		Any: []Any{{Scope: "m", Pattern: "j", Elem: j, Action: "wild"}}})
 	m := machine(t, tab, "")
-	m.Step(a.Of("x"), nil)
-	if _, f := m.Step(a.Of("j"), nil); actions(f) != "one,wild" {
+	m.Step(sym(a, "x"), nil)
+	if _, f := m.Step(sym(a, "j"), nil); actions(f) != "one,wild" {
 		t.Errorf("j after x fired %q; want one,wild", actions(f))
 	}
 }

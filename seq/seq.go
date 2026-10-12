@@ -42,7 +42,10 @@ func (a *Alphabet) Size() int          { return len(a.names) }
 func (a *Alphabet) Keys() int          { return a.keys }
 func (a *Alphabet) IsKey(s Sym) bool   { return s >= 1 && int(s) <= a.keys }
 func (a *Alphabet) IsEvent(s Sym) bool { return int(s) > a.keys && int(s) <= len(a.names) }
-func (a *Alphabet) Of(name string) Sym { return a.by[name] }
+func (a *Alphabet) Of(name string) (Sym, bool) {
+	s, ok := a.by[name]
+	return s, ok
+}
 func (a *Alphabet) Name(s Sym) string {
 	if s < 1 || int(s) > len(a.names) {
 		return ""

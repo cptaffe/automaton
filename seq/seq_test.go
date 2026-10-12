@@ -10,10 +10,18 @@ import (
 func keys(a *Alphabet, names ...string) Class {
 	var c Class
 	for _, n := range names {
-		c.Syms = append(c.Syms, a.Of(n))
+		c.Syms = append(c.Syms, sym(a, n))
 	}
 	c.Text = strings.Join(names, "|")
 	return c
+}
+
+func sym(a *Alphabet, name string) Sym {
+	s, ok := a.Of(name)
+	if !ok {
+		panic("no symbol " + name)
+	}
+	return s
 }
 
 func many(c Class) Class { c.Many = true; return c }
@@ -76,17 +84,16 @@ func TestAlphabet(t *testing.T) {
 	if a.Size() != 4 || a.Keys() != 2 {
 		t.Errorf("size %d keys %d", a.Size(), a.Keys())
 	}
-	if a.Of("late") != 3 || a.Name(4) != "early" || a.IsKey(3) || !a.IsEvent(3) {
+	if s, _ := a.Of("late"); s != 3 || a.Name(4) != "early" || a.IsKey(3) || !a.IsEvent(3) {
 		t.Errorf("events are not kept in order after the keys: %v", a.names)
 	}
-	if a.Of("nope") != NoSym || a.Name(NoSym) != "" || a.IsKey(NoSym) || a.IsEvent(NoSym) {
+	if s, ok := a.Of("nope"); ok || s != NoSym || a.Name(NoSym) != "" || a.IsKey(NoSym) || a.IsEvent(NoSym) {
 		t.Error("symbol 0 is a symbol")
 	}
 }
 
 func TestMachine(t *testing.T) {
 	tab := compile(t)
-	sym := tab.Alpha.Of
 	m := machine(t, tab, "")
 	on := Env{"on": "1"}
 	for _, c := range []struct {
@@ -116,7 +123,7 @@ func TestMachine(t *testing.T) {
 			}
 			continue
 		}
-		ok, fired := m.Step(sym(c.in), on)
+		ok, fired := m.Step(sym(tab.Alpha, c.in), on)
 		if ok != c.ok || actions(fired) != c.fired || !reflect.DeepEqual(m.Waits(), c.waits) {
 			t.Errorf("%s: got %v %q %v, want %v %q %v", c.in, ok, actions(fired), m.Waits(), c.ok, c.fired, c.waits)
 		}
@@ -129,7 +136,7 @@ func TestMachine(t *testing.T) {
 func TestAFailedWhenLeavesTheKey(t *testing.T) {
 	tab := compile(t)
 	m := machine(t, tab, "mode")
-	if ok, fired := m.Step(tab.Alpha.Of("x"), Env{}); ok || len(fired) != 0 {
+	if ok, fired := m.Step(sym(tab.Alpha, "x"), Env{}); ok || len(fired) != 0 {
 		t.Errorf("a rule whose when fails consumed %v and fired %v", ok, actions(fired))
 	}
 }
@@ -139,7 +146,7 @@ func TestOperand(t *testing.T) {
 	m := machine(t, tab, "")
 	var last []*Accept
 	for _, n := range []string{"c", "d", "d", "T"} {
-		_, last = m.Step(tab.Alpha.Of(n), nil)
+		_, last = m.Step(sym(tab.Alpha, n), nil)
 	}
 	if len(last) != 1 || last[0].Operand == nil || *last[0].Operand != (Slice{From: 1, To: 0}) {
 		t.Errorf("operand %+v", last)

@@ -11,7 +11,7 @@ func calls(t *testing.T, scopes []string, params map[string]string, rules ...Rul
 	for i := range rules {
 		if rules[i].Include == "" && len(rules[i].Elems) == 0 {
 			p := rules[i].Pattern
-			if a.IsEvent(a.Of(p)) {
+			if a.IsEvent(sym(a, p)) {
 				rules[i].Elems = []Class{event(p)}
 			} else {
 				rules[i].Elems = []Class{keys(a, p)}
@@ -38,14 +38,14 @@ func TestAParameterIsWhereTheScopeGoesNext(t *testing.T) {
 	for _, c := range []struct{ sym, scope string }{
 		{"a", "dialing(other)"}, {"c", "dialing(other)"}, {"answered", "other"},
 	} {
-		m.Step(tab.Alpha.Of(c.sym), nil)
+		m.Step(sym(tab.Alpha, c.sym), nil)
 		if m.Scope() != c.scope {
 			t.Errorf("after %s the machine is in %s; want %s", c.sym, m.Scope(), c.scope)
 		}
 	}
 	m = machine(t, tab, "")
-	m.Step(tab.Alpha.Of("b"), nil)
-	m.Step(tab.Alpha.Of("answered"), nil)
+	m.Step(sym(tab.Alpha, "b"), nil)
+	m.Step(sym(tab.Alpha, "answered"), nil)
 	if m.Scope() != "start" {
 		t.Errorf("-> dialing(this) came back to %s", m.Scope())
 	}

@@ -44,11 +44,11 @@ func walk(t *testing.T, tab *seq.Table, scope string, syms ...string) *seq.Accep
 	}
 	var last *seq.Accept
 	for _, name := range syms {
-		sym := tab.Alpha.Of(name)
-		if !sym.IsValid() {
+		s, ok := tab.Alpha.Of(name)
+		if !ok {
 			t.Fatalf("no symbol %s", name)
 		}
-		if _, fired := m.Step(sym, seq.Env{"holding": "yes"}); len(fired) > 0 {
+		if _, fired := m.Step(s, seq.Env{"holding": "yes"}); len(fired) > 0 {
 			last = fired[len(fired)-1]
 		}
 	}
@@ -91,7 +91,7 @@ func TestPlan(t *testing.T) {
 		t.Errorf("waiting %v", got)
 	}
 	m, _ := seq.NewMachine(tab, "mailbox")
-	if ok, _ := m.Step(tab.Alpha.Of("1"), nil); ok {
+	if ok, _ := m.Step(sym(tab.Alpha, "1"), nil); ok {
 		t.Error("1 in the mailbox was taken while nothing is holding")
 	}
 }
@@ -123,8 +123,8 @@ func TestATreeHandsOff(t *testing.T) {
 			t.Fatal(err)
 		}
 		var got []string
-		for _, sym := range strings.Fields(c.syms) {
-			_, fired := m.Step(tab.Alpha.Of(sym), nil)
+		for _, name := range strings.Fields(c.syms) {
+			_, fired := m.Step(sym(tab.Alpha, name), nil)
 			for _, a := range fired {
 				if a.Action != "" {
 					got = append(got, a.Action)
@@ -241,4 +241,12 @@ func TestAPatternReadsAsWritten(t *testing.T) {
 	if want := "960-NXX-XXXX|1 answered|abandon"; strings.Join(got, "|") != want {
 		t.Errorf("patterns %q; want %s", got, want)
 	}
+}
+
+func sym(a *seq.Alphabet, name string) seq.Sym {
+	s, ok := a.Of(name)
+	if !ok {
+		panic("no symbol " + name)
+	}
+	return s
 }

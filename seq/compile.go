@@ -98,7 +98,7 @@ func Compile(g *Grammar, a *Alphabet) (*Table, error) {
 		anys[i] = x
 	}
 	for scope, name := range g.Settles {
-		if !a.Of(name).IsValid() {
+		if _, ok := a.Of(name); !ok {
 			return nil, fmt.Errorf("%s: %s %%settles %s, and nothing declares %s", g.Name, scope, name, name)
 		}
 	}
@@ -288,7 +288,7 @@ func (c *compiler) finish(s int, done, going []int) {
 				acc.Pattern, strings.Join(live[e.origin], ", "), e.rule.Scope)
 			continue
 		}
-		switch sym := t.Alpha.Of(name); t.Settle[s] {
+		switch sym, _ := t.Alpha.Of(name); t.Settle[s] {
 		case NoSym:
 			t.Settle[s] = sym
 		case sym:
@@ -309,8 +309,8 @@ func resolve(c Class, a *Alphabet) (Class, error) {
 	if c.Event == "" {
 		return c, nil
 	}
-	s := a.Of(c.Event)
-	if !s.IsValid() {
+	s, ok := a.Of(c.Event)
+	if !ok {
 		return c, fmt.Errorf("%q is in a pattern and nothing declares it", c.Event)
 	}
 	c.sym = s
@@ -377,7 +377,7 @@ func (t *Table) Scope(name string) int {
 func (t *Table) Waiting() []string {
 	var out []string
 	for name := range t.Delays {
-		if sym := t.Alpha.Of(name); sym.IsValid() && t.waits(sym) {
+		if sym, ok := t.Alpha.Of(name); ok && t.waits(sym) {
 			out = append(out, name)
 		}
 	}

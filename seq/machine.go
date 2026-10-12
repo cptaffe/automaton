@@ -31,15 +31,10 @@ func (m *Machine) Step(s Sym, env Env) (bool, []*Accept) {
 	}
 	var fired []*Accept
 	if m.state != 0 {
-		if s.IsValid() {
-			if ok, f := m.from(m.state, s, env); ok {
-				return true, f
-			}
+		if ok, f := m.from(m.state, s, env); ok {
+			return true, f
 		}
 		fired = m.Settle(env)
-	}
-	if !s.IsValid() {
-		return false, fired
 	}
 	ok, f := m.from(m.start(), s, env)
 	return ok, append(fired, f...)

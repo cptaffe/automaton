@@ -126,7 +126,8 @@ m, err := seq.NewMachine(t, "")
 if err != nil {
 	return err
 }
-taken, fired := m.Step(t.Alpha.Of("*"), seq.Env{"messages": "1"})
+star, _ := t.Alpha.Of("*")
+taken, fired := m.Step(star, seq.Env{"messages": "1"})
 ```
 
 Several plans compile together with `keypad.Compile`, and a `->` to another
@@ -170,14 +171,22 @@ m, err := seq.NewMachine(r.Table, "")
 if err != nil {
 	return err
 }
-taken, fired := m.Step(r.Table.Alpha.Of("control-x"), seq.Env{"app": "devdraw"})
+env := seq.Env{"app": "devdraw"}
+var taken bool
+var fired []*seq.Accept
+if key, ok := r.Table.Alpha.Of("control-x"); ok {
+	taken, fired = m.Step(key, env)
+} else {
+	fired = m.Settle(env)
+}
 for _, a := range fired {
 	exec.Command("rc", "-c", r.Prelude+"\n"+a.Action).Start()
 }
 ```
 
-`m.Waits()` names the delays to start a timer for. When one runs out, step
-the machine with it.
+A key no rule names is the caller's to handle: here it settles whatever was
+waiting, and the key passes through untaken. `m.Waits()` names the delays to
+start a timer for. When one runs out, step the machine with it.
 
 ![hotkeys](docs/hotkeys.svg)
 

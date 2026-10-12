@@ -26,7 +26,7 @@ func TestTheExampleCompiles(t *testing.T) {
 		key   string
 		scope string
 	}{{"command-m", "marks"}, {"escape", "main"}} {
-		if ok, _ := m.Step(r.Table.Alpha.Of(c.key), acme); !ok || m.Scope() != c.scope {
+		if ok, _ := m.Step(sym(r.Table.Alpha, c.key), acme); !ok || m.Scope() != c.scope {
 			t.Errorf("%s took %v into %s; want %s", c.key, ok, m.Scope(), c.scope)
 		}
 	}

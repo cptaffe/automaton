@@ -112,7 +112,7 @@ func TestMatch(t *testing.T) {
 		{"command-s", seq.Env{"app": "Safari"}, false, "", nil},
 		{"command-s", acme, true, "put", nil},
 	} {
-		consume, fired := m.Step(r.Table.Alpha.Of(c.key), c.env)
+		consume, fired := press(m, r.Table.Alpha, c.key, c.env)
 		waits := m.Waits()
 		if consume != c.consume || actions(fired) != c.fired || !reflect.DeepEqual(waits, c.waits) {
 			t.Errorf("%s in %v: got %v %q %v, want %v %q %v", c.key, c.env["app"], consume, actions(fired), waits, c.consume, c.fired, c.waits)
@@ -123,8 +123,8 @@ func TestMatch(t *testing.T) {
 func TestSettleOnTimeout(t *testing.T) {
 	r := parse(t, keytab)
 	m := machine(t, r)
-	m.Step(r.Table.Alpha.Of("control-x"), seq.Env{"app": "devdraw"})
-	_, fired := m.Step(r.Table.Alpha.Of("settle"), seq.Env{"app": "devdraw"})
+	m.Step(sym(r.Table.Alpha, "control-x"), seq.Env{"app": "devdraw"})
+	_, fired := m.Step(sym(r.Table.Alpha, "settle"), seq.Env{"app": "devdraw"})
 	if waits := m.Waits(); actions(fired) != "echo '}' {nested}" || waits != nil {
 		t.Errorf("settle fired %q, waits %v", actions(fired), waits)
 	}
@@ -185,7 +185,7 @@ func TestAWildcardAndDelays(t *testing.T) {
 		{"escape", "reset"},
 		{"quiet", "idle"},
 	} {
-		if _, fired := m.Step(r.Table.Alpha.Of(c.key), env); actions(fired) != c.fired {
+		if _, fired := press(m, r.Table.Alpha, c.key, env); actions(fired) != c.fired {
 			t.Errorf("%s fired %q; want %q", c.key, actions(fired), c.fired)
 		}
 	}
@@ -207,4 +207,20 @@ func TestDeclarationErrors(t *testing.T) {
 			t.Errorf("%q: got %v, want %q", c.src, err, c.want)
 		}
 	}
+}
+
+func sym(a *seq.Alphabet, name string) seq.Sym {
+	s, ok := a.Of(name)
+	if !ok {
+		panic("no symbol " + name)
+	}
+	return s
+}
+
+func press(m *seq.Machine, a *seq.Alphabet, key string, env seq.Env) (bool, []*seq.Accept) {
+	s, ok := a.Of(key)
+	if !ok {
+		return false, m.Settle(env)
+	}
+	return m.Step(s, env)
 }

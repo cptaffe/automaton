@@ -288,7 +288,8 @@ func (l *lexer) resolve(known func(string) error) (*seq.Alphabet, error) {
 		if event {
 			return seq.Class{Event: k, Text: w.text}
 		}
-		return seq.Class{Syms: []seq.Sym{a.Of(k)}, Text: w.text}
+		s, _ := a.Of(k)
+		return seq.Class{Syms: []seq.Sym{s}, Text: w.text}
 	}
 	for _, r := range l.rules {
 		g := &l.g.Rules[r.at]
