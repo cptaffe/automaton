@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"embed"
 	"fmt"
+	"slices"
 	"strings"
 	"text/template"
 )
@@ -15,6 +16,7 @@ var draw = template.Must(template.New("graph.dot.tmpl").Funcs(template.FuncMap{
 	"q":     func(s string) string { return quote(s, "n") },
 	"brk":   func(s string) string { return quote(s, "l") },
 	"flush": func(s string) string { return quote(strings.TrimSuffix(s, "\n")+"\n", "l") },
+	"html":  func(s string) string { return strings.ReplaceAll(template.HTMLEscapeString(s), "\n", "<br/>") },
 
 	"fail": func(look string) (string, error) {
 		return "", fmt.Errorf("no look named %q", look)
@@ -43,10 +45,11 @@ type Rank struct {
 }
 
 type Node struct {
-	ID    string
-	Label string
-	Shape string
-	Style string
+	ID      string
+	Label   string
+	Caption string
+	Shape   string
+	Style   string
 
 	Class string
 
@@ -103,4 +106,34 @@ func Ident(s string) string {
 	}
 
 	return b.String()
+}
+
+func (n Node) Paint() string {
+	switch {
+	case slices.Contains(strings.Fields(n.Class), "start"):
+		return `fillcolor="#1971c2", color="#1971c2", fontcolor="white"`
+	case n.Twice:
+		return `fillcolor="#ebfbee", color="#2f9e44", fontcolor="#2b8a3e"`
+	}
+
+	return `fillcolor="#f1f3f5", color="#adb5bd", fontcolor="#495057"`
+}
+
+func (e Edge) Paint() string {
+	color := "#495057"
+
+	for _, c := range strings.Fields(e.Class) {
+		switch c {
+		case "goto", "hands":
+			color = "#7048e8"
+		case "settle":
+			color = "#e8590c"
+		case "cycle":
+			color = "#1c7ed6"
+		case "nest":
+			return `color="#e03131", fontcolor="#e03131"`
+		}
+	}
+
+	return fmt.Sprintf("color=%q, fontcolor=%q", color, color)
 }

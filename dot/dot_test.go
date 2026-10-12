@@ -54,7 +54,7 @@ func TestAMoveIsAnEdge(t *testing.T) {
 	if n := strings.Count(out, "->"); n != 2 {
 		t.Errorf("the drawing has %d edges; want 2:\n%s", n, out)
 	}
-	for _, want := range []string{`" a-z "`, `" 0-9 "`, "style=dashed", "doublecircle", "word", "number", `label="start"`} {
+	for _, want := range []string{`" a-z "`, `" 0-9 "`, "style=dashed", "peripheries=2", "word", "number", `label="start"`} {
 		if !strings.Contains(out, want) {
 			t.Errorf("the drawing does not hold %s:\n%s", want, out)
 		}
@@ -102,7 +102,7 @@ func TestAHandOffCrossesMachines(t *testing.T) {
 	a.leaves = map[int]string{2: "chain"}
 	out := drawn(t)(dot.Whole([]dot.Machine{a, chain()}, "whole"))
 
-	if !strings.Contains(out, `m0_s2 -> m1_s1 [label="", class="hands", style=dashed, constraint=false]`) {
+	if !strings.Contains(out, `m0_s2 -> m1_s1 [label="", color="#7048e8", fontcolor="#7048e8", class="hands", style=dashed, constraint=false]`) {
 		t.Errorf("the hand-off from toy to chain is not drawn:\n%s", out)
 	}
 	if n := strings.Count(out, "subgraph cluster_"); n != 2 {

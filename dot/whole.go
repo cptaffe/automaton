@@ -23,21 +23,7 @@ func Whole(ms []Machine, name string) ([]byte, error) {
 				continue
 			}
 
-			n := Node{ID: fmt.Sprintf("%s%d", tag(i), s), Label: fmt.Sprint(s)}
-
-			if s == start(m) {
-				n.Label, n.Shape, n.Style, n.Class = m.Name(), "box", "rounded", "start"
-			}
-
-			if got, ok := m.Accepts(s); ok {
-				n.Shape = "doublecircle"
-
-				if got != "" {
-					n.Label += "\n" + got
-				}
-			}
-
-			box.Nodes = append(box.Nodes, n)
+			box.Nodes = append(box.Nodes, state(fmt.Sprintf("%s%d", tag(i), s), s, m.Name(), s == start(m), m))
 		}
 
 		g.Groups = append(g.Groups, box)

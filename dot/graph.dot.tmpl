@@ -21,7 +21,10 @@ digraph {{ q .Name }} {
   subgraph cluster_{{ .ID }} {
     label={{ flush .Label }}
     labeljust=l
-    style=rounded
+    style="rounded,filled"
+    fillcolor="#f8f9fa"
+    color="#dee2e6"
+    fontcolor="#495057"
     class="group"
     fontsize=10
 {{- range .Nodes }}
@@ -33,32 +36,22 @@ digraph {{ q .Name }} {
   {{ template "node" . }}
 {{- end }}
 {{ range .Edges }}
-  {{ .From }} -> {{ .To }} [label={{ brk .Label }}{{ with .Class }}, class={{ printf "%q" . }}{{ end }}{{ if .Invis }}, style=invis{{ else if .Dashed }}, style=dashed{{ else if .Dotted }}, style=dotted{{ end }}{{ if .Bold }}, fontname="Helvetica-Bold"{{ end }}{{ with .Width }}, penwidth={{ . }}{{ end }}{{ if .Loose }}, constraint=false{{ end }}]
+  {{ .From }} -> {{ .To }} [label={{ brk .Label }}, {{ .Paint }}{{ with .Class }}, class={{ printf "%q" . }}{{ end }}{{ if .Invis }}, style=invis{{ else if .Dashed }}, style=dashed{{ else if .Dotted }}, style=dotted{{ end }}{{ if .Bold }}, fontname="Helvetica-Bold"{{ end }}{{ with .Width }}, penwidth={{ . }}{{ end }}{{ if .Loose }}, constraint=false{{ end }}]
 {{- end }}
 }
 
 {{- define "node" -}}
-{{ .ID }} [label={{ if .Flush }}{{ flush .Label }}{{ else }}{{ q .Label }}{{ end }}{{ with .Shape }}, shape={{ . }}{{ end }}{{ with .Style }}, style={{ printf "%q" . }}{{ end }}{{ with .Class }}, class={{ printf "%q" . }}{{ end }}{{ with .Size }}, width={{ . }}{{ end }}{{ if .Bold }}, fontname="Helvetica-Bold"{{ end }}{{ if .Twice }}, peripheries=2{{ end }}]
+{{ .ID }} [label={{ if .Caption }}<<font point-size="7" color="#868e96">{{ html .Caption }}</font><br/>{{ html .Label }}>{{ else if .Flush }}{{ flush .Label }}{{ else }}{{ q .Label }}{{ end }}{{ with .Shape }}, shape={{ . }}{{ end }}, style="{{ with .Style }}{{ . }},{{ end }}filled", {{ .Paint }}{{ with .Class }}, class={{ printf "%q" . }}{{ end }}{{ with .Size }}, width={{ . }}{{ end }}{{ if .Bold }}, fontname="Helvetica-Bold"{{ end }}{{ if .Twice }}, peripheries=2{{ end }}]
 {{- end -}}
 
 {{- define "look" -}}
 {{ if eq .Look "machine" }}  rankdir=LR
-  graph [fontname="Helvetica", fontsize=11, nodesep=0.22, ranksep=0.55]
-  node [shape=circle, fontname="Helvetica", fontsize=9, width=0.42, height=0.42, penwidth=0.9]
-  edge [fontname="Helvetica", fontsize=8, arrowsize=0.6, penwidth=0.8]
+  graph [fontname="Helvetica", fontsize=11, fontcolor="#343a40", nodesep=0.22, ranksep=0.55]
+  node [shape=circle, fontname="Helvetica", fontsize=9, width=0.36, height=0.36, margin="0.1,0.05", penwidth=1]
+  edge [fontname="Helvetica", fontsize=8, arrowsize=0.6, penwidth=0.9]
 {{ else if eq .Look "shape" }}  rankdir=LR
-  graph [fontname="Helvetica", fontsize=11, nodesep=0.3, ranksep=0.9]
-  node [shape=box, style=rounded, fontname="Helvetica", fontsize=9, margin="0.12,0.07", penwidth=0.9]
-  edge [fontname="Helvetica", fontsize=8, arrowsize=0.6, penwidth=0.8]
-{{ else if eq .Look "parse" }}  rankdir=LR
-  graph [fontname="Helvetica", fontsize=11, nodesep=0.22, ranksep=0.7]
-  node [shape=box, style=rounded, fontname="Helvetica", fontsize=8, margin="0.1,0.06", penwidth=0.9]
-  edge [fontname="Helvetica", fontsize=8, arrowsize=0.6, penwidth=0.8]
-{{ else if eq .Look "keypad" }}  rankdir=LR
-  bgcolor="transparent"
-  fontname="Helvetica-Bold"
-  fontsize=11
-  node [fontname="Helvetica", fontsize=10, shape=circle, penwidth=1.2]
-  edge [fontname="Helvetica", fontsize=9, arrowsize=.7]
+  graph [fontname="Helvetica", fontsize=11, fontcolor="#343a40", nodesep=0.3, ranksep=0.9]
+  node [shape=box, fontname="Helvetica", fontsize=9, margin="0.12,0.07", penwidth=1]
+  edge [fontname="Helvetica", fontsize=8, arrowsize=0.6, penwidth=0.9]
 {{ else }}{{ fail .Look }}{{ end }}
 {{- end -}}

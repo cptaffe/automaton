@@ -46,21 +46,8 @@ func Draw(m Machine) ([]byte, error) {
 	}
 
 	for s := 1; s <= m.States(); s++ {
-		n := Node{ID: fmt.Sprintf("s%d", s), Label: fmt.Sprint(s)}
-
-		if name, ok := starts[s]; ok {
-			n.Label, n.Shape, n.Style, n.Class = name, "box", "rounded", "start"
-		}
-
-		if got, ok := m.Accepts(s); ok {
-			n.Shape = "doublecircle"
-
-			if got != "" {
-				n.Label += "\n" + got
-			}
-		}
-
-		g.Nodes = append(g.Nodes, n)
+		name := starts[s]
+		g.Nodes = append(g.Nodes, state(fmt.Sprintf("s%d", s), s, name, name != "", m))
 	}
 
 	for s := 1; s <= m.States(); s++ {
@@ -76,6 +63,29 @@ func Draw(m Machine) ([]byte, error) {
 	}
 
 	return g.Bytes()
+}
+
+func state(id string, s int, name string, start bool, m Machine) Node {
+	n := Node{ID: id, Label: fmt.Sprint(s)}
+
+	if start {
+		n.Label, n.Shape, n.Style, n.Class = name, "box", "rounded", "start"
+	}
+
+	got, ok := m.Accepts(s)
+
+	if !ok {
+		return n
+	}
+
+	n.Twice = true
+
+	if got != "" {
+		n.Caption, n.Label = n.Label, got
+		n.Shape, n.Style = "box", "rounded"
+	}
+
+	return n
 }
 
 func quote(s, brk string) string {
