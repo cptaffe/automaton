@@ -5,8 +5,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cptaffe/automaton"
 	"github.com/cptaffe/automaton/dot"
+	"github.com/cptaffe/automaton/fa"
 	"github.com/cptaffe/automaton/lr"
 )
 
@@ -59,16 +59,16 @@ func (m tokens) Starts() []dot.Start {
 }
 
 func (m tokens) Accepts(s int) (string, bool) {
-	return "", m.t.DFA().Accept(automaton.State(s)) != automaton.NoMatch
+	return "", m.t.DFA().Accept(fa.State(s)) != fa.NoMatch
 }
 
 func (m tokens) Moves(s int) []dot.Move {
 	d := m.t.DFA()
-	by := map[automaton.State][]string{}
-	var order []automaton.State
-	for c := automaton.Class(1); int(c) <= d.Classes().Len(); c++ {
-		to := d.Next(automaton.State(s), c)
-		if to == automaton.NoState {
+	by := map[fa.State][]string{}
+	var order []fa.State
+	for c := fa.Class(1); int(c) <= d.Classes().Len(); c++ {
+		to := d.Next(fa.State(s), c)
+		if to == fa.NoState {
 			continue
 		}
 		if _, ok := by[to]; !ok {

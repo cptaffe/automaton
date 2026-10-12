@@ -4,11 +4,11 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cptaffe/automaton"
+	"github.com/cptaffe/automaton/fa"
 )
 
 type Tokens struct {
-	dfa   *automaton.DFA[int]
+	dfa   *fa.DFA[int]
 	words []string
 	at    map[string]int
 }
@@ -44,7 +44,7 @@ func tokensOf(rs []Rule) *Tokens {
 		return nil
 	}
 
-	var n automaton.NFA[int]
+	var n fa.NFA[int]
 
 	open := map[string]int{}
 	shut := map[string]int{}
@@ -70,7 +70,7 @@ func tokensOf(rs []Rule) *Tokens {
 					n.Eps(here, open[w])
 					n.Eps(shut[w], next)
 				} else {
-					n.On(here, automaton.One(at[w]), next)
+					n.On(here, fa.One(at[w]), next)
 				}
 
 				here = next
@@ -81,28 +81,28 @@ func tokensOf(rs []Rule) *Tokens {
 	}
 
 	n.Start(open[rs[0].Name])
-	n.Accepts(shut[rs[0].Name], automaton.Match(1))
+	n.Accepts(shut[rs[0].Name], fa.Match(1))
 
 	d := n.DFA().Minimise()
 
 	return &Tokens{dfa: d, words: words, at: at}
 }
 
-func (t *Tokens) DFA() *automaton.DFA[int] { return t.dfa }
+func (t *Tokens) DFA() *fa.DFA[int] { return t.dfa }
 
 func (t *Tokens) Words() []string { return append([]string(nil), t.words...) }
 
-func (t *Tokens) Step(s automaton.State, word string) automaton.State {
+func (t *Tokens) Step(s fa.State, word string) fa.State {
 	r, ok := t.at[word]
 
 	if !ok {
-		return automaton.NoState
+		return fa.NoState
 	}
 
 	return t.dfa.Step(s, r)
 }
 
-func (t *Tokens) In(c automaton.Class) []string {
+func (t *Tokens) In(c fa.Class) []string {
 	var out []string
 
 	for _, x := range t.dfa.Classes().Part(c).Ranges() {

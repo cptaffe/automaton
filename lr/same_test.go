@@ -8,11 +8,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/cptaffe/automaton"
+	"github.com/cptaffe/automaton/fa"
 )
 
-func same(a, b *automaton.DFA[int], words []string) (bool, string) {
-	type pair struct{ x, y automaton.State }
+func same(a, b *fa.DFA[int], words []string) (bool, string) {
+	type pair struct{ x, y fa.State }
 
 	seen := map[pair]bool{}
 	word := map[pair][]string{}
@@ -25,7 +25,7 @@ func same(a, b *automaton.DFA[int], words []string) (bool, string) {
 		p := work[0]
 		work = work[1:]
 
-		if (a.Accept(p.x) != automaton.NoMatch) != (b.Accept(p.y) != automaton.NoMatch) {
+		if (a.Accept(p.x) != fa.NoMatch) != (b.Accept(p.y) != fa.NoMatch) {
 			return false, fmt.Sprintf("only one accepts after %v", word[p])
 		}
 
@@ -33,11 +33,11 @@ func same(a, b *automaton.DFA[int], words []string) (bool, string) {
 			r := i + 1
 			x, y := a.Step(p.x, r), b.Step(p.y, r)
 
-			if (x == automaton.NoState) != (y == automaton.NoState) {
+			if (x == fa.NoState) != (y == fa.NoState) {
 				return false, fmt.Sprintf("only one reads %s after %v", name, word[p])
 			}
 
-			if x == automaton.NoState {
+			if x == fa.NoState {
 				continue
 			}
 

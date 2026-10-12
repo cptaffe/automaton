@@ -1,4 +1,4 @@
-package automaton
+package fa
 
 import (
 	"fmt"

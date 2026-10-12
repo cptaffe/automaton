@@ -3,7 +3,7 @@ package seq
 import (
 	"time"
 
-	"github.com/cptaffe/automaton"
+	"github.com/cptaffe/automaton/fa"
 )
 
 type Sym int
@@ -57,15 +57,15 @@ type Class struct {
 
 func (c Class) IsEvent() bool { return c.Event != "" }
 
-func (c Class) set() automaton.Set[Sym] {
+func (c Class) set() fa.Set[Sym] {
 	if c.Event != "" {
-		return automaton.One(c.sym)
+		return fa.One(c.sym)
 	}
-	var rs []automaton.Range[Sym]
+	var rs []fa.Range[Sym]
 	for _, s := range c.Syms {
-		rs = append(rs, automaton.Range[Sym]{Lo: s, Hi: s})
+		rs = append(rs, fa.Range[Sym]{Lo: s, Hi: s})
 	}
-	return automaton.Of(rs...)
+	return fa.Of(rs...)
 }
 
 func (c Class) wide() bool {

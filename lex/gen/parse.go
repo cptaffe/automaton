@@ -8,7 +8,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/cptaffe/automaton"
+	"github.com/cptaffe/automaton/fa"
 	"github.com/cptaffe/automaton/lex"
 )
 
@@ -24,8 +24,8 @@ func table(name string) (*unicode.RangeTable, bool) {
 	return nil, false
 }
 
-func predefined(bare bool) map[string]automaton.Expr[rune] {
-	out := map[string]automaton.Expr[rune]{"any": automaton.Lit(automaton.Span(0, utf8.MaxRune))}
+func predefined(bare bool) map[string]fa.Expr[rune] {
+	out := map[string]fa.Expr[rune]{"any": fa.Lit(fa.Span(0, utf8.MaxRune))}
 
 	if bare {
 		return out
@@ -52,7 +52,7 @@ func given(bare bool) map[string]string {
 	return out
 }
 
-func (p *parser) define(w word, e automaton.Expr[rune]) {
+func (p *parser) define(w word, e fa.Expr[rune]) {
 	name := w.text
 
 	if was := p.given[name]; was != "" {
@@ -89,7 +89,7 @@ func (p *parser) define(w word, e automaton.Expr[rune]) {
 	p.file.Defs = append(p.file.Defs, Def{Name: name, Expr: e})
 }
 
-func (p *parser) use(w word) automaton.Expr[rune] {
+func (p *parser) use(w word) fa.Expr[rune] {
 	name := w.text
 
 	if e, ok := p.named[name]; ok {
@@ -97,7 +97,7 @@ func (p *parser) use(w word) automaton.Expr[rune] {
 	}
 
 	if s, ok := unicodeClass(name); ok {
-		return automaton.Lit(s)
+		return fa.Lit(s)
 	}
 
 	if also := spelling(name); also != "" {
@@ -106,7 +106,7 @@ func (p *parser) use(w word) automaton.Expr[rune] {
 		p.FailAt(w.line, "%s is not defined yet; there is %s", name, known(p.bare))
 	}
 
-	return automaton.Empty[rune]()
+	return fa.Empty[rune]()
 }
 
 func (p *parser) scope(w word, param string) {
@@ -155,23 +155,23 @@ func (p *parser) rule(r Rule) {
 	p.file.Rules = append(p.file.Rules, r)
 }
 
-func (p *parser) text(s string) automaton.Expr[rune] {
-	var e []automaton.Expr[rune]
+func (p *parser) text(s string) fa.Expr[rune] {
+	var e []fa.Expr[rune]
 
 	for _, r := range s {
-		e = append(e, automaton.Lit(automaton.One(r)))
+		e = append(e, fa.Lit(fa.One(r)))
 	}
 
 	if len(e) == 0 {
 		p.FailAt(p.Line(), "an empty literal matches nothing, so it would never advance")
 
-		return automaton.Empty[rune]()
+		return fa.Empty[rune]()
 	}
 
-	return automaton.Cat(e...)
+	return fa.Cat(e...)
 }
 
-func (p *parser) without(a, b automaton.Expr[rune]) automaton.Expr[rune] {
+func (p *parser) without(a, b fa.Expr[rune]) fa.Expr[rune] {
 	x, ok := a.Single()
 
 	if !ok {
@@ -196,55 +196,55 @@ func (p *parser) without(a, b automaton.Expr[rune]) automaton.Expr[rune] {
 		return a
 	}
 
-	return automaton.Lit(got)
+	return fa.Lit(got)
 }
 
-func (p *parser) anycase(s string) automaton.Expr[rune] {
-	var e []automaton.Expr[rune]
+func (p *parser) anycase(s string) fa.Expr[rune] {
+	var e []fa.Expr[rune]
 
 	for _, r := range s {
-		e = append(e, automaton.Lit(automaton.Text(string(unicode.ToLower(r))+string(unicode.ToUpper(r)))))
+		e = append(e, fa.Lit(fa.Text(string(unicode.ToLower(r))+string(unicode.ToUpper(r)))))
 	}
 
 	if len(e) == 0 {
 		p.FailAt(p.Line(), "an empty literal matches nothing, so it would never advance")
 
-		return automaton.Empty[rune]()
+		return fa.Empty[rune]()
 	}
 
-	return automaton.Cat(e...)
+	return fa.Cat(e...)
 }
 
-func (p *parser) runes(s string) automaton.Set[rune] { return automaton.Text(s) }
+func (p *parser) runes(s string) fa.Set[rune] { return fa.Text(s) }
 
-func (p *parser) span(lo, hi string) automaton.Set[rune] {
+func (p *parser) span(lo, hi string) fa.Set[rune] {
 	a, b := []rune(lo), []rune(hi)
 
 	if len(a) != 1 || len(b) != 1 {
 		p.FailAt(p.Line(), "a range runs between one rune and one rune, not %q and %q", lo, hi)
 
-		return automaton.Set[rune]{}
+		return fa.Set[rune]{}
 	}
 
 	if a[0] > b[0] {
 		p.FailAt(p.Line(), "the range %q to %q runs backwards", lo, hi)
 
-		return automaton.Set[rune]{}
+		return fa.Set[rune]{}
 	}
 
-	return automaton.Span(a[0], b[0])
+	return fa.Span(a[0], b[0])
 }
 
-func (p *parser) category(name string) automaton.Set[rune] {
+func (p *parser) category(name string) fa.Set[rune] {
 	t, ok := table(name)
 
 	if !ok {
 		p.FailAt(p.Line(), "%s is not a unicode category, script or property", name)
 
-		return automaton.Set[rune]{}
+		return fa.Set[rune]{}
 	}
 
-	return automaton.Category(t)
+	return fa.Category(t)
 }
 
 func builtinNames(bare bool) []string {
@@ -304,6 +304,6 @@ func parse(r io.Reader, from string, bare bool) (*File, error) {
 	return p.file, nil
 }
 
-func (p *parser) negate(s automaton.Set[rune]) automaton.Set[rune] {
-	return automaton.Span[rune](0, utf8.MaxRune).Without(s)
+func (p *parser) negate(s fa.Set[rune]) fa.Set[rune] {
+	return fa.Span[rune](0, utf8.MaxRune).Without(s)
 }

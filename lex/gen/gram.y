@@ -1,14 +1,14 @@
 %{
 package gen
 
-import "github.com/cptaffe/automaton"
+import "github.com/cptaffe/automaton/fa"
 %}
 
 %union {
 	word word
 	str  string
-	set  automaton.Set[rune]
-	expr automaton.Expr[rune]
+	set  fa.Set[rune]
+	expr fa.Expr[rune]
 	rule Rule
 	acts Acts
 }
@@ -82,19 +82,19 @@ arg_:
 
 expr:
 	  term               { $$ = $1 }
-	| expr OR term       { $$ = automaton.Alt($1, $3) }
+	| expr OR term       { $$ = fa.Alt($1, $3) }
 	;
 
 term:
 	  piece              { $$ = $1 }
-	| term piece         { $$ = automaton.Cat($1, $2) }
+	| term piece         { $$ = fa.Cat($1, $2) }
 	;
 
 piece:
 	  diff               { $$ = $1 }
-	| diff STAR          { $$ = automaton.Star($1) }
-	| diff PLUS          { $$ = automaton.Plus($1) }
-	| diff OPT           { $$ = automaton.Opt($1) }
+	| diff STAR          { $$ = fa.Star($1) }
+	| diff PLUS          { $$ = fa.Plus($1) }
+	| diff OPT           { $$ = fa.Opt($1) }
 	;
 
 diff:
@@ -106,7 +106,7 @@ atom:
 	  TEXT               { $$ = yylex.(*parser).text($1) }
 	| ANYCASE            { $$ = yylex.(*parser).anycase($1) }
 	| NAME               { $$ = yylex.(*parser).use($1) }
-	| klass              { $$ = automaton.Lit($1) }
+	| klass              { $$ = fa.Lit($1) }
 	| LPAREN expr RPAREN { $$ = $2 }
 	;
 

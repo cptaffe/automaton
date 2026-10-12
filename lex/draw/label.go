@@ -4,17 +4,17 @@ import (
 	"fmt"
 	"unicode/utf8"
 
-	"github.com/cptaffe/automaton"
+	"github.com/cptaffe/automaton/fa"
 )
 
 const wide = 24
 
-func label(s automaton.Set[rune]) string {
+func label(s fa.Set[rune]) string {
 	if s.Empty() {
 		return "nothing"
 	}
 	direct, whole := spell(s)
-	not := automaton.Span[rune](0, utf8.MaxRune).Without(s)
+	not := fa.Span[rune](0, utf8.MaxRune).Without(s)
 	if not.Empty() {
 		return direct
 	}
@@ -31,23 +31,23 @@ func label(s automaton.Set[rune]) string {
 	return direct
 }
 
-func spelled(s automaton.Set[rune]) string {
+func spelled(s fa.Set[rune]) string {
 	out, _ := spell(s)
 	return out
 }
 
-func spell(s automaton.Set[rune]) (string, bool) {
+func spell(s fa.Set[rune]) (string, bool) {
 	if whole := s.String(); len(whole) <= wide {
 		return whole, true
 	}
 	rs := s.Ranges()
 	at := len(rs)
-	for at > 1 && len(automaton.Of(rs[:at]...).String()) > wide {
+	for at > 1 && len(fa.Of(rs[:at]...).String()) > wide {
 		at--
 	}
 	n := 0
 	for _, x := range rs[at:] {
 		n += int(x.Hi-x.Lo) + 1
 	}
-	return automaton.Of(rs[:at]...).String() + fmt.Sprintf(" and %d more", n), false
+	return fa.Of(rs[:at]...).String() + fmt.Sprintf(" and %d more", n), false
 }

@@ -3,14 +3,14 @@ package gen
 
 import __yyfmt__ "fmt"
 
-import "github.com/cptaffe/automaton"
+import "github.com/cptaffe/automaton/fa"
 
 type yySymType struct {
 	yys  int
 	word word
 	str  string
-	set  automaton.Set[rune]
-	expr automaton.Expr[rune]
+	set  fa.Set[rune]
+	expr fa.Expr[rune]
 	rule Rule
 	acts Acts
 }
@@ -582,7 +582,7 @@ yydefault:
 	case 25:
 		yyDollar = yyS[yypt-3 : yypt+1]
 		{
-			yyVAL.expr = automaton.Alt(yyDollar[1].expr, yyDollar[3].expr)
+			yyVAL.expr = fa.Alt(yyDollar[1].expr, yyDollar[3].expr)
 		}
 	case 26:
 		yyDollar = yyS[yypt-1 : yypt+1]
@@ -592,7 +592,7 @@ yydefault:
 	case 27:
 		yyDollar = yyS[yypt-2 : yypt+1]
 		{
-			yyVAL.expr = automaton.Cat(yyDollar[1].expr, yyDollar[2].expr)
+			yyVAL.expr = fa.Cat(yyDollar[1].expr, yyDollar[2].expr)
 		}
 	case 28:
 		yyDollar = yyS[yypt-1 : yypt+1]
@@ -602,17 +602,17 @@ yydefault:
 	case 29:
 		yyDollar = yyS[yypt-2 : yypt+1]
 		{
-			yyVAL.expr = automaton.Star(yyDollar[1].expr)
+			yyVAL.expr = fa.Star(yyDollar[1].expr)
 		}
 	case 30:
 		yyDollar = yyS[yypt-2 : yypt+1]
 		{
-			yyVAL.expr = automaton.Plus(yyDollar[1].expr)
+			yyVAL.expr = fa.Plus(yyDollar[1].expr)
 		}
 	case 31:
 		yyDollar = yyS[yypt-2 : yypt+1]
 		{
-			yyVAL.expr = automaton.Opt(yyDollar[1].expr)
+			yyVAL.expr = fa.Opt(yyDollar[1].expr)
 		}
 	case 32:
 		yyDollar = yyS[yypt-1 : yypt+1]
@@ -642,7 +642,7 @@ yydefault:
 	case 37:
 		yyDollar = yyS[yypt-1 : yypt+1]
 		{
-			yyVAL.expr = automaton.Lit(yyDollar[1].set)
+			yyVAL.expr = fa.Lit(yyDollar[1].set)
 		}
 	case 38:
 		yyDollar = yyS[yypt-3 : yypt+1]

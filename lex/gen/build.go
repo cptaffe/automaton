@@ -5,12 +5,12 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cptaffe/automaton"
+	"github.com/cptaffe/automaton/fa"
 )
 
 type Machine struct {
 	Scope string
-	DFA   *automaton.DFA[rune]
+	DFA   *fa.DFA[rune]
 	Rules []FlatRule
 
 	Covered []string
@@ -20,15 +20,15 @@ func Build(f *Flat) ([]Machine, []string, error) {
 	var out []Machine
 	live := map[int]bool{}
 
-	var all []automaton.Rule[rune]
+	var all []fa.Rule[rune]
 
 	for _, s := range f.Scopes {
 		for _, r := range f.Of(s.Name) {
-			all = append(all, automaton.Rule[rune]{Expr: r.Expr})
+			all = append(all, fa.Rule[rune]{Expr: r.Expr})
 		}
 	}
 
-	classes := automaton.Partition(automaton.Sets(all))
+	classes := fa.Partition(fa.Sets(all))
 
 	for _, s := range f.Scopes {
 		rules := f.Of(s.Name)
@@ -37,13 +37,13 @@ func Build(f *Flat) ([]Machine, []string, error) {
 			return nil, nil, fmt.Errorf("%s:%d: %s has no rules", f.Path, s.Line, s.Name)
 		}
 
-		in := make([]automaton.Rule[rune], len(rules))
+		in := make([]fa.Rule[rune], len(rules))
 
 		for i, r := range rules {
-			in[i] = automaton.Rule[rune]{Expr: r.Expr, Name: label(r)}
+			in[i] = fa.Rule[rune]{Expr: r.Expr, Name: label(r)}
 		}
 
-		d, err := automaton.BuildWith(in, classes)
+		d, err := fa.BuildWith(in, classes)
 
 		if err != nil {
 			return nil, nil, fmt.Errorf("%s: in %s, %w", f.Path, s.Name, err)
@@ -86,9 +86,9 @@ func Build(f *Flat) ([]Machine, []string, error) {
 	return out, dead, nil
 }
 
-func reaches(d *automaton.DFA[rune], rule int) bool {
-	for s := automaton.State(1); int(s) <= d.States(); s++ {
-		if d.Accept(s) == automaton.Match(rule+1) {
+func reaches(d *fa.DFA[rune], rule int) bool {
+	for s := fa.State(1); int(s) <= d.States(); s++ {
+		if d.Accept(s) == fa.Match(rule+1) {
 			return true
 		}
 	}
@@ -96,14 +96,14 @@ func reaches(d *automaton.DFA[rune], rule int) bool {
 	return false
 }
 
-func covers(rules []FlatRule, d *automaton.DFA[rune], rule int) string {
+func covers(rules []FlatRule, d *fa.DFA[rune], rule int) string {
 	var out []string
 	seen := map[string]bool{}
 
-	for s := automaton.State(1); int(s) <= d.States(); s++ {
+	for s := fa.State(1); int(s) <= d.States(); s++ {
 		a := d.Accept(s)
 
-		if a == automaton.NoMatch || int(a) > rule {
+		if a == fa.NoMatch || int(a) > rule {
 			continue
 		}
 

@@ -7,7 +7,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/cptaffe/automaton"
+	"github.com/cptaffe/automaton/fa"
 	"github.com/cptaffe/automaton/lex"
 	"github.com/cptaffe/automaton/lex/gen/internal/scan"
 )
@@ -21,7 +21,7 @@ type parser struct {
 	*lex.Reader
 
 	bare  bool
-	named map[string]automaton.Expr[rune]
+	named map[string]fa.Expr[rune]
 
 	given map[string]string
 	order []string

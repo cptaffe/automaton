@@ -10,7 +10,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/cptaffe/automaton"
+	"github.com/cptaffe/automaton/fa"
 	"github.com/cptaffe/automaton/lex"
 )
 
@@ -29,11 +29,11 @@ func Spec(f *Flat, ms []Machine) (*lex.Spec, error) {
 	for _, m := range ms {
 		s := lex.Scope{Name: m.Scope, Start: int(m.DFA.Start())}
 
-		for i := automaton.State(0); int(i) <= m.DFA.States(); i++ {
+		for i := fa.State(0); int(i) <= m.DFA.States(); i++ {
 			row := make([]int, m.DFA.Classes().Len()+1)
 
 			for c := range row {
-				row[c] = int(m.DFA.Next(i, automaton.Class(c)))
+				row[c] = int(m.DFA.Next(i, fa.Class(c)))
 			}
 
 			s.Next = append(s.Next, row)
@@ -95,11 +95,11 @@ func numbered(f *Flat, of func(FlatActs) string) ([]string, map[string]int) {
 	return out, at
 }
 
-func ranges(c *automaton.Classes[rune]) []lex.Range {
+func ranges(c *fa.Classes[rune]) []lex.Range {
 	var out []lex.Range
 
 	for i := 1; i <= c.Len(); i++ {
-		for _, x := range c.Part(automaton.Class(i)).Ranges() {
+		for _, x := range c.Part(fa.Class(i)).Ranges() {
 			out = append(out, lex.Range{Lo: x.Lo, Hi: x.Hi, Class: i})
 		}
 	}

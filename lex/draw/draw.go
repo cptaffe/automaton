@@ -5,8 +5,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cptaffe/automaton"
 	"github.com/cptaffe/automaton/dot"
+	"github.com/cptaffe/automaton/fa"
 	"github.com/cptaffe/automaton/lex/gen"
 )
 
@@ -61,12 +61,12 @@ func (d machine) Starts() []dot.Start {
 }
 
 func (d machine) Moves(s int) []dot.Move {
-	by := map[automaton.State]automaton.Set[rune]{}
-	var order []automaton.State
+	by := map[fa.State]fa.Set[rune]{}
+	var order []fa.State
 	c := d.m.DFA.Classes()
-	for k := automaton.Class(1); int(k) <= c.Len(); k++ {
-		to := d.m.DFA.Next(automaton.State(s), k)
-		if to == automaton.NoState {
+	for k := fa.Class(1); int(k) <= c.Len(); k++ {
+		to := d.m.DFA.Next(fa.State(s), k)
+		if to == fa.NoState {
 			continue
 		}
 		if _, ok := by[to]; !ok {
@@ -83,8 +83,8 @@ func (d machine) Moves(s int) []dot.Move {
 }
 
 func (d machine) rule(s int) (gen.FlatRule, bool) {
-	a := d.m.DFA.Accept(automaton.State(s))
-	if a == automaton.NoMatch {
+	a := d.m.DFA.Accept(fa.State(s))
+	if a == fa.NoMatch {
 		return gen.FlatRule{}, false
 	}
 	return d.m.Rules[a-1], true
@@ -116,14 +116,14 @@ func (d machine) Leaves(s int) (string, bool) {
 	return r.Acts.Goto, ok && r.Acts.Goto != "" && r.Acts.Goto != d.m.Scope
 }
 
-func (d machine) label(s automaton.Set[rune]) string {
+func (d machine) label(s fa.Set[rune]) string {
 	if got, ok := d.named(s); ok {
 		return got
 	}
 	return label(s)
 }
 
-func (d machine) named(s automaton.Set[rune]) (string, bool) {
+func (d machine) named(s fa.Set[rune]) (string, bool) {
 	best := ""
 	for _, def := range d.names {
 		got, ok := def.Expr.Single()
@@ -147,7 +147,7 @@ func (d machine) named(s automaton.Set[rune]) (string, bool) {
 	return best, true
 }
 
-func (d machine) name(s automaton.Set[rune]) string {
+func (d machine) name(s fa.Set[rune]) string {
 	for _, def := range d.names {
 		if got, ok := def.Expr.Single(); ok && got.Equal(s) {
 			return def.Name

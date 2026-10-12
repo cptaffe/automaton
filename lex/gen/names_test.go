@@ -4,7 +4,7 @@ import (
 	"testing"
 	"unicode"
 
-	"github.com/cptaffe/automaton"
+	"github.com/cptaffe/automaton/fa"
 )
 
 func TestTheCompatibilityNamesAreTheRestrictedOnes(t *testing.T) {
@@ -147,7 +147,7 @@ func TestNoTwoNamesSpellTheSame(t *testing.T) {
 
 }
 
-func look(t *testing.T, name string) (automaton.Set[rune], bool) {
+func look(t *testing.T, name string) (fa.Set[rune], bool) {
 	t.Helper()
 
 	for _, d := range prelude() {

@@ -1,4 +1,4 @@
-package automaton
+package fa
 
 type edge[S Symbol] struct {
 	set Set[S]

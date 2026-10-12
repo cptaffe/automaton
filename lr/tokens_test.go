@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cptaffe/automaton"
 	"github.com/cptaffe/automaton/dot"
+	"github.com/cptaffe/automaton/fa"
 )
 
 func toShape(rs []Rule) []dot.Rule {
@@ -41,7 +41,7 @@ func reads(t *testing.T, m *Tokens, words ...string) bool {
 		s = m.Step(s, w)
 	}
 
-	return m.DFA().Accept(s) != automaton.NoMatch
+	return m.DFA().Accept(s) != fa.NoMatch
 }
 
 func TestAnEmptyRuleAcceptsAtOnce(t *testing.T) {
@@ -118,7 +118,7 @@ func TestAClassNamesItsTokens(t *testing.T) {
 
 	var seen []string
 
-	for c := automaton.Class(1); int(c) <= m.DFA().Classes().Len(); c++ {
+	for c := fa.Class(1); int(c) <= m.DFA().Classes().Len(); c++ {
 		seen = append(seen, m.In(c)...)
 	}
 
@@ -126,7 +126,7 @@ func TestAClassNamesItsTokens(t *testing.T) {
 		t.Errorf("the classes hold %v; want A and B once each", seen)
 	}
 
-	if m.Step(m.DFA().Start(), "C") != automaton.NoState {
+	if m.Step(m.DFA().Start(), "C") != fa.NoState {
 		t.Error("a word the grammar never names moves the machine")
 	}
 }

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cptaffe/automaton"
+	"github.com/cptaffe/automaton/fa"
 )
 
 type Slice struct {
@@ -139,7 +139,7 @@ func (c *compiler) minimal() *Table {
 	for _, scope := range t.Scopes {
 		starts = append(starts, t.Start[scope])
 	}
-	to := automaton.Reachable(t.Next, automaton.Equivalent(t.Next, c.sig), starts...)
+	to := fa.Reachable(t.Next, fa.Equivalent(t.Next, c.sig), starts...)
 	n := 0
 	for _, s := range to {
 		n = max(n, s)
@@ -201,32 +201,32 @@ func (c *compiler) scope(scope string) error {
 
 func (c *compiler) build(scope string, entries []entry, first int, wilds []wild) (int, error) {
 	t := c.t
-	rules := make([]automaton.Rule[Sym], len(entries))
+	rules := make([]fa.Rule[Sym], len(entries))
 	for i, e := range entries {
-		var es []automaton.Expr[Sym]
+		var es []fa.Expr[Sym]
 		for _, el := range e.rule.Elems {
-			x := automaton.Lit(el.set())
+			x := fa.Lit(el.set())
 			if el.Many {
-				x = automaton.Plus(x)
+				x = fa.Plus(x)
 			}
 			es = append(es, x)
 		}
-		rules[i] = automaton.Rule[Sym]{Expr: automaton.Cat(es...), Name: e.rule.Pattern}
+		rules[i] = fa.Rule[Sym]{Expr: fa.Cat(es...), Name: e.rule.Pattern}
 	}
-	every := automaton.Span(Sym(1), Sym(t.Alpha.Size()))
-	d, err := automaton.BuildWith(rules, automaton.Partition(append(automaton.Sets(rules), every)))
+	every := fa.Span(Sym(1), Sym(t.Alpha.Size()))
+	d, err := fa.BuildWith(rules, fa.Partition(append(fa.Sets(rules), every)))
 	if err != nil {
 		return 0, fmt.Errorf("%s: %s: %w", c.g.Name, scope, err)
 	}
 
 	base := len(t.Next) - 1
-	at := func(s automaton.State) int {
-		if s == automaton.NoState {
+	at := func(s fa.State) int {
+		if s == fa.NoState {
 			return 0
 		}
 		return base + int(s)
 	}
-	for s := automaton.State(1); int(s) <= d.States(); s++ {
+	for s := fa.State(1); int(s) <= d.States(); s++ {
 		n := c.state(scope, "")
 		for sym := Sym(1); int(sym) <= t.Alpha.Size(); sym++ {
 			t.Next[n][sym] = at(d.Step(s, sym))
@@ -241,7 +241,7 @@ func (c *compiler) build(scope string, entries []entry, first int, wilds []wild)
 	return at(d.Start()), nil
 }
 
-func shift(ms []automaton.Match, first int) []int {
+func shift(ms []fa.Match, first int) []int {
 	out := make([]int, len(ms))
 	for i, m := range ms {
 		out[i] = first + int(m) - 1

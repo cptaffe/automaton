@@ -5,7 +5,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/cptaffe/automaton"
+	"github.com/cptaffe/automaton/fa"
 )
 
 const namespace = "unicode."
@@ -25,25 +25,25 @@ func kebab(name string) string {
 	return b.String()
 }
 
-var unicodeClasses = func() map[string]automaton.Set[rune] {
-	out := map[string]automaton.Set[rune]{}
+var unicodeClasses = func() map[string]fa.Set[rune] {
+	out := map[string]fa.Set[rune]{}
 
 	for _, from := range []map[string]*unicode.RangeTable{
 		unicode.Categories, unicode.Scripts, unicode.Properties,
 	} {
 		for name, t := range from {
-			out[kebab(name)] = automaton.Category(t)
+			out[kebab(name)] = fa.Category(t)
 		}
 	}
 
 	return out
 }()
 
-func unicodeClass(name string) (automaton.Set[rune], bool) {
+func unicodeClass(name string) (fa.Set[rune], bool) {
 	rest, ok := strings.CutPrefix(name, namespace)
 
 	if !ok {
-		return automaton.Set[rune]{}, false
+		return fa.Set[rune]{}, false
 	}
 
 	s, found := unicodeClasses[rest]

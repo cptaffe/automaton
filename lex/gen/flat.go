@@ -1,6 +1,6 @@
 package gen
 
-import "github.com/cptaffe/automaton"
+import "github.com/cptaffe/automaton/fa"
 
 type FlatActs struct {
 	Emit string
@@ -12,7 +12,7 @@ type FlatActs struct {
 }
 
 type FlatRule struct {
-	Expr    automaton.Expr[rune]
+	Expr    fa.Expr[rune]
 	Acts    FlatActs
 	Include string
 	Inlined bool

@@ -1,4 +1,4 @@
-package automaton
+package fa
 
 type kind int
 

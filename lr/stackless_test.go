@@ -1,11 +1,11 @@
 package lr
 
 import (
-	"github.com/cptaffe/automaton"
+	"github.com/cptaffe/automaton/fa"
 )
 
-func stackless(ss []state, of map[string]int) *automaton.DFA[int] {
-	var n automaton.NFA[int]
+func stackless(ss []state, of map[string]int) *fa.DFA[int] {
+	var n fa.NFA[int]
 
 	at := map[int]int{}
 
@@ -35,7 +35,7 @@ func stackless(ss []state, of map[string]int) *automaton.DFA[int] {
 				continue
 			}
 
-			n.On(at[s.at], automaton.One(r), at[m.to])
+			n.On(at[s.at], fa.One(r), at[m.to])
 		}
 
 		for _, name := range s.reduces {
@@ -45,7 +45,7 @@ func stackless(ss []state, of map[string]int) *automaton.DFA[int] {
 		}
 
 		if s.accepts {
-			n.Accepts(at[s.at], automaton.Match(1))
+			n.Accepts(at[s.at], fa.Match(1))
 		}
 	}
 
