@@ -81,11 +81,11 @@ func Reachable(next [][]int, eq []int, starts ...int) []int {
 }
 
 func (d *DFA[S]) Minimise() *DFA[S] {
-	next := make([][]int, len(d.next))
-	sig := make([]string, len(d.next))
-	for s, row := range d.next {
-		next[s] = make([]int, len(row))
-		for c, to := range row {
+	next := make([][]int, len(d.nodes))
+	sig := make([]string, len(d.nodes))
+	for s, nd := range d.nodes {
+		next[s] = make([]int, len(nd.next))
+		for c, to := range nd.next {
 			next[s][c] = int(to)
 		}
 		sig[s] = fmt.Sprint(d.Accept(State(s)))
@@ -96,20 +96,20 @@ func (d *DFA[S]) Minimise() *DFA[S] {
 	for _, t := range to {
 		n = max(n, t)
 	}
-	out := &DFA[S]{classes: d.classes, start: State(to[d.start]), next: make([][]State, n+1),
-		done: make([][]Match, n+1), going: make([][]Match, n+1)}
-	for s := range out.next {
-		out.next[s] = make([]State, d.classes.Len()+1)
+	out := &DFA[S]{classes: d.classes, start: State(to[d.start]), nodes: make([]node, n+1)}
+	for s := range out.nodes {
+		out.nodes[s].next = make([]State, d.classes.Len()+1)
 	}
-	for s, row := range d.next {
+	for s, nd := range d.nodes {
 		if s != 0 && to[s] == 0 {
 			continue
 		}
-		for c, t := range row {
-			out.next[to[s]][c] = State(to[t])
+		m := &out.nodes[to[s]]
+		for c, t := range nd.next {
+			m.next[c] = State(to[t])
 		}
-		out.done[to[s]] = union(out.done[to[s]], d.done[s])
-		out.going[to[s]] = union(out.going[to[s]], d.going[s])
+		m.done = union(m.done, nd.done)
+		m.going = union(m.going, nd.going)
 	}
 	return out
 }

@@ -8,10 +8,14 @@ import (
 
 type DFA[S Symbol] struct {
 	classes *Classes[S]
-	next    [][]State
-	done    [][]Match
-	going   [][]Match
+	nodes   []node
 	start   State
+}
+
+type node struct {
+	next  []State
+	done  []Match
+	going []Match
 }
 
 type Rule[S Symbol] struct {
@@ -64,7 +68,7 @@ func BuildWith[S Symbol](rules []Rule[S], classes *Classes[S]) (*DFA[S], error) 
 }
 
 func (n *nfa[S]) determinise(start int, classes *Classes[S]) *DFA[S] {
-	d := &DFA[S]{classes: classes, next: [][]State{make([]State, classes.Len()+1)}, done: [][]Match{nil}, going: [][]Match{nil}}
+	d := &DFA[S]{classes: classes, nodes: []node{{next: make([]State, classes.Len()+1)}}}
 	seen := map[string]int{}
 
 	var add func(of []int) State
@@ -78,11 +82,9 @@ func (n *nfa[S]) determinise(start int, classes *Classes[S]) *DFA[S] {
 			return State(at)
 		}
 
-		at := State(len(d.next))
+		at := State(len(d.nodes))
 		seen[key] = int(at)
-		d.next = append(d.next, nil)
-		d.done = append(d.done, nil)
-		d.going = append(d.going, nil)
+		d.nodes = append(d.nodes, node{})
 
 		row := make([]State, d.classes.Len()+1)
 
@@ -100,7 +102,7 @@ func (n *nfa[S]) determinise(start int, classes *Classes[S]) *DFA[S] {
 			}
 		}
 
-		d.done[at], d.going[at] = sorted(done), sorted(going)
+		d.nodes[at].done, d.nodes[at].going = sorted(done), sorted(going)
 
 		for c := Class(1); int(c) <= d.classes.Len(); c++ {
 			var to []int
@@ -121,7 +123,7 @@ func (n *nfa[S]) determinise(start int, classes *Classes[S]) *DFA[S] {
 			row[c] = add(to)
 		}
 
-		d.next[at] = row
+		d.nodes[at].next = row
 
 		return at
 	}
@@ -145,30 +147,30 @@ func sorted(in map[Match]bool) []Match {
 
 func (d *DFA[S]) Classes() *Classes[S] { return d.classes }
 
-func (d *DFA[S]) States() int { return len(d.next) - 1 }
+func (d *DFA[S]) States() int { return len(d.nodes) - 1 }
 
 func (d *DFA[S]) Start() State { return d.start }
 
-func (d *DFA[S]) Next(state State, class Class) State { return d.next[state][class] }
+func (d *DFA[S]) Next(state State, class Class) State { return d.nodes[state].next[class] }
 
 func (d *DFA[S]) Accept(state State) Match {
-	if done := d.done[state]; len(done) > 0 {
+	if done := d.nodes[state].done; len(done) > 0 {
 		return done[0]
 	}
 
 	return NoMatch
 }
 
-func (d *DFA[S]) Done(state State) []Match { return append([]Match(nil), d.done[state]...) }
+func (d *DFA[S]) Done(state State) []Match { return append([]Match(nil), d.nodes[state].done...) }
 
-func (d *DFA[S]) Going(state State) []Match { return append([]Match(nil), d.going[state]...) }
+func (d *DFA[S]) Going(state State) []Match { return append([]Match(nil), d.nodes[state].going...) }
 
-func (d *DFA[S]) Step(state State, x S) State { return d.next[state][d.classes.Of(x)] }
+func (d *DFA[S]) Step(state State, x S) State { return d.nodes[state].next[d.classes.Of(x)] }
 
 func (d *DFA[S]) Unreachable(rules []Rule[S]) []string {
 	live := map[Match]bool{}
 
-	for s := range d.done {
+	for s := range d.nodes {
 		live[d.Accept(State(s))] = true
 	}
 
@@ -188,14 +190,14 @@ func (d *DFA[S]) Unreachable(rules []Rule[S]) []string {
 func (d *DFA[S]) String() string {
 	var b strings.Builder
 
-	for s := 1; s < len(d.next); s++ {
+	for s := 1; s < len(d.nodes); s++ {
 		fmt.Fprintf(&b, "%d", s)
 
 		if a := d.Accept(State(s)); a != NoMatch {
 			fmt.Fprintf(&b, " accept %d", a)
 		}
 
-		for c, to := range d.next[s] {
+		for c, to := range d.nodes[s].next {
 			if c > 0 && to != NoState {
 				fmt.Fprintf(&b, " %s->%d", d.classes.Part(Class(c)), to)
 			}
