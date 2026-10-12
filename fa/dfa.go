@@ -105,15 +105,23 @@ func (n *nfa[S]) determinise(start int, classes *Classes[S]) *DFA[S] {
 		d.nodes[at].done, d.nodes[at].going = sorted(done), sorted(going)
 
 		for c := Class(1); int(c) <= d.classes.Len(); c++ {
-			var to []int
+			var to, weak []int
 			lo := d.classes.Part(c).r[0].Lo
 
 			for _, s := range set {
 				for _, e := range n.out[s] {
-					if !e.eps && e.set.Has(lo) {
+					switch {
+					case e.eps || !e.set.Has(lo):
+					case e.weak:
+						weak = append(weak, e.to)
+					default:
 						to = append(to, e.to)
 					}
 				}
+			}
+
+			if len(to) == 0 {
+				to = weak
 			}
 
 			if len(to) == 0 {

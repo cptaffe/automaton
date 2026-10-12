@@ -308,3 +308,20 @@ func TestAStateKnowsItsRules(t *testing.T) {
 		t.Errorf("after 1, the winner is %d; want a", d.Accept(at))
 	}
 }
+
+func TestAFallbackTakesWhatNothingElseDoes(t *testing.T) {
+	d, err := fa.Build([]fa.Rule[rune]{
+		{Expr: fa.Cat(fa.Lit(fa.One('x')), fa.Lit(fa.One('s'))), Name: "save"},
+		{Expr: fa.Cat(fa.Lit(fa.One('x')), fa.Fallback(fa.Span('a', 'z'))), Name: "other"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	at := d.Step(d.Start(), 'x')
+	if got := d.Accept(d.Step(at, 's')); got != 1 {
+		t.Errorf("x s finishes %d; want the specific rule, 1", got)
+	}
+	if got := d.Accept(d.Step(at, 'q')); got != 2 {
+		t.Errorf("x q finishes %d; want the fallback, 2", got)
+	}
+}

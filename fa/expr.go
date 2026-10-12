@@ -9,6 +9,7 @@ const (
 	alt
 	star
 	plus
+	fallback
 )
 
 type Expr[S Symbol] struct {
@@ -18,6 +19,8 @@ type Expr[S Symbol] struct {
 }
 
 func Lit[S Symbol](s Set[S]) Expr[S] { return Expr[S]{kind: lit, set: s} }
+
+func Fallback[S Symbol](s Set[S]) Expr[S] { return Expr[S]{kind: fallback, set: s} }
 
 func Empty[S Symbol]() Expr[S] { return Expr[S]{} }
 
@@ -70,7 +73,7 @@ func (e Expr[S]) Single() (Set[S], bool) {
 }
 
 func (e Expr[S]) sets(out []Set[S]) []Set[S] {
-	if e.kind == lit {
+	if e.kind == lit || e.kind == fallback {
 		return append(out, e.set)
 	}
 

@@ -1,9 +1,10 @@
 package fa
 
 type edge[S Symbol] struct {
-	set Set[S]
-	to  int
-	eps bool
+	set  Set[S]
+	to   int
+	eps  bool
+	weak bool
 }
 
 type nfa[S Symbol] struct {
@@ -36,6 +37,11 @@ func (n *nfa[S]) build(e Expr[S], from int) int {
 	case lit:
 		to := n.state()
 		n.on(from, e.set, to)
+
+		return to
+	case fallback:
+		to := n.state()
+		n.out[from] = append(n.out[from], edge[S]{set: e.set, to: to, weak: true})
 
 		return to
 	case cat:
