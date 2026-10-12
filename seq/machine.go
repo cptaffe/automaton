@@ -1,6 +1,10 @@
 package seq
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/cptaffe/automaton/fa"
+)
 
 type Machine struct {
 	t     *Table
@@ -29,14 +33,15 @@ func (m *Machine) Step(s Sym, env Env) (bool, []*Accept) {
 	if m.t.Alpha.IsEvent(s) {
 		return m.event(s, env)
 	}
+	k := m.t.Classes.Of(s)
 	var fired []*Accept
 	if m.state != 0 {
-		if ok, f := m.from(m.state, s, env); ok {
+		if ok, f := m.from(m.state, k, env); ok {
 			return true, f
 		}
 		fired = m.Settle(env)
 	}
-	ok, f := m.from(m.start(), s, env)
+	ok, f := m.from(m.start(), k, env)
 	return ok, append(fired, f...)
 }
 
@@ -44,10 +49,11 @@ func (m *Machine) event(s Sym, env Env) (bool, []*Accept) {
 	if st := &m.t.States[m.state]; st.Settles && s == st.Settle {
 		return true, m.Settle(env)
 	}
+	k := m.t.Classes.Of(s)
 	if m.state != 0 {
-		return m.from(m.state, s, env)
+		return m.from(m.state, k, env)
 	}
-	return m.from(m.start(), s, env)
+	return m.from(m.start(), k, env)
 }
 
 func (m *Machine) Settle(env Env) []*Accept {
@@ -66,15 +72,16 @@ func (m *Machine) Waits() []string {
 	var out []string
 	st := &m.t.States[m.state]
 	for s := Sym(m.t.Alpha.Keys()); int(s) < m.t.Alpha.Size(); s++ {
-		if st.Settles && s == st.Settle || st.Next[s] != 0 || len(st.Any[s]) > 0 {
+		k := m.t.Classes.Of(s)
+		if st.Settles && s == st.Settle || st.Next[k] != 0 || len(st.Any[k]) > 0 {
 			out = append(out, m.t.Alpha.Name(s))
 		}
 	}
 	return out
 }
 
-func (m *Machine) from(at int, s Sym, env Env) (bool, []*Accept) {
-	if n := m.t.States[at].Next[s]; n != 0 {
+func (m *Machine) from(at int, k fa.Class, env Env) (bool, []*Accept) {
+	if n := m.t.States[at].Next[k]; n != 0 {
 		ready, going := m.ready(n, env), m.going(n, env)
 		switch {
 		case ready != nil && (!going || !m.t.States[n].Settles):
@@ -84,7 +91,7 @@ func (m *Machine) from(at int, s Sym, env Env) (bool, []*Accept) {
 			return true, nil
 		}
 	}
-	for _, a := range m.t.States[at].Any[s] {
+	for _, a := range m.t.States[at].Any[k] {
 		if Holds(a.When, env) {
 			var fired []*Accept
 			if at == m.state {

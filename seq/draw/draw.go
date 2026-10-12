@@ -2,10 +2,12 @@ package draw
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
 	"github.com/cptaffe/automaton/dot"
+	"github.com/cptaffe/automaton/fa"
 	"github.com/cptaffe/automaton/seq"
 )
 
@@ -35,16 +37,23 @@ func (m machine) Moves(s int) []dot.Move {
 	st := &m.t.States[s]
 	by := map[int][]seq.Sym{}
 	var order []int
-	for sym, to := range st.Next {
+	for k, to := range st.Next {
 		if to == 0 {
 			continue
 		}
 		if _, ok := by[to]; !ok {
 			order = append(order, to)
 		}
-		by[to] = append(by[to], seq.Sym(sym))
+		for _, r := range m.t.Classes.Part(fa.Class(k)).Ranges() {
+			for sym := r.Lo; sym <= r.Hi; sym++ {
+				by[to] = append(by[to], sym)
+			}
+		}
 	}
 	sort.Ints(order)
+	for _, syms := range by {
+		slices.Sort(syms)
+	}
 	out := make([]dot.Move, len(order))
 	for i, to := range order {
 		out[i] = dot.Move{To: to, Label: m.names(by[to])}

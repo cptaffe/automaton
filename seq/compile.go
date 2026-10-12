@@ -42,6 +42,7 @@ type Table struct {
 	Name      string
 	Note      string
 	Alpha     *Alphabet
+	Classes   *fa.Classes[Sym]
 	Scopes    []Scope
 	States    []State
 	Delays    map[string]time.Duration
@@ -116,7 +117,21 @@ func Compile(g *Grammar, a *Alphabet) (*Table, error) {
 		}
 	}
 
-	t := &Table{Name: g.Name, Note: g.Note, Alpha: a, Delays: g.Delays}
+	sets := []fa.Set[Sym]{fa.Span(0, Sym(a.Size()-1))}
+	for _, r := range rules {
+		for _, el := range r.Elems {
+			sets = append(sets, el.set())
+		}
+	}
+	for _, x := range anys {
+		sets = append(sets, fa.One(x.key))
+	}
+	for _, name := range g.Settles {
+		s, _ := a.Of(name)
+		sets = append(sets, fa.One(s))
+	}
+
+	t := &Table{Name: g.Name, Note: g.Note, Alpha: a, Classes: fa.Partition(sets), Delays: g.Delays}
 	c := &compiler{t: t, g: g, rules: rules, anys: anys, index: map[string]int{}}
 	for i, name := range positions(g) {
 		t.Scopes = append(t.Scopes, Scope{Name: name})
@@ -166,7 +181,7 @@ func (c *compiler) minimal() *Table {
 	for _, s := range to {
 		n = max(n, s)
 	}
-	out := &Table{Name: t.Name, Note: t.Note, Alpha: t.Alpha, Delays: t.Delays, Conflicts: t.Conflicts, States: make([]State, n+1)}
+	out := &Table{Name: t.Name, Note: t.Note, Alpha: t.Alpha, Classes: t.Classes, Delays: t.Delays, Conflicts: t.Conflicts, States: make([]State, n+1)}
 	for s, st := range t.States {
 		if s != 0 && to[s] == 0 {
 			continue
@@ -233,8 +248,7 @@ func (c *compiler) build(scope string, entries []entry, first int, wilds []wild)
 		}
 		rules[i] = fa.Rule[Sym]{Expr: fa.Cat(es...), Name: e.rule.Pattern}
 	}
-	every := fa.Span(0, Sym(t.Alpha.Size()-1))
-	d, err := fa.BuildWith(rules, fa.Partition(append(fa.Sets(rules), every)))
+	d, err := fa.BuildWith(rules, t.Classes)
 	if err != nil {
 		return 0, fmt.Errorf("%s: %s: %w", c.g.Name, scope, err)
 	}
@@ -248,11 +262,12 @@ func (c *compiler) build(scope string, entries []entry, first int, wilds []wild)
 	}
 	for s := fa.State(1); int(s) <= d.States(); s++ {
 		n := c.state("")
-		for sym := Sym(0); int(sym) < t.Alpha.Size(); sym++ {
-			t.States[n].Next[sym] = at(d.Step(s, sym))
+		for k := fa.Class(1); int(k) <= t.Classes.Len(); k++ {
+			t.States[n].Next[k] = at(d.Next(s, k))
 		}
 		for _, w := range wilds {
-			t.States[n].Any[w.key] = append(t.States[n].Any[w.key], w.acc)
+			k := t.Classes.Of(w.key)
+			t.States[n].Any[k] = append(t.States[n].Any[k], w.acc)
 		}
 		done, going := shift(d.Done(s), first), shift(d.Going(s), first)
 		c.finish(n, done, going)
@@ -307,7 +322,7 @@ func (c *compiler) finish(s int, done, going []int) {
 			c.conflict(acc.Line, "%q settles on %s, and another rule here on %s", acc.Pattern, name, t.Alpha.Name(st.Settle))
 		}
 	}
-	if st.Settles && st.Next[st.Settle] != 0 {
+	if st.Settles && st.Next[t.Classes.Of(st.Settle)] != 0 {
 		c.conflict(st.Accept[0].Line, "%s settles here and a rule reads %s next -- which is meant", t.Alpha.Name(st.Settle), t.Alpha.Name(st.Settle))
 	}
 }
@@ -368,7 +383,8 @@ func (c *compiler) state(sig string) int {
 
 func (t *Table) state() int {
 	s := len(t.States)
-	t.States = append(t.States, State{Next: make([]int, t.Alpha.Size()), Any: make([][]*Accept, t.Alpha.Size())})
+	n := t.Classes.Len() + 1
+	t.States = append(t.States, State{Next: make([]int, n), Any: make([][]*Accept, n)})
 	return s
 }
 
@@ -393,8 +409,9 @@ func (t *Table) Waiting() []string {
 }
 
 func (t *Table) waits(sym Sym) bool {
+	k := t.Classes.Of(sym)
 	for _, st := range t.States {
-		if st.Settles && st.Settle == sym || st.Next[sym] != 0 || len(st.Any[sym]) > 0 {
+		if st.Settles && st.Settle == sym || st.Next[k] != 0 || len(st.Any[k]) > 0 {
 			return true
 		}
 	}
