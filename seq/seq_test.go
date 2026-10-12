@@ -79,7 +79,7 @@ func TestAlphabet(t *testing.T) {
 	if a.Of("late") != 3 || a.Name(4) != "early" || a.IsKey(3) || !a.IsEvent(3) {
 		t.Errorf("events are not kept in order after the keys: %v", a.names)
 	}
-	if a.Of("nope") != 0 || a.Name(0) != "" || a.IsKey(0) || a.IsEvent(0) {
+	if a.Of("nope") != NoSym || a.Name(NoSym) != "" || a.IsKey(NoSym) || a.IsEvent(NoSym) {
 		t.Error("symbol 0 is a symbol")
 	}
 }

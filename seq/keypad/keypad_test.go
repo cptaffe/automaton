@@ -45,7 +45,7 @@ func walk(t *testing.T, tab *seq.Table, scope string, syms ...string) *seq.Accep
 	var last *seq.Accept
 	for _, name := range syms {
 		sym := tab.Alpha.Of(name)
-		if sym == 0 {
+		if !sym.IsValid() {
 			t.Fatalf("no symbol %s", name)
 		}
 		if _, fired := m.Step(sym, seq.Env{"holding": "yes"}); len(fired) > 0 {

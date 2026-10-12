@@ -178,7 +178,7 @@ func TestAnUnknownKeySettlesAndPasses(t *testing.T) {
 	m := machine(t, tab, "")
 	env := Env{"app": "devdraw"}
 	m.Step(tab.Alpha.Of("x"), env)
-	if ok, f := m.Step(0, env); ok || actions(f) != "show" {
+	if ok, f := m.Step(NoSym, env); ok || actions(f) != "show" {
 		t.Errorf("a key no rule names took %v and fired %q; want it passed and show settled", ok, actions(f))
 	}
 	if m.Pending() {

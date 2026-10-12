@@ -8,6 +8,10 @@ import (
 
 type Sym int
 
+const NoSym Sym = 0
+
+func (s Sym) IsValid() bool { return s != NoSym }
+
 type Alphabet struct {
 	keys  int
 	names []string

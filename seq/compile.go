@@ -98,7 +98,7 @@ func Compile(g *Grammar, a *Alphabet) (*Table, error) {
 		anys[i] = x
 	}
 	for scope, name := range g.Settles {
-		if a.Of(name) == 0 {
+		if !a.Of(name).IsValid() {
 			return nil, fmt.Errorf("%s: %s %%settles %s, and nothing declares %s", g.Name, scope, name, name)
 		}
 	}
@@ -289,14 +289,14 @@ func (c *compiler) finish(s int, done, going []int) {
 			continue
 		}
 		switch sym := t.Alpha.Of(name); t.Settle[s] {
-		case 0:
+		case NoSym:
 			t.Settle[s] = sym
 		case sym:
 		default:
 			c.conflict(acc.Line, "%q settles on %s, and another rule here on %s", acc.Pattern, name, t.Alpha.Name(t.Settle[s]))
 		}
 	}
-	if settle := t.Settle[s]; settle != 0 && t.Next[s][settle] != 0 {
+	if settle := t.Settle[s]; settle.IsValid() && t.Next[s][settle] != 0 {
 		c.conflict(t.Accept[s][0].Line, "%s settles here and a rule reads %s next -- which is meant", t.Alpha.Name(settle), t.Alpha.Name(settle))
 	}
 }
@@ -310,7 +310,7 @@ func resolve(c Class, a *Alphabet) (Class, error) {
 		return c, nil
 	}
 	s := a.Of(c.Event)
-	if s == 0 {
+	if !s.IsValid() {
 		return c, fmt.Errorf("%q is in a pattern and nothing declares it", c.Event)
 	}
 	c.sym = s
@@ -377,7 +377,7 @@ func (t *Table) Scope(name string) int {
 func (t *Table) Waiting() []string {
 	var out []string
 	for name := range t.Delays {
-		if sym := t.Alpha.Of(name); sym != 0 && t.waits(sym) {
+		if sym := t.Alpha.Of(name); sym.IsValid() && t.waits(sym) {
 			out = append(out, name)
 		}
 	}

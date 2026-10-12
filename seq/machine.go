@@ -31,14 +31,14 @@ func (m *Machine) Step(s Sym, env Env) (bool, []*Accept) {
 	}
 	var fired []*Accept
 	if m.state != 0 {
-		if s != 0 {
+		if s.IsValid() {
 			if ok, f := m.from(m.state, s, env); ok {
 				return true, f
 			}
 		}
 		fired = m.Settle(env)
 	}
-	if s == 0 {
+	if !s.IsValid() {
 		return false, fired
 	}
 	ok, f := m.from(m.start(), s, env)
@@ -81,7 +81,7 @@ func (m *Machine) from(at int, s Sym, env Env) (bool, []*Accept) {
 	if n := m.t.Next[at][s]; n != 0 {
 		ready, going := m.ready(n, env), m.going(n, env)
 		switch {
-		case ready != nil && (!going || m.t.Settle[n] == 0):
+		case ready != nil && (!going || !m.t.Settle[n].IsValid()):
 			return true, m.fire(ready)
 		case ready != nil || going:
 			m.state = n

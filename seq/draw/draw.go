@@ -48,7 +48,7 @@ func (m machine) Moves(s int) []dot.Move {
 	for i, to := range order {
 		out[i] = dot.Move{To: to, Label: m.names(by[to])}
 	}
-	if settle := m.t.Settle[s]; settle != 0 {
+	if settle := m.t.Settle[s]; settle.IsValid() {
 		out = append(out, dot.Move{To: s, Label: m.name(settle), Dashed: true, Class: "settle"})
 	}
 	gone := map[int]bool{}
