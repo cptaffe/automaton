@@ -84,11 +84,11 @@ func TestAlphabet(t *testing.T) {
 	if a.Size() != 4 || a.Keys() != 2 {
 		t.Errorf("size %d keys %d", a.Size(), a.Keys())
 	}
-	if s, _ := a.Of("late"); s != 3 || a.Name(4) != "early" || a.IsKey(3) || !a.IsEvent(3) {
+	if s, _ := a.Of("late"); s != 2 || a.Name(3) != "early" || a.IsKey(2) || !a.IsEvent(2) {
 		t.Errorf("events are not kept in order after the keys: %v", a.names)
 	}
-	if s, ok := a.Of("nope"); ok || s != NoSym || a.Name(NoSym) != "" || a.IsKey(NoSym) || a.IsEvent(NoSym) {
-		t.Error("symbol 0 is a symbol")
+	if _, ok := a.Of("nope"); ok || a.Name(4) != "" || a.Name(-1) != "" || a.IsKey(4) || a.IsEvent(4) {
+		t.Error("a symbol past the alphabet has a name")
 	}
 }
 

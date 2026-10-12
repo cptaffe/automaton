@@ -8,10 +8,6 @@ import (
 
 type Sym int
 
-const NoSym Sym = 0
-
-func (s Sym) IsValid() bool { return s != NoSym }
-
 type Alphabet struct {
 	keys  int
 	names []string
@@ -34,23 +30,23 @@ func (a *Alphabet) add(name string) {
 	if _, ok := a.by[name]; ok {
 		return
 	}
-	a.names = append(a.names, name)
 	a.by[name] = Sym(len(a.names))
+	a.names = append(a.names, name)
 }
 
 func (a *Alphabet) Size() int          { return len(a.names) }
 func (a *Alphabet) Keys() int          { return a.keys }
-func (a *Alphabet) IsKey(s Sym) bool   { return s >= 1 && int(s) <= a.keys }
-func (a *Alphabet) IsEvent(s Sym) bool { return int(s) > a.keys && int(s) <= len(a.names) }
+func (a *Alphabet) IsKey(s Sym) bool   { return s >= 0 && int(s) < a.keys }
+func (a *Alphabet) IsEvent(s Sym) bool { return int(s) >= a.keys && int(s) < len(a.names) }
 func (a *Alphabet) Of(name string) (Sym, bool) {
 	s, ok := a.by[name]
 	return s, ok
 }
 func (a *Alphabet) Name(s Sym) string {
-	if s < 1 || int(s) > len(a.names) {
+	if s < 0 || int(s) >= len(a.names) {
 		return ""
 	}
-	return a.names[s-1]
+	return a.names[s]
 }
 
 type Class struct {

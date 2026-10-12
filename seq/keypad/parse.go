@@ -43,11 +43,11 @@ func classOf(r rune) ([]seq.Sym, bool) {
 		if from < 0 {
 			return nil, false
 		}
-		return []seq.Sym{seq.Sym(from + 1)}, true
+		return []seq.Sym{seq.Sym(from)}, true
 	}
 	var out []seq.Sym
 	for k := from; k <= 9; k++ {
-		out = append(out, seq.Sym(k+1))
+		out = append(out, seq.Sym(k))
 	}
 	return out, true
 }
