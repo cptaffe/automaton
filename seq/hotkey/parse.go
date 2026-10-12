@@ -83,7 +83,10 @@ var kinds = map[int]int{
 	scan.TokClose:   CLOSE,
 }
 
-func Parse(r io.Reader, from string, known func(name string) error) (*Rules, error) {
+func Parse(r io.Reader, from string, kb Keyboard) (*Rules, error) {
+	if kb == nil {
+		kb = US
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	in, err := lex.Open(ctx, scan.Spec, r, "start", from)
@@ -103,7 +106,7 @@ func Parse(r io.Reader, from string, known func(name string) error) (*Rules, err
 	if err := l.Err(); err != nil {
 		return nil, err
 	}
-	a, err := l.resolve(known)
+	a, err := l.resolve(kb)
 	if err != nil {
 		return nil, err
 	}
@@ -239,7 +242,7 @@ func (l *lexer) compare(name word, op seq.Op, value word) seq.Cond {
 	return c
 }
 
-func (l *lexer) resolve(known func(string) error) (*seq.Alphabet, error) {
+func (l *lexer) resolve(kb Keyboard) (*seq.Alphabet, error) {
 	var errs []string
 	fail := func(line int, f string, a ...any) {
 		errs = append(errs, fmt.Sprintf("%s:%d: %s", l.g.Name, line, fmt.Sprintf(f, a...)))
@@ -253,35 +256,27 @@ func (l *lexer) resolve(known func(string) error) (*seq.Alphabet, error) {
 			fail(w.line, "%s: %v", w.text, err)
 			return "", false
 		}
-		if known != nil {
-			if err := known(Name(k)); err != nil {
-				fail(w.line, "%s: %v", w.text, err)
-				return "", false
-			}
+		if !kb.Has(Name(k)) {
+			fail(w.line, "%s: no such key", w.text)
+			return "", false
 		}
 		return k, false
 	}
 
-	seen := map[string]bool{}
-	var keys []string
 	for _, r := range append(append([]rule(nil), l.rules...), l.anys...) {
 		for _, w := range r.keys.words {
-			if k, event := keyOf(w); k != "" && !event && !seen[k] {
-				seen[k] = true
-				keys = append(keys, k)
-			}
+			keyOf(w)
 		}
 	}
 	if len(errs) > 0 {
 		return nil, fmt.Errorf("%s", strings.Join(errs, "\n"))
 	}
-	sort.Strings(keys)
 	var events []string
 	for name := range l.g.Delays {
 		events = append(events, name)
 	}
 	sort.Strings(events)
-	a := seq.NewAlphabet(keys, events...)
+	a := seq.NewAlphabet(kb.chords(), events...)
 
 	class := func(w word) seq.Class {
 		k, event := keyOf(w)

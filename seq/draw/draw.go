@@ -20,7 +20,7 @@ type machine struct{ t *seq.Table }
 func (m machine) Name() string { return m.t.Name }
 
 func (m machine) Note() string {
-	return fmt.Sprintf("%s -- %s, %s", m.t.Name, dot.Plural(m.States(), "state"), dot.Plural(m.t.Alpha.Size(), "symbol"))
+	return fmt.Sprintf("%s -- %s, %s", m.t.Name, dot.Plural(m.States(), "state"), dot.Plural(m.t.Classes.Len(), "class"))
 }
 
 func (m machine) States() int { return len(m.t.States) - 1 }

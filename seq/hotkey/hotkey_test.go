@@ -1,7 +1,6 @@
 package hotkey
 
 import (
-	"errors"
 	"reflect"
 	"strings"
 	"testing"
@@ -131,12 +130,6 @@ func TestSettleOnTimeout(t *testing.T) {
 }
 
 func TestErrors(t *testing.T) {
-	known := func(name string) error {
-		if name == "zz" {
-			return errors.New("no such key")
-		}
-		return nil
-	}
 	for _, c := range []struct{ src, want string }{
 		{"a:\n\tcommand-s { x }\n\tcommand-s { y }\n", "two rules, one key sequence"},
 		{"a:\n\tcontrol-x { x }\n\tcontrol-x control-s { y }\n", "no %settles"},
@@ -152,7 +145,7 @@ func TestErrors(t *testing.T) {
 		{"a:\n\tcommand-s -> b\n", "no such scope"},
 		{"%{\nfn x\n", "hotkeys:"},
 	} {
-		_, err := Parse(strings.NewReader(c.src), "hotkeys", known)
+		_, err := Parse(strings.NewReader(c.src), "hotkeys", nil)
 		if err == nil || !strings.Contains(err.Error(), c.want) {
 			t.Errorf("%q: got %v, want %q", c.src, err, c.want)
 		}

@@ -9,7 +9,7 @@
 <g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 323.25)">
 <title>hotkeys</title>
 <polygon fill="white" stroke="none" points="-4,4 -4,-323.25 480.1,-323.25 480.1,4 -4,4"/>
-<text xml:space="preserve" text-anchor="start" x="8" y="-304.8" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#343a40">hotkeys &#45;&#45; 9 states, 8 symbols</text>
+<text xml:space="preserve" text-anchor="start" x="8" y="-304.8" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#343a40">hotkeys &#45;&#45; 9 states, 9 classes</text>
 <!-- s1 -->
 <g id="node1" class="node start">
 <title>s1</title>
@@ -92,32 +92,32 @@
 <!-- s7 -->
 <g id="node7" class="node">
 <title>s7</title>
-<path fill="#ebfbee" stroke="#2f9e44" d="M463.46,-133.11C463.46,-133.11 433.34,-133.11 433.34,-133.11 429.02,-133.11 424.7,-128.79 424.7,-124.47 424.7,-124.47 424.7,-115.83 424.7,-115.83 424.7,-111.51 429.02,-107.19 433.34,-107.19 433.34,-107.19 463.46,-107.19 463.46,-107.19 467.78,-107.19 472.1,-111.51 472.1,-115.83 472.1,-115.83 472.1,-124.47 472.1,-124.47 472.1,-128.79 467.78,-133.11 463.46,-133.11"/>
-<path fill="none" stroke="#2f9e44" d="M464.79,-137.11C464.79,-137.11 432.01,-137.11 432.01,-137.11 426.35,-137.11 420.7,-131.46 420.7,-125.81 420.7,-125.81 420.7,-114.5 420.7,-114.5 420.7,-108.85 426.35,-103.19 432.01,-103.19 432.01,-103.19 464.79,-103.19 464.79,-103.19 470.45,-103.19 476.1,-108.85 476.1,-114.5 476.1,-114.5 476.1,-125.81 476.1,-125.81 476.1,-131.46 470.45,-137.11 464.79,-137.11"/>
-<text xml:space="preserve" text-anchor="start" x="446.52" y="-122.5" font-family="Helvetica,sans-Serif" font-size="7.00" fill="#868e96">7</text>
-<text xml:space="preserve" text-anchor="start" x="431.9" y="-113.6" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#2b8a3e">ctl show</text>
+<path fill="#ebfbee" stroke="#2f9e44" d="M462.71,-210.11C462.71,-210.11 434.09,-210.11 434.09,-210.11 429.77,-210.11 425.45,-205.79 425.45,-201.47 425.45,-201.47 425.45,-192.83 425.45,-192.83 425.45,-188.51 429.77,-184.19 434.09,-184.19 434.09,-184.19 462.71,-184.19 462.71,-184.19 467.03,-184.19 471.35,-188.51 471.35,-192.83 471.35,-192.83 471.35,-201.47 471.35,-201.47 471.35,-205.79 467.03,-210.11 462.71,-210.11"/>
+<path fill="none" stroke="#2f9e44" d="M464.04,-214.11C464.04,-214.11 432.76,-214.11 432.76,-214.11 427.1,-214.11 421.45,-208.46 421.45,-202.81 421.45,-202.81 421.45,-191.5 421.45,-191.5 421.45,-185.85 427.1,-180.19 432.76,-180.19 432.76,-180.19 464.04,-180.19 464.04,-180.19 469.7,-180.19 475.35,-185.85 475.35,-191.5 475.35,-191.5 475.35,-202.81 475.35,-202.81 475.35,-208.46 469.7,-214.11 464.04,-214.11"/>
+<text xml:space="preserve" text-anchor="start" x="446.52" y="-199.5" font-family="Helvetica,sans-Serif" font-size="7.00" fill="#868e96">7</text>
+<text xml:space="preserve" text-anchor="start" x="432.65" y="-190.6" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#2b8a3e">ctl mark</text>
 </g>
 <!-- s2&#45;&gt;s7 -->
 <g id="edge5" class="edge">
 <title>s2&#45;&gt;s7</title>
-<path fill="none" stroke="#495057" stroke-width="0.9" d="M332.72,-186.28C353.8,-174.13 388.33,-154.21 414.01,-139.41"/>
-<polygon fill="#495057" stroke="#495057" stroke-width="0.9" points="415,-141.26 419.15,-136.44 412.9,-137.62 415,-141.26"/>
-<text xml:space="preserve" text-anchor="middle" x="385.7" y="-164.66" font-family="Helvetica,sans-Serif" font-size="8.00" fill="#495057"> escape </text>
+<path fill="none" stroke="#495057" stroke-width="0.9" d="M332.72,-197.15C353.79,-197.15 388.31,-197.15 413.98,-197.15"/>
+<polygon fill="#495057" stroke="#495057" stroke-width="0.9" points="413.94,-199.25 419.94,-197.15 413.94,-195.05 413.94,-199.25"/>
+<text xml:space="preserve" text-anchor="middle" x="385.7" y="-198.55" font-family="Helvetica,sans-Serif" font-size="8.00" fill="#495057"> m </text>
 </g>
 <!-- s8 -->
 <g id="node8" class="node">
 <title>s8</title>
-<path fill="#ebfbee" stroke="#2f9e44" d="M462.71,-210.11C462.71,-210.11 434.09,-210.11 434.09,-210.11 429.77,-210.11 425.45,-205.79 425.45,-201.47 425.45,-201.47 425.45,-192.83 425.45,-192.83 425.45,-188.51 429.77,-184.19 434.09,-184.19 434.09,-184.19 462.71,-184.19 462.71,-184.19 467.03,-184.19 471.35,-188.51 471.35,-192.83 471.35,-192.83 471.35,-201.47 471.35,-201.47 471.35,-205.79 467.03,-210.11 462.71,-210.11"/>
-<path fill="none" stroke="#2f9e44" d="M464.04,-214.11C464.04,-214.11 432.76,-214.11 432.76,-214.11 427.1,-214.11 421.45,-208.46 421.45,-202.81 421.45,-202.81 421.45,-191.5 421.45,-191.5 421.45,-185.85 427.1,-180.19 432.76,-180.19 432.76,-180.19 464.04,-180.19 464.04,-180.19 469.7,-180.19 475.35,-185.85 475.35,-191.5 475.35,-191.5 475.35,-202.81 475.35,-202.81 475.35,-208.46 469.7,-214.11 464.04,-214.11"/>
-<text xml:space="preserve" text-anchor="start" x="446.52" y="-199.5" font-family="Helvetica,sans-Serif" font-size="7.00" fill="#868e96">8</text>
-<text xml:space="preserve" text-anchor="start" x="432.65" y="-190.6" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#2b8a3e">ctl mark</text>
+<path fill="#ebfbee" stroke="#2f9e44" d="M463.46,-133.11C463.46,-133.11 433.34,-133.11 433.34,-133.11 429.02,-133.11 424.7,-128.79 424.7,-124.47 424.7,-124.47 424.7,-115.83 424.7,-115.83 424.7,-111.51 429.02,-107.19 433.34,-107.19 433.34,-107.19 463.46,-107.19 463.46,-107.19 467.78,-107.19 472.1,-111.51 472.1,-115.83 472.1,-115.83 472.1,-124.47 472.1,-124.47 472.1,-128.79 467.78,-133.11 463.46,-133.11"/>
+<path fill="none" stroke="#2f9e44" d="M464.79,-137.11C464.79,-137.11 432.01,-137.11 432.01,-137.11 426.35,-137.11 420.7,-131.46 420.7,-125.81 420.7,-125.81 420.7,-114.5 420.7,-114.5 420.7,-108.85 426.35,-103.19 432.01,-103.19 432.01,-103.19 464.79,-103.19 464.79,-103.19 470.45,-103.19 476.1,-108.85 476.1,-114.5 476.1,-114.5 476.1,-125.81 476.1,-125.81 476.1,-131.46 470.45,-137.11 464.79,-137.11"/>
+<text xml:space="preserve" text-anchor="start" x="446.52" y="-122.5" font-family="Helvetica,sans-Serif" font-size="7.00" fill="#868e96">8</text>
+<text xml:space="preserve" text-anchor="start" x="431.9" y="-113.6" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#2b8a3e">ctl show</text>
 </g>
 <!-- s2&#45;&gt;s8 -->
 <g id="edge6" class="edge">
 <title>s2&#45;&gt;s8</title>
-<path fill="none" stroke="#495057" stroke-width="0.9" d="M332.72,-197.15C353.79,-197.15 388.31,-197.15 413.98,-197.15"/>
-<polygon fill="#495057" stroke="#495057" stroke-width="0.9" points="413.94,-199.25 419.94,-197.15 413.94,-195.05 413.94,-199.25"/>
-<text xml:space="preserve" text-anchor="middle" x="385.7" y="-198.55" font-family="Helvetica,sans-Serif" font-size="8.00" fill="#495057"> m </text>
+<path fill="none" stroke="#495057" stroke-width="0.9" d="M332.72,-186.28C353.8,-174.13 388.33,-154.21 414.01,-139.41"/>
+<polygon fill="#495057" stroke="#495057" stroke-width="0.9" points="415,-141.26 419.15,-136.44 412.9,-137.62 415,-141.26"/>
+<text xml:space="preserve" text-anchor="middle" x="385.7" y="-164.66" font-family="Helvetica,sans-Serif" font-size="8.00" fill="#495057"> escape </text>
 </g>
 <!-- s3&#45;&gt;s2 -->
 <g id="edge7" class="edge goto">
@@ -150,9 +150,9 @@
 <polygon fill="#495057" stroke="#495057" stroke-width="0.9" points="267.28,-63.25 273.28,-61.15 267.28,-59.05 267.28,-63.25"/>
 <text xml:space="preserve" text-anchor="middle" x="237.42" y="-62.55" font-family="Helvetica,sans-Serif" font-size="8.00" fill="#495057"> control&#45;s </text>
 </g>
-<!-- s7&#45;&gt;s1 -->
+<!-- s8&#45;&gt;s1 -->
 <g id="edge10" class="edge goto">
-<title>s7&#45;&gt;s1</title>
+<title>s8&#45;&gt;s1</title>
 <path fill="none" stroke="#7048e8" stroke-width="0.9" stroke-dasharray="5,2" d="M435.79,-102.87C419.72,-80.67 388.36,-43.2 350.7,-28.15 257.2,9.22 217.52,9.53 124.15,-28.15 75.61,-47.74 42.16,-103.79 27.2,-133.74"/>
 <polygon fill="#7048e8" stroke="#7048e8" stroke-width="0.9" points="25.45,-132.52 24.72,-138.83 29.23,-134.36 25.45,-132.52"/>
 <text xml:space="preserve" text-anchor="middle" x="237.42" y="-2.23" font-family="Helvetica,sans-Serif" font-size="8.00" fill="#7048e8"> &#160;</text>
