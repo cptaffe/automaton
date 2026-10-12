@@ -2,6 +2,7 @@ package lex_test
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 	"testing"
@@ -193,5 +194,35 @@ func TestOneIgnoredMatchLongerThanAMegabyte(t *testing.T) {
 	}
 	if err := l.Err(); err != nil || strings.Join(got, "") != "ab\n" {
 		t.Errorf("read %q, %v", got, err)
+	}
+}
+
+func TestPositionsCountFromOne(t *testing.T) {
+	r, err := lex.Open(spec(t), strings.NewReader("ab cd\n\n  ef\n"), "start", "t.lex", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for tok, ok := r.Next(); ok; tok, ok = r.Next() {
+		if tok.Text != "\n" {
+			got = append(got, fmt.Sprintf("%s@%d:%d", tok.Text, tok.At.Line, tok.At.Col))
+		}
+	}
+	if want := "ab@1:1 cd@1:4 ef@3:3"; strings.Join(got, " ") != want {
+		t.Errorf("positions %v; want %s", got, want)
+	}
+}
+
+func TestIgnoredLinesAreCounted(t *testing.T) {
+	r, err := lex.Open(spec(t), strings.NewReader("; one\n; two\nword = x\n"), "start", "t.lex", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tok, _ := r.Next()
+	for tok.Text != "word" {
+		tok, _ = r.Next()
+	}
+	if tok.At.Line != 3 || tok.At.Col != 1 {
+		t.Errorf("word is at %d:%d; want 3:1", tok.At.Line, tok.At.Col)
 	}
 }

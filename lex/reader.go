@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"sort"
 	"strings"
+	"unicode/utf8"
 )
 
 type Error struct {
@@ -23,11 +25,11 @@ type Reader struct {
 	from string
 
 	newline int
+	lines   []int
+	at      int
 
-	line, col int
-
-	began, stmt  int
-	fresh, empty bool
+	began, stmt      int
+	started, content bool
 
 	err error
 }
@@ -51,17 +53,18 @@ func Open(spec *Spec, in io.Reader, scope, from string, newline int) (*Reader, e
 		return nil, err
 	}
 
-	return &Reader{
-		run: run, src: src, from: from, newline: newline,
-		line: 1, col: 1, began: 1, stmt: 1, fresh: true, empty: true,
-	}, nil
+	lines := []int{0}
+
+	for i := range len(src) {
+		if src[i] == '\n' {
+			lines = append(lines, i+1)
+		}
+	}
+
+	return &Reader{run: run, src: src, from: from, newline: newline, lines: lines}, nil
 }
 
 func (r *Reader) Next() (Token, bool) {
-	if r.fresh {
-		r.began, r.fresh = r.line, false
-	}
-
 	tok, ok := r.run.Next()
 
 	if !ok {
@@ -72,42 +75,44 @@ func (r *Reader) Next() (Token, bool) {
 		return tok, false
 	}
 
-	at := Where{File: r.from, Line: r.line, Col: r.col}
-	r.walk(tok.Text)
+	if !r.started {
+		r.began, r.started = tok.Start, true
+	}
+
+	r.at = tok.End
 
 	if tok.Kind == r.newline {
-		if !r.empty {
+		if r.content {
 			r.stmt = r.began
 		}
 
-		r.fresh, r.empty = true, true
+		r.started, r.content = false, false
 	} else {
-		r.empty = false
+		r.content = true
 	}
 
-	tok.At = at
+	tok.At = r.Where(tok.Start)
 
 	return tok, true
 }
 
-func (r *Reader) Skip() { r.empty = true }
+func (r *Reader) Where(offset int) Where {
+	line := r.line(offset)
+
+	return Where{File: r.from, Line: line + 1, Col: utf8.RuneCountInString(r.src[r.lines[line]:offset]) + 1}
+}
+
+func (r *Reader) line(offset int) int {
+	return sort.Search(len(r.lines), func(i int) bool { return r.lines[i] > offset }) - 1
+}
+
+func (r *Reader) Skip() { r.content = false }
 
 func (r *Reader) Depth() int { return r.run.Depth() }
 
-func (r *Reader) walk(text string) {
-	if n := strings.Count(text, "\n"); n > 0 {
-		r.line += n
-		r.col = len([]rune(text[strings.LastIndexByte(text, '\n')+1:])) + 1
+func (r *Reader) Line() int { return r.line(r.at) + 1 }
 
-		return
-	}
-
-	r.col += len([]rune(text))
-}
-
-func (r *Reader) Line() int { return r.line }
-
-func (r *Reader) Statement() int { return r.stmt }
+func (r *Reader) Statement() int { return r.line(r.stmt) + 1 }
 
 func (r *Reader) From() string { return r.from }
 
@@ -122,16 +127,14 @@ func (r *Reader) Name() string {
 }
 
 func (r *Reader) Source(line int) string {
-	lines := strings.Split(r.src, "\n")
-
-	if line < 1 || line > len(lines) {
+	if line < 1 || line >= len(r.lines) {
 		return ""
 	}
 
-	return strings.TrimSpace(lines[line-1])
+	return strings.TrimSpace(r.src[r.lines[line-1] : r.lines[line]-1])
 }
 
-func (r *Reader) Fail(f string, a ...any) { r.FailAt(r.line, f, a...) }
+func (r *Reader) Fail(f string, a ...any) { r.FailAt(r.Line(), f, a...) }
 
 func (r *Reader) FailAt(line int, f string, a ...any) {
 	if r.err == nil {
