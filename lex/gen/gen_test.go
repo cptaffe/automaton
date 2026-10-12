@@ -1,6 +1,7 @@
 package gen_test
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -42,7 +43,7 @@ func build(t *testing.T, src string) *lex.Spec {
 
 func kinds(t *testing.T, spec *lex.Spec, src string) []string {
 	t.Helper()
-	l, err := lex.New(spec, strings.NewReader(src), spec.Scopes[0].Name)
+	toks, err := lex.Lex(context.Background(), spec, strings.NewReader(src), spec.Scopes[0].Name)
 
 	if err != nil {
 		t.Fatal(err)
@@ -50,18 +51,12 @@ func kinds(t *testing.T, spec *lex.Spec, src string) []string {
 
 	var out []string
 
-	for {
-		tok, ok := l.Next()
-
-		if !ok {
-			break
+	for tok := range toks {
+		if tok.Err != nil {
+			t.Fatalf("%v, after %v", tok.Err, out)
 		}
 
 		out = append(out, spec.Token(tok.Kind)+"("+tok.Text+")")
-	}
-
-	if err := l.Err(); err != nil {
-		t.Fatalf("%v, after %v", err, out)
 	}
 
 	return out

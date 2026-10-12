@@ -48,17 +48,25 @@ comment(then) {
 }
 ```
 
+The lexer runs in its own goroutine and sends tokens on a channel. The
+channel closes at the end of the input, and an error is the last token sent.
+While only rules that ignore their input can still match, the text read so far
+is let go, so memory is bounded by the longest token, not the longest comment:
+
 ```go
 //go:generate go run github.com/cptaffe/automaton/cmd/genlex -go scan.gen.go -package scan comments.lex
 
-l, err := lex.New(scan.Spec, r, "start")
+toks, err := lex.Lex(ctx, scan.Spec, r, "start")
 if err != nil {
 	return err
 }
-for tok, ok := l.Next(); ok; tok, ok = l.Next() {
+for tok := range toks {
+	if tok.Err != nil {
+		return tok.Err
+	}
 	fmt.Println(scan.Spec.Token(tok.Kind), tok.Text)
 }
-return l.Err()
+return nil
 ```
 
 ![comments.lex](docs/comments.svg)

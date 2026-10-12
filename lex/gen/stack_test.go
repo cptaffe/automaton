@@ -1,6 +1,7 @@
 package gen_test
 
 import (
+	"context"
 	"reflect"
 	"strings"
 	"testing"
@@ -9,21 +10,20 @@ import (
 	"github.com/cptaffe/automaton/lex/gen"
 )
 
-func run(t *testing.T, spec *lex.Spec, src string) ([]string, int, error) {
+func run(t *testing.T, spec *lex.Spec, src string) ([]string, error) {
 	t.Helper()
-	l, err := lex.New(spec, strings.NewReader(src), spec.Scopes[0].Name)
+	toks, err := lex.Lex(context.Background(), spec, strings.NewReader(src), spec.Scopes[0].Name)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var out []string
-	for {
-		tok, ok := l.Next()
-		if !ok {
-			break
+	for tok := range toks {
+		if tok.Err != nil {
+			return out, tok.Err
 		}
 		out = append(out, spec.Token(tok.Kind)+"("+tok.Text+")")
 	}
-	return out, l.Depth(), l.Err()
+	return out, nil
 }
 
 func TestCommentsNest(t *testing.T) {
@@ -40,16 +40,16 @@ comment(then) {
   [a-z ]+  emit text
 }
 `)
-	got, depth, err := run(t, spec, "a /* b /* c */ d */ e")
+	got, err := run(t, spec, "a /* b /* c */ d */ e")
 	if err != nil {
 		t.Fatal(err)
 	}
 	want := []string{"word(a)", "open(/*)", "text( b )", "open(/*)", "text( c )", "close(*/)", "text( d )", "close(*/)", "word(e)"}
-	if !reflect.DeepEqual(got, want) || depth != 0 {
-		t.Errorf("got %v at depth %d, want %v", got, depth, want)
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("got %v, want %v", got, want)
 	}
-	if _, depth, _ := run(t, spec, "a /* b /* c"); depth != 2 {
-		t.Errorf("an unclosed comment leaves depth %d, want 2", depth)
+	if _, err := run(t, spec, "a /* b /* c"); err == nil || !strings.Contains(err.Error(), "ends inside comment") {
+		t.Errorf("an unclosed comment ends with %v", err)
 	}
 }
 
@@ -76,11 +76,11 @@ brack(then) {
 
 func TestMutualRecursion(t *testing.T) {
 	spec := build(t, brackets)
-	got, depth, err := run(t, spec, "(x[x(x)x]x)x")
-	if err != nil || depth != 0 || len(got) != 12 {
-		t.Errorf("got %v at depth %d: %v", got, depth, err)
+	got, err := run(t, spec, "(x[x(x)x]x)x")
+	if err != nil || len(got) != 12 {
+		t.Errorf("got %v: %v", got, err)
 	}
-	if _, _, err := run(t, spec, "(]"); err == nil {
+	if _, err := run(t, spec, "(]"); err == nil {
 		t.Error("a bracket closing a parenthesis was read")
 	}
 }
@@ -103,10 +103,10 @@ inner(then) {
   ">"  emit close -> then
 }
 `)
-	got, depth, err := run(t, spec, "<<!y>>x")
+	got, err := run(t, spec, "<<!y>>x")
 	want := []string{"open(<)", "open(<)", "bang(!)", "y(y)", "close(>)", "close(>)", "x(x)"}
-	if err != nil || depth != 0 || !reflect.DeepEqual(got, want) {
-		t.Errorf("got %v at depth %d: %v, want %v", got, depth, err, want)
+	if err != nil || !reflect.DeepEqual(got, want) {
+		t.Errorf("got %v: %v, want %v", got, err, want)
 	}
 }
 

@@ -4,6 +4,7 @@ package hotkey
 //go:generate go tool goyacc -l -p yy -o gram.go -v "" gram.y
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -83,7 +84,9 @@ var kinds = map[int]int{
 }
 
 func Parse(r io.Reader, from string, known func(name string) error) (*Rules, error) {
-	in, err := lex.Open(scan.Spec, r, "start", from)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	in, err := lex.Open(ctx, scan.Spec, r, "start", from)
 	if err != nil {
 		return nil, err
 	}
@@ -92,12 +95,10 @@ func Parse(r io.Reader, from string, known func(name string) error) (*Rules, err
 	failed := yyParse(l) != 0
 	switch {
 	case l.Err() != nil:
-	case l.Depth() > 0:
-		l.FailAt(l.line, "a block is never closed")
-	case failed && l.tok == 0:
-		l.FailAt(l.line, "the file ends in the middle of a rule")
-	case failed:
+	case failed && l.tok != 0:
 		l.FailAt(l.line, "%s cannot stand here", strings.TrimSpace(l.text))
+	case failed:
+		l.FailAt(l.line, "the file ends in the middle of a rule")
 	}
 	if err := l.Err(); err != nil {
 		return nil, err

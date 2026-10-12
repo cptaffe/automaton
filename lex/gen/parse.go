@@ -1,6 +1,7 @@
 package gen
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"sort"
@@ -268,7 +269,9 @@ func known(bare bool) string {
 func Parse(r io.Reader, from string) (*File, error) { return parse(r, from, false) }
 
 func parse(r io.Reader, from string, bare bool) (*File, error) {
-	p, err := newParser(r, from, bare)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	p, err := newParser(ctx, r, from, bare)
 
 	if err != nil {
 		return nil, err

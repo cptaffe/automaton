@@ -1,10 +1,10 @@
 package lex
 
 import (
-	"bufio"
+	"bytes"
+	"context"
 	"fmt"
 	"io"
-	"math"
 	"sort"
 	"unicode/utf8"
 )
@@ -50,6 +50,7 @@ type Token struct {
 	Text string
 	Do   int
 	At   Pos
+	Err  error
 }
 
 func (t Token) End() int { return t.At.Offset + len(t.Text) }
@@ -63,7 +64,10 @@ type Pos struct {
 func (p Pos) after(text []byte) Pos {
 	p.Offset += len(text)
 
-	for _, r := range string(text) {
+	for len(text) > 0 {
+		r, w := utf8.DecodeRune(text)
+		text = text[w:]
+
 		if r == '\n' {
 			p.Line, p.Col = p.Line+1, 1
 		} else {
@@ -84,17 +88,20 @@ func (s *Spec) class(r rune) int {
 	return 0
 }
 
-type Lexer struct {
+type lexer struct {
+	ctx   context.Context
 	spec  *Spec
-	sc    *bufio.Scanner
+	r     io.Reader
+	in    bytes.Buffer
+	eof   bool
+	pos   Pos
 	scope int
 	stack []int
-	pos   Pos
-	tok   Token
-	err   error
+	quiet [][]bool
+	items chan Token
 }
 
-func New(spec *Spec, r io.Reader, scope string) (*Lexer, error) {
+func Lex(ctx context.Context, spec *Spec, r io.Reader, scope string) (<-chan Token, error) {
 	at := 0
 
 	for i := range spec.Scopes {
@@ -107,83 +114,100 @@ func New(spec *Spec, r io.Reader, scope string) (*Lexer, error) {
 		return nil, fmt.Errorf("no scope called %s", scope)
 	}
 
-	l := &Lexer{spec: spec, scope: at, pos: Pos{Line: 1, Col: 1}}
-	l.sc = bufio.NewScanner(r)
-	l.sc.Buffer(make([]byte, 4096), math.MaxInt32)
-	l.sc.Split(l.split)
+	l := &lexer{ctx: ctx, spec: spec, r: r, pos: Pos{Line: 1, Col: 1}, scope: at, quiet: quiet(spec), items: make(chan Token, 64)}
 
-	return l, nil
+	go l.run()
+
+	return l.items, nil
 }
 
-func (l *Lexer) split(data []byte, atEOF bool) (int, []byte, error) {
-	done := 0
+func (l *lexer) run() {
+	defer close(l.items)
+
+	for l.match() {
+	}
+}
+
+func (l *lexer) emit(t Token) bool {
+	select {
+	case l.items <- t:
+		return true
+	case <-l.ctx.Done():
+		return false
+	}
+}
+
+func (l *lexer) errorf(at Pos, format string, args ...any) bool {
+	l.emit(Token{At: at, Err: fmt.Errorf(format, args...)})
+
+	return false
+}
+
+func (l *lexer) match() bool {
+	s := &l.spec.Scopes[l.scope-1]
+	state, rule, back, backState := s.Start, 0, 0, 0
+	at, first, read, dropped := l.pos, rune(0), 0, false
 
 	for {
-		if len(data) == done && atEOF {
-			return done, nil, nil
+		buf := l.in.Bytes()
+
+		if !l.eof && !utf8.FullRune(buf[read:]) {
+			drop, dropState := back, backState
+
+			if rule == 0 {
+				drop, dropState = read, state
+			}
+
+			if drop > 0 && l.quiet[l.scope-1][dropState] {
+				l.pos = l.pos.after(l.in.Next(drop))
+				read, back, dropped = read-drop, 0, true
+			}
+
+			if err := l.fill(); err != nil {
+				return l.errorf(l.pos, "%v", err)
+			}
+
+			continue
 		}
 
-		adv, tok, err := l.one(data[done:], atEOF)
-
-		if err != nil {
-			return 0, nil, err
-		}
-
-		if adv == 0 {
-			return done, nil, nil
-		}
-
-		done += adv
-
-		if tok != nil {
-			return done, tok, nil
-		}
-	}
-}
-
-func (l *Lexer) one(data []byte, atEOF bool) (int, []byte, error) {
-	if len(data) == 0 {
-		return 0, nil, nil
-	}
-
-	s := &l.spec.Scopes[l.scope-1]
-	state, rule, back := s.Start, 0, 0
-	read := 0
-
-	for read < len(data) {
-		r, w := utf8.DecodeRune(data[read:])
-
-		if r == utf8.RuneError && w <= 1 && !atEOF && len(data)-read < utf8.UTFMax {
-			return 0, nil, nil
-		}
-
-		state = s.Next[state][l.spec.class(r)]
-
-		if state == 0 {
+		if read == len(buf) {
 			break
 		}
 
-		read += w
+		r, w := utf8.DecodeRune(buf[read:])
+
+		if read == 0 && !dropped {
+			first = r
+		}
+
+		next := s.Next[state][l.spec.class(r)]
+
+		if next == 0 {
+			break
+		}
+
+		state, read = next, read+w
 
 		if a := s.Accept[state]; a != 0 {
-			rule, back = a, read
+			rule, back, backState = a, read, state
+		}
+	}
+
+	if l.in.Len() == 0 && !dropped {
+		if len(l.stack) > 0 {
+			return l.errorf(at, "the input ends inside %s", s.Name)
 		}
 
-		if read == len(data) && !atEOF {
-			return 0, nil, nil
-		}
+		return false
 	}
 
 	if rule == 0 {
-		r, _ := utf8.DecodeRune(data)
-
-		return 0, nil, fmt.Errorf("%s: no rule reads %q", s.Name, r)
+		return l.errorf(at, "%s: no rule reads %q", s.Name, first)
 	}
 
 	act := s.Acts[rule-1]
-	text := data[:back]
-	at := l.pos
-	l.pos = at.after(text)
+	text := l.in.Next(back)
+	l.pos = l.pos.after(text)
 
 	if act.Push != 0 {
 		n := len(l.stack)
@@ -192,7 +216,7 @@ func (l *Lexer) one(data []byte, atEOF bool) (int, []byte, error) {
 
 	switch n := len(l.stack); {
 	case act.Pop && n == 0:
-		return 0, nil, fmt.Errorf("%s: returns with nothing to return to", s.Name)
+		return l.errorf(at, "%s: returns with nothing to return to", s.Name)
 	case act.Pop:
 		l.scope, l.stack = l.stack[n-1], l.stack[:n-1]
 	case act.Goto != 0:
@@ -200,26 +224,61 @@ func (l *Lexer) one(data []byte, atEOF bool) (int, []byte, error) {
 	}
 
 	if act.Emit == 0 {
-		return back, nil, nil
+		return true
 	}
 
-	l.tok = Token{Kind: act.Emit, Do: act.Do, Text: string(text), At: at}
-
-	return back, text, nil
+	return l.emit(Token{Kind: act.Emit, Do: act.Do, Text: string(text), At: at})
 }
 
-func (l *Lexer) Next() (Token, bool) {
-	if !l.sc.Scan() {
-		l.err = l.sc.Err()
+func (l *lexer) fill() error {
+	l.in.Grow(4096)
+	p := l.in.AvailableBuffer()
+	n, err := l.r.Read(p[:cap(p)])
+	l.in.Write(p[:n])
 
-		return Token{}, false
+	if err == io.EOF {
+		l.eof = true
+
+		return nil
 	}
 
-	return l.tok, true
+	return err
 }
 
-func (l *Lexer) Err() error { return l.err }
+func quiet(spec *Spec) [][]bool {
+	out := make([][]bool, len(spec.Scopes))
 
-func (l *Lexer) Scope() string { return l.spec.Scopes[l.scope-1].Name }
+	for i, s := range spec.Scopes {
+		loud := make([]bool, len(s.Next))
 
-func (l *Lexer) Depth() int { return len(l.stack) }
+		for st, a := range s.Accept {
+			loud[st] = a != 0 && s.Acts[a-1].Emit != 0
+		}
+
+		for changed := true; changed; {
+			changed = false
+
+			for st := 1; st < len(s.Next); st++ {
+				if loud[st] {
+					continue
+				}
+
+				for _, to := range s.Next[st] {
+					if to != 0 && loud[to] {
+						loud[st], changed = true, true
+
+						break
+					}
+				}
+			}
+		}
+
+		out[i] = make([]bool, len(s.Next))
+
+		for st := 1; st < len(s.Next); st++ {
+			out[i][st] = !loud[st]
+		}
+	}
+
+	return out
+}

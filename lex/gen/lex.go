@@ -3,6 +3,7 @@ package gen
 //go:generate go run ../../cmd/genlex -go internal/scan/scan.gen.go -package scan lex.lex
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"strings"
@@ -38,8 +39,8 @@ type parser struct {
 	stmtText   string
 }
 
-func newParser(r io.Reader, from string, bare bool) (*parser, error) {
-	in, err := lex.Open(scan.Spec, r, "start", from)
+func newParser(ctx context.Context, r io.Reader, from string, bare bool) (*parser, error) {
+	in, err := lex.Open(ctx, scan.Spec, r, "start", from)
 
 	if err != nil {
 		return nil, err

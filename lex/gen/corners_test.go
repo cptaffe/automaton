@@ -1,6 +1,7 @@
 package gen_test
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -10,7 +11,7 @@ import (
 
 func read(t *testing.T, src string) []string {
 	t.Helper()
-	l, err := lex.New(scan.Spec, strings.NewReader(src), "start")
+	toks, err := lex.Lex(context.Background(), scan.Spec, strings.NewReader(src), "start")
 
 	if err != nil {
 		t.Fatal(err)
@@ -18,18 +19,12 @@ func read(t *testing.T, src string) []string {
 
 	var out []string
 
-	for {
-		tok, ok := l.Next()
-
-		if !ok {
-			break
+	for tok := range toks {
+		if tok.Err != nil {
+			t.Fatalf("the lexer stopped: %v, after %v", tok.Err, out)
 		}
 
 		out = append(out, scan.Spec.Token(tok.Kind)+"("+tok.Text+")")
-	}
-
-	if err := l.Err(); err != nil {
-		t.Fatalf("the lexer stopped: %v, after %v", err, out)
 	}
 
 	return out

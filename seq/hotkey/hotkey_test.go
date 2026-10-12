@@ -141,7 +141,7 @@ func TestErrors(t *testing.T) {
 		{"a:\n\tcommand-s { x }\n\tcommand-s { y }\n", "two rules, one key sequence"},
 		{"a:\n\tcontrol-x { x }\n\tcontrol-x control-s { y }\n", "no %settles"},
 		{"a:\n\tcommand-zz { x }\n", "hotkeys:2: command-zz: no such key"},
-		{"a:\n\tcommand-s { x\n", "never closed"},
+		{"a:\n\tcommand-s { x\n", "ends inside block"},
 		{"command-s { x }\n", "above every scope"},
 		{"a:\n\tcommand-s\n", "nowhere to go"},
 		{"a:\n\tcommand-command-s { x }\n", "command twice"},

@@ -1,6 +1,7 @@
 package lex
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"path/filepath"
@@ -18,19 +19,20 @@ func (e *Error) Error() string { return fmt.Sprintf("%s:%d: %v", e.File, e.Line,
 func (e *Error) Unwrap() error { return e.Err }
 
 type Reader struct {
-	run  *Lexer
+	toks <-chan Token
 	from string
+	line int
 	err  error
 }
 
-func Open(spec *Spec, in io.Reader, scope, from string) (*Reader, error) {
-	run, err := New(spec, &terminated{r: in, ended: true}, scope)
+func Open(ctx context.Context, spec *Spec, in io.Reader, scope, from string) (*Reader, error) {
+	toks, err := Lex(ctx, spec, &terminated{r: in, ended: true}, scope)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return &Reader{run: run, from: from}, nil
+	return &Reader{toks: toks, from: from, line: 1}, nil
 }
 
 type terminated struct {
@@ -63,20 +65,25 @@ func (t *terminated) Read(p []byte) (int, error) {
 }
 
 func (r *Reader) Next() (Token, bool) {
-	tok, ok := r.run.Next()
+	tok, ok := <-r.toks
 
 	if !ok {
-		if err := r.run.Err(); err != nil {
-			r.Fail("%w", err)
-		}
+		return tok, false
 	}
 
-	return tok, ok
+	if tok.Err != nil {
+		r.line = tok.At.Line
+		r.Fail("%w", tok.Err)
+
+		return Token{}, false
+	}
+
+	r.line = tok.At.Line + strings.Count(tok.Text, "\n")
+
+	return tok, true
 }
 
-func (r *Reader) Depth() int { return r.run.Depth() }
-
-func (r *Reader) Line() int { return r.run.pos.Line }
+func (r *Reader) Line() int { return r.line }
 
 func (r *Reader) From() string { return r.from }
 
