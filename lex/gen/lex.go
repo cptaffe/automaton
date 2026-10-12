@@ -31,10 +31,15 @@ type parser struct {
 
 	tok     int
 	tokText string
+
+	began, end int
+	reading    []byte
+	stmt       int
+	stmtText   string
 }
 
 func newParser(r io.Reader, from string, bare bool) (*parser, error) {
-	in, err := lex.Open(scan.Spec, r, "start", from, scan.TokNewline)
+	in, err := lex.Open(scan.Spec, r, "start", from)
 
 	if err != nil {
 		return nil, err
@@ -94,6 +99,8 @@ func (p *parser) lex(v *yySymType) (int, string) {
 		return 0, ""
 	}
 
+	p.statement(tok)
+
 	switch tok.Kind {
 	case scan.TokNewline:
 		return NEWLINE, "a new line"
@@ -116,6 +123,24 @@ func (p *parser) lex(v *yySymType) (int, string) {
 	}
 
 	return kinds[tok.Kind], tok.Text
+}
+
+func (p *parser) statement(tok lex.Token) {
+	switch {
+	case tok.Kind == scan.TokNewline && len(p.reading) > 0:
+		p.stmt, p.stmtText, p.reading = p.began, string(p.reading), p.reading[:0]
+	case tok.Kind == scan.TokNewline:
+	case len(p.reading) == 0:
+		p.began = tok.At.Line
+		p.reading = append(p.reading, tok.Text...)
+	case tok.At.Offset > p.end:
+		p.reading = append(p.reading, ' ')
+		fallthrough
+	default:
+		p.reading = append(p.reading, tok.Text...)
+	}
+
+	p.end = tok.End()
 }
 
 func literalOf(text string) string {

@@ -25,9 +25,8 @@ type Rules struct {
 }
 
 type word struct {
-	text       string
-	line       int
-	start, end int
+	text string
+	line int
 }
 
 type pat struct {
@@ -43,7 +42,6 @@ type rule struct {
 
 type lexer struct {
 	*lex.Reader
-	src     string
 	tok     int
 	text    string
 	line    int
@@ -85,16 +83,11 @@ var kinds = map[int]int{
 }
 
 func Parse(r io.Reader, from string, known func(name string) error) (*Rules, error) {
-	b, err := io.ReadAll(r)
+	in, err := lex.Open(scan.Spec, r, "start", from)
 	if err != nil {
 		return nil, err
 	}
-	src := string(b)
-	in, err := lex.Open(scan.Spec, strings.NewReader(src), "start", from, scan.TokNewline)
-	if err != nil {
-		return nil, err
-	}
-	l := &lexer{Reader: in, src: src, bare: true, labels: map[int]string{}, scopes: map[string]bool{},
+	l := &lexer{Reader: in, bare: true, labels: map[int]string{}, scopes: map[string]bool{},
 		g: &seq.Grammar{Name: in.Name()}}
 	failed := yyParse(l) != 0
 	switch {
@@ -135,7 +128,6 @@ func (l *lexer) Lex(v *yySymType) int {
 			if !l.bare {
 				l.labels[tok.At.Line] = strings.TrimSpace(strings.TrimPrefix(tok.Text, "#"))
 			}
-			l.Skip()
 			continue
 		case scan.TokNewline:
 			l.bare = true
@@ -146,7 +138,7 @@ func (l *lexer) Lex(v *yySymType) int {
 		if tok.Kind == scan.TokString {
 			text = text[1 : len(text)-1]
 		}
-		v.word = word{text, tok.At.Line, tok.Start, tok.End()}
+		v.word, v.str = word{text, tok.At.Line}, text
 		l.tok = kinds[tok.Kind]
 		return l.tok
 	}
@@ -154,15 +146,11 @@ func (l *lexer) Lex(v *yySymType) int {
 
 func (l *lexer) Error(string) {}
 
-func (l *lexer) between(open, close word) string {
-	return strings.TrimSpace(l.src[open.end:close.start])
-}
-
-func (l *lexer) addPrelude(open, close word) {
+func (l *lexer) addPrelude(text string) {
 	if l.prelude != "" {
 		l.prelude += "\n"
 	}
-	l.prelude += strings.TrimRight(l.src[open.end:close.start], "\n")
+	l.prelude += strings.TrimRight(text, "\n")
 }
 
 func (l *lexer) scope(name word) {

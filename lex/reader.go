@@ -4,9 +4,7 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
-	"sort"
 	"strings"
-	"unicode/utf8"
 )
 
 type Error struct {
@@ -21,47 +19,47 @@ func (e *Error) Unwrap() error { return e.Err }
 
 type Reader struct {
 	run  *Lexer
-	src  string
 	from string
-
-	newline int
-	lines   []int
-	at      int
-
-	began, stmt      int
-	started, content bool
-
-	err error
+	err  error
 }
 
-func Open(spec *Spec, in io.Reader, scope, from string, newline int) (*Reader, error) {
-	b, err := io.ReadAll(in)
+func Open(spec *Spec, in io.Reader, scope, from string) (*Reader, error) {
+	run, err := New(spec, &terminated{r: in, ended: true}, scope)
 
 	if err != nil {
 		return nil, err
 	}
 
-	src := string(b)
+	return &Reader{run: run, from: from}, nil
+}
 
-	if src != "" && !strings.HasSuffix(src, "\n") {
-		src += "\n"
-	}
+type terminated struct {
+	r          io.Reader
+	eof, ended bool
+}
 
-	run, err := New(spec, strings.NewReader(src), scope)
-
-	if err != nil {
-		return nil, err
-	}
-
-	lines := []int{0}
-
-	for i := range len(src) {
-		if src[i] == '\n' {
-			lines = append(lines, i+1)
+func (t *terminated) Read(p []byte) (int, error) {
+	if t.eof {
+		if t.ended || len(p) == 0 {
+			return 0, io.EOF
 		}
+
+		p[0], t.ended = '\n', true
+
+		return 1, io.EOF
 	}
 
-	return &Reader{run: run, src: src, from: from, newline: newline, lines: lines}, nil
+	n, err := t.r.Read(p)
+
+	if n > 0 {
+		t.ended = p[n-1] == '\n'
+	}
+
+	if err == io.EOF {
+		t.eof, err = true, nil
+	}
+
+	return n, err
 }
 
 func (r *Reader) Next() (Token, bool) {
@@ -71,48 +69,14 @@ func (r *Reader) Next() (Token, bool) {
 		if err := r.run.Err(); err != nil {
 			r.Fail("%w", err)
 		}
-
-		return tok, false
 	}
 
-	if !r.started {
-		r.began, r.started = tok.Start, true
-	}
-
-	r.at = tok.End()
-
-	if tok.Kind == r.newline {
-		if r.content {
-			r.stmt = r.began
-		}
-
-		r.started, r.content = false, false
-	} else {
-		r.content = true
-	}
-
-	tok.At = r.Where(tok.Start)
-
-	return tok, true
+	return tok, ok
 }
-
-func (r *Reader) Where(offset int) Where {
-	line := r.line(offset)
-
-	return Where{File: r.from, Line: line + 1, Col: utf8.RuneCountInString(r.src[r.lines[line]:offset]) + 1}
-}
-
-func (r *Reader) line(offset int) int {
-	return sort.Search(len(r.lines), func(i int) bool { return r.lines[i] > offset }) - 1
-}
-
-func (r *Reader) Skip() { r.content = false }
 
 func (r *Reader) Depth() int { return r.run.Depth() }
 
-func (r *Reader) Line() int { return r.line(r.at) + 1 }
-
-func (r *Reader) Statement() int { return r.line(r.stmt) + 1 }
+func (r *Reader) Line() int { return r.run.pos.Line }
 
 func (r *Reader) From() string { return r.from }
 
@@ -124,14 +88,6 @@ func (r *Reader) Name() string {
 	}
 
 	return base
-}
-
-func (r *Reader) Source(line int) string {
-	if line < 1 || line >= len(r.lines) {
-		return ""
-	}
-
-	return strings.TrimSpace(r.src[r.lines[line-1] : r.lines[line]-1])
 }
 
 func (r *Reader) Fail(f string, a ...any) { r.FailAt(r.Line(), f, a...) }

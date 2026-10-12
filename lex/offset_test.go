@@ -29,7 +29,7 @@ func (d *drip) Read(p []byte) (int, error) {
 
 func spec(t *testing.T) *lex.Spec {
 	t.Helper()
-	f, err := gen.Parse(strings.NewReader(`start {
+	return specOf(t, `start {
   ";" [^\n]*   ignore
   blank+       ignore
   "\n"         emit newline
@@ -39,7 +39,12 @@ func spec(t *testing.T) *lex.Spec {
   "{"          emit lbrace
   "}"          emit rbrace
 }
-`), "t.lex")
+`)
+}
+
+func specOf(t *testing.T, src string) *lex.Spec {
+	t.Helper()
+	f, err := gen.Parse(strings.NewReader(src), "t.lex")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,17 +89,17 @@ func TestWhereATokenIsDoesNotDependOnHowItArrived(t *testing.T) {
 				break
 			}
 
-			if tok.Start > len(src) || tok.End() > len(src) {
+			if tok.At.Offset > len(src) || tok.End() > len(src) {
 				t.Fatalf("%s: %q says it is at %d:%d, and the input is %d long",
-					c.name, tok.Text, tok.Start, tok.End(), len(src))
+					c.name, tok.Text, tok.At.Offset, tok.End(), len(src))
 			}
 
-			if got := src[tok.Start:tok.End()]; got != tok.Text {
-				t.Errorf("%s: %d:%d is %q and the token is %q", c.name, tok.Start, tok.End(), got, tok.Text)
+			if got := src[tok.At.Offset:tok.End()]; got != tok.Text {
+				t.Errorf("%s: %d:%d is %q and the token is %q", c.name, tok.At.Offset, tok.End(), got, tok.Text)
 			}
 
-			if tok.Start < at {
-				t.Errorf("%s: %q starts at %d, behind the one before it", c.name, tok.Text, tok.Start)
+			if tok.At.Offset < at {
+				t.Errorf("%s: %q starts at %d, behind the one before it", c.name, tok.Text, tok.At.Offset)
 			}
 
 			at = tok.End()
@@ -127,8 +132,8 @@ func TestALongRunOfIgnoredTextNeedsNoBuffer(t *testing.T) {
 			kinds = append(kinds, tok.Text)
 		}
 
-		if tok.Text == "word" && src[tok.Start:tok.End()] != "word" {
-			t.Errorf("the word is at %d:%d, which reads %q", tok.Start, tok.End(), src[tok.Start:tok.End()])
+		if tok.Text == "word" && src[tok.At.Offset:tok.End()] != "word" {
+			t.Errorf("the word is at %d:%d, which reads %q", tok.At.Offset, tok.End(), src[tok.At.Offset:tok.End()])
 		}
 	}
 
@@ -154,7 +159,7 @@ func TestATokenNamesItsKind(t *testing.T) {
 }
 
 func TestAnErrorCarriesItsPlace(t *testing.T) {
-	r, err := lex.Open(spec(t), strings.NewReader("word\n!\n"), "start", "dir/t.lex", 0)
+	r, err := lex.Open(spec(t), strings.NewReader("word\n!\n"), "start", "dir/t.lex")
 
 	if err != nil {
 		t.Fatal(err)
@@ -172,8 +177,8 @@ func TestAnErrorCarriesItsPlace(t *testing.T) {
 		t.Errorf("the error is %v; want dir/t.lex line 2", r.Err())
 	}
 
-	if r.Name() != "t" || r.Source(2) != "!" || r.Source(9) != "" {
-		t.Errorf("Name %q, Source(2) %q, Source(9) %q", r.Name(), r.Source(2), r.Source(9))
+	if r.Name() != "t" {
+		t.Errorf("Name %q; want t", r.Name())
 	}
 }
 
@@ -193,7 +198,7 @@ func TestOneIgnoredMatchLongerThanAMegabyte(t *testing.T) {
 }
 
 func TestPositionsCountFromOne(t *testing.T) {
-	r, err := lex.Open(spec(t), strings.NewReader("ab cd\n\n  ef\n"), "start", "t.lex", 0)
+	r, err := lex.Open(spec(t), strings.NewReader("ab cd\n\n  ef\n"), "start", "t.lex")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -209,7 +214,7 @@ func TestPositionsCountFromOne(t *testing.T) {
 }
 
 func TestIgnoredLinesAreCounted(t *testing.T) {
-	r, err := lex.Open(spec(t), strings.NewReader("; one\n; two\nword = x\n"), "start", "t.lex", 0)
+	r, err := lex.Open(spec(t), strings.NewReader("; one\n; two\nword = x\n"), "start", "t.lex")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -219,5 +224,57 @@ func TestIgnoredLinesAreCounted(t *testing.T) {
 	}
 	if tok.At.Line != 3 || tok.At.Col != 1 {
 		t.Errorf("word is at %d:%d; want 3:1", tok.At.Line, tok.At.Col)
+	}
+}
+
+type endless struct{}
+
+func (endless) Read(p []byte) (int, error) {
+	n := copy(p, "word\n")
+
+	return n, nil
+}
+
+func TestTheReaderStreams(t *testing.T) {
+	r, err := lex.Open(spec(t), endless{}, "start", "t.lex")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := range 1000 {
+		tok, ok := r.Next()
+		if !ok {
+			t.Fatalf("the input ended after %d tokens: %v", i, r.Err())
+		}
+		if want := i/2 + 1; tok.At.Line != want {
+			t.Fatalf("%q is on line %d; want %d", tok.Text, tok.At.Line, want)
+		}
+	}
+}
+
+func TestAMissingLastNewlineIsSupplied(t *testing.T) {
+	for _, in := range []io.Reader{strings.NewReader("a\nb"), &drip{s: "a\nb"}} {
+		r, err := lex.Open(spec(t), in, "start", "t.lex")
+		if err != nil {
+			t.Fatal(err)
+		}
+		var got []string
+		for tok, ok := r.Next(); ok; tok, ok = r.Next() {
+			got = append(got, fmt.Sprintf("%q@%d:%d", tok.Text, tok.At.Line, tok.At.Col))
+		}
+		if want := `"a"@1:1 "\n"@1:2 "b"@2:1 "\n"@2:2`; strings.Join(got, " ") != want || r.Err() != nil {
+			t.Errorf("read %v, %v; want %s", got, r.Err(), want)
+		}
+	}
+}
+
+func TestColumnsCountCharacters(t *testing.T) {
+	u := specOf(t, "start {\n  [^ \\n]+ emit word\n  \" \" ignore\n  \"\\n\" emit newline\n}\n")
+	l, err := lex.New(u, strings.NewReader("\u00e9\u00e9 ab\n"), "start")
+	if err != nil {
+		t.Fatal(err)
+	}
+	l.Next()
+	if tok, _ := l.Next(); tok.Text != "ab" || tok.At.Col != 4 || tok.At.Offset != 5 {
+		t.Errorf("ab is %q at column %d, offset %d; want column 4, offset 5", tok.Text, tok.At.Col, tok.At.Offset)
 	}
 }

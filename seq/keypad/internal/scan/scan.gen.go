@@ -9,23 +9,24 @@ const (
 	TokArrow       = 2
 	TokColon       = 3
 	TokComment     = 4
-	TokDeclaration = 5
-	TokDelay       = 6
-	TokDo          = 7
-	TokDots        = 8
-	TokLparen      = 9
-	TokName        = 10
-	TokNewline     = 11
-	TokNot         = 12
-	TokOr          = 13
-	TokRparen      = 14
-	TokSettles     = 15
-	TokSym         = 16
-	TokWhen        = 17
+	TokDash        = 5
+	TokDeclaration = 6
+	TokDelay       = 7
+	TokDo          = 8
+	TokDots        = 9
+	TokLparen      = 10
+	TokName        = 11
+	TokNewline     = 12
+	TokNot         = 13
+	TokOr          = 14
+	TokRparen      = 15
+	TokSettles     = 16
+	TokSym         = 17
+	TokWhen        = 18
 )
 
 var Spec = &lex.Spec{
-	Tokens: []string{"and", "arrow", "colon", "comment", "declaration", "delay", "do", "dots", "lparen", "name", "newline", "not", "or", "rparen", "settles", "sym", "when"},
+	Tokens: []string{"and", "arrow", "colon", "comment", "dash", "declaration", "delay", "do", "dots", "lparen", "name", "newline", "not", "or", "rparen", "settles", "sym", "when"},
 	Ranges: []lex.Range{
 		{Lo: 0, Hi: 8, Class: 1},
 		{Lo: 9, Hi: 9, Class: 2},
@@ -1654,23 +1655,23 @@ var Spec = &lex.Spec{
 			Acts: []lex.Act{
 				{Emit: 4},
 				{},
-				{Emit: 11},
-				{Emit: 8},
-				{Emit: 2},
-				{Emit: 6},
-				{Emit: 15},
-				{Emit: 5},
-				{Emit: 7},
-				{Emit: 17},
-				{Emit: 1},
-				{Emit: 13},
 				{Emit: 12},
-				{Emit: 3},
 				{Emit: 9},
-				{Emit: 14},
+				{Emit: 2},
+				{Emit: 7},
 				{Emit: 16},
-				{},
+				{Emit: 6},
+				{Emit: 8},
+				{Emit: 18},
+				{Emit: 1},
+				{Emit: 14},
+				{Emit: 13},
+				{Emit: 3},
 				{Emit: 10},
+				{Emit: 15},
+				{Emit: 17},
+				{Emit: 5},
+				{Emit: 11},
 			},
 		},
 	},

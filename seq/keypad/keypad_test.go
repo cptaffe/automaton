@@ -225,3 +225,20 @@ func TestMoreErrors(t *testing.T) {
 		}
 	}
 }
+
+func TestAPatternReadsAsWritten(t *testing.T) {
+	tree, err := Parse(strings.NewReader("start:\n  960-NXX-XXXX  do far\n  1  answered   do up\n  ... abandon   do again\n"), "p.tree")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, r := range tree.Rules {
+		got = append(got, r.Pattern)
+	}
+	for _, x := range tree.Any {
+		got = append(got, x.Pattern)
+	}
+	if want := "960-NXX-XXXX|1 answered|abandon"; strings.Join(got, "|") != want {
+		t.Errorf("patterns %q; want %s", got, want)
+	}
+}

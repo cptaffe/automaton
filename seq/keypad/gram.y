@@ -57,18 +57,18 @@ decl:
 rule:
 	  syms action goto_ when_ NEWLINE
 		{
-			$$ = seq.Rule{Pattern: yylex.(*lexer).text($1), Elems: $1.elems, Line: $1.line, Action: $2, Goto: $3.to, Arg: $3.arg, When: $4}
+			$$ = seq.Rule{Pattern: $1.text, Elems: $1.elems, Line: $1.line, Action: $2, Goto: $3.to, Arg: $3.arg, When: $4}
 		}
 	;
 
 anyrule:
 	  DOTS syms action goto_ when_ NEWLINE
 		{
-			$$ = seq.Any{Pattern: yylex.(*lexer).text($2), Line: $2.line, Action: $3, Goto: $4.to, Arg: $4.arg, When: $5}
+			$$ = seq.Any{Pattern: $2.text, Line: $2.line, Action: $3, Goto: $4.to, Arg: $4.arg, When: $5}
 			if len($2.elems) == 1 {
 				$$.Elem = $2.elems[0]
 			} else {
-				yylex.(*lexer).FailAt($2.line, "`... %s` is more than one symbol", yylex.(*lexer).text($2))
+				yylex.(*lexer).FailAt($2.line, "`... %s` is more than one symbol", $2.text)
 			}
 		}
 	;

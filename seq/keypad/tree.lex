@@ -28,6 +28,6 @@ start {
   ")"         emit rparen
 
   (key | class) "+"?  emit sym
-  "-"+        ignore
+  "-"+        emit dash
   ident       emit name
 }

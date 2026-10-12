@@ -70,31 +70,32 @@ var kinds = map[int]int{
 }
 
 type word struct {
-	text       string
-	line       int
-	start, end int
+	text string
+	line int
+	lead string
 }
 
 type symv struct {
-	c          seq.Class
-	line       int
-	start, end int
+	c    seq.Class
+	line int
+	lead string
 }
 
 type pat struct {
-	elems      []seq.Class
-	line       int
-	start, end int
+	elems []seq.Class
+	line  int
+	text  string
 }
 
 type lexer struct {
 	*lex.Reader
-	src     string
 	tok     int
 	tokText string
 	tokLine int
 	block   []string
 	bare    bool
+	lead    string
+	end     int
 	g       *seq.Grammar
 	cur     string
 }
@@ -102,15 +103,11 @@ type lexer struct {
 type move struct{ to, arg string }
 
 func Parse(r io.Reader, from string) (*seq.Grammar, error) {
-	b, err := io.ReadAll(r)
+	in, err := lex.Open(scan.Spec, r, "start", from)
 	if err != nil {
 		return nil, err
 	}
-	in, err := lex.Open(scan.Spec, strings.NewReader(string(b)), "start", from, scan.TokNewline)
-	if err != nil {
-		return nil, err
-	}
-	l := &lexer{Reader: in, src: string(b), bare: true, g: &seq.Grammar{Name: in.Name()}}
+	l := &lexer{Reader: in, bare: true, g: &seq.Grammar{Name: in.Name()}}
 	if yyParse(l) != 0 && l.Err() == nil {
 		l.FailAt(l.tokLine, "%s", l.unexpected())
 	}
@@ -134,10 +131,18 @@ func (l *lexer) lex(v *yySymType) (int, string) {
 		if !ok {
 			return 0, ""
 		}
+		lead := l.lead
+		if tok.At.Offset > l.end {
+			lead += " "
+		}
+		l.lead, l.end = "", tok.End()
+		if tok.Kind == scan.TokDash {
+			l.lead = lead + tok.Text
+			continue
+		}
 		if tok.Kind == scan.TokComment {
 			l.comment(tok.Text, l.bare)
 			l.bare = false
-			l.Skip()
 			continue
 		}
 		if tok.Kind != scan.TokNewline {
@@ -151,15 +156,15 @@ func (l *lexer) lex(v *yySymType) (int, string) {
 			l.bare = true
 			return NEWLINE, "a new line"
 		case scan.TokDelay, scan.TokSettles:
-			v.word = word{tok.Text, tok.At.Line, tok.Start, tok.End()}
+			v.word = word{tok.Text, tok.At.Line, lead}
 		case scan.TokSym:
-			v.sym = symv{symbolOf(tok.Text), tok.At.Line, tok.Start, tok.End()}
+			v.sym = symv{symbolOf(tok.Text), tok.At.Line, lead}
 			return SYM, tok.Text
 		case scan.TokDeclaration:
 			l.Fail("%s is not a declaration", tok.Text)
 			return 0, ""
 		case scan.TokName:
-			v.word = word{tok.Text, tok.At.Line, tok.Start, tok.End()}
+			v.word = word{tok.Text, tok.At.Line, lead}
 			return IDENT, tok.Text
 		}
 		return kinds[tok.Kind], tok.Text
@@ -172,18 +177,16 @@ func symbolOf(text string) seq.Class {
 }
 
 func one(s symv) pat {
-	return pat{elems: []seq.Class{s.c}, line: s.line, start: s.start, end: s.end}
+	return pat{elems: []seq.Class{s.c}, line: s.line, text: s.c.Text}
 }
 
 func add(p pat, s symv) pat {
-	return pat{elems: append(p.elems, s.c), line: p.line, start: p.start, end: s.end}
+	return pat{elems: append(p.elems, s.c), line: p.line, text: p.text + s.lead + s.c.Text}
 }
 
 func event(t word) symv {
-	return symv{seq.Class{Event: t.text, Text: t.text}, t.line, t.start, t.end}
+	return symv{seq.Class{Event: t.text, Text: t.text}, t.line, t.lead}
 }
-
-func (l *lexer) text(p pat) string { return l.src[p.start:p.end] }
 
 func (l *lexer) unexpected() string {
 	switch l.tok {

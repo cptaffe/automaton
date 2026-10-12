@@ -3,7 +3,11 @@ package hotkey
 
 import __yyfmt__ "fmt"
 
-import "github.com/cptaffe/automaton/seq"
+import (
+	"strings"
+
+	"github.com/cptaffe/automaton/seq"
+)
 
 type yySymType struct {
 	yys  int
@@ -20,23 +24,23 @@ const IDENT = 57348
 const DELAY = 57349
 const SETTLES = 57350
 const DOTS = 57351
-const LBRACE = 57352
-const RBRACE = 57353
-const OPEN = 57354
-const CLOSE = 57355
-const NEWLINE = 57356
-const COLON = 57357
-const ARROW = 57358
-const WHEN = 57359
-const EQ = 57360
-const NE = 57361
-const MATCH = 57362
-const AND = 57363
-const OR = 57364
-const NOT = 57365
-const LPAREN = 57366
-const RPAREN = 57367
-const TEXT = 57368
+const TEXT = 57352
+const NEWLINE = 57353
+const COLON = 57354
+const ARROW = 57355
+const WHEN = 57356
+const EQ = 57357
+const NE = 57358
+const MATCH = 57359
+const AND = 57360
+const OR = 57361
+const NOT = 57362
+const LPAREN = 57363
+const RPAREN = 57364
+const LBRACE = 57365
+const RBRACE = 57366
+const OPEN = 57367
+const CLOSE = 57368
 
 var yyToknames = [...]string{
 	"$end",
@@ -48,10 +52,7 @@ var yyToknames = [...]string{
 	"DELAY",
 	"SETTLES",
 	"DOTS",
-	"LBRACE",
-	"RBRACE",
-	"OPEN",
-	"CLOSE",
+	"TEXT",
 	"NEWLINE",
 	"COLON",
 	"ARROW",
@@ -64,7 +65,10 @@ var yyToknames = [...]string{
 	"NOT",
 	"LPAREN",
 	"RPAREN",
-	"TEXT",
+	"LBRACE",
+	"RBRACE",
+	"OPEN",
+	"CLOSE",
 }
 
 var yyStatenames = [...]string{}
@@ -81,55 +85,55 @@ var yyExca = [...]int8{
 
 const yyPrivate = 57344
 
-const yyLast = 62
+const yyLast = 65
 
 var yyAct = [...]int8{
-	38, 36, 37, 23, 24, 45, 25, 48, 41, 48,
-	57, 49, 33, 52, 53, 54, 28, 60, 18, 26,
-	46, 43, 42, 35, 10, 39, 40, 11, 12, 9,
-	31, 29, 4, 22, 3, 7, 8, 59, 47, 24,
-	50, 58, 51, 44, 30, 16, 20, 19, 17, 15,
-	56, 55, 34, 6, 5, 14, 2, 1, 27, 32,
-	21, 13,
+	38, 34, 37, 36, 10, 26, 46, 11, 12, 9,
+	22, 3, 48, 8, 46, 58, 41, 48, 33, 47,
+	62, 25, 52, 53, 54, 4, 49, 47, 45, 24,
+	39, 40, 28, 18, 43, 42, 35, 31, 29, 61,
+	50, 60, 7, 59, 51, 44, 30, 20, 19, 55,
+	57, 56, 16, 17, 15, 6, 5, 2, 1, 27,
+	14, 23, 32, 21, 13,
 }
 
 var yyPact = [...]int16{
-	-1000, -1000, 20, -1000, -1000, -1000, -1000, -1000, 45, 44,
-	3, 43, 42, 29, -7, -1, -1000, -1000, 17, 40,
-	16, -4, -1000, -1000, -1000, -1000, -1000, 9, 2, -1000,
-	8, -1000, 7, 39, -6, -1000, -13, -10, -1000, 2,
-	2, -5, -1000, -1000, -1000, -1000, -1000, -1000, 2, 2,
-	-1000, -15, 36, 32, 12, -10, -1000, -1000, -1000, -1000,
-	-1000,
+	-1000, -1000, 0, -1000, -1000, -1000, -1000, -1000, 50, 49,
+	21, 44, 43, 6, -5, 18, -1000, -1000, 27, 42,
+	26, 5, -1000, -1000, -1000, -1000, -1000, 25, 10, -1000,
+	24, -1000, 23, 41, 4, -1000, -2, 8, -1000, 10,
+	10, 7, -1000, -1000, -1000, -1000, -1000, -1000, 10, 10,
+	-1000, -7, 38, 36, 34, -4, 8, -1000, -1000, -1000,
+	-1000, -1000, -1000,
 }
 
 var yyPgo = [...]int8{
-	0, 61, 60, 59, 3, 58, 1, 2, 0, 35,
-	57, 56, 55, 54, 53, 52,
+	0, 64, 63, 62, 61, 1, 60, 59, 3, 2,
+	0, 42, 58, 57, 56, 55,
 }
 
 var yyR1 = [...]int8{
-	0, 10, 11, 11, 11, 11, 11, 11, 11, 11,
-	12, 12, 13, 5, 5, 14, 14, 9, 1, 1,
-	2, 2, 4, 15, 15, 15, 3, 3, 6, 6,
-	7, 7, 8, 8, 8, 8, 8, 8,
+	0, 12, 13, 13, 13, 13, 13, 13, 13, 13,
+	6, 6, 14, 7, 7, 15, 15, 11, 1, 1,
+	2, 2, 4, 5, 5, 5, 3, 3, 8, 8,
+	9, 9, 10, 10, 10, 10, 10, 10,
 }
 
 var yyR2 = [...]int8{
 	0, 1, 0, 2, 4, 2, 2, 2, 5, 3,
 	0, 2, 3, 0, 2, 4, 3, 4, 1, 2,
-	0, 1, 3, 0, 2, 2, 0, 2, 1, 3,
+	0, 1, 3, 0, 2, 4, 0, 2, 1, 3,
 	1, 3, 2, 3, 1, 3, 3, 3,
 }
 
 var yyChk = [...]int16{
-	-1000, -10, -11, 14, 12, -13, -14, -9, 16, 9,
-	4, 7, 8, -1, -12, 4, -9, 4, 15, 4,
-	4, -2, 4, -4, 10, 13, 26, -5, 17, 14,
-	4, 14, -3, 16, -15, 14, -6, -7, -8, 23,
-	24, 6, 14, 14, 4, 11, 26, -4, 22, 21,
-	-8, -6, 18, 19, 20, -7, -8, 25, 5, 5,
-	5,
+	-1000, -12, -13, 11, 25, -14, -15, -11, 13, 9,
+	4, 7, 8, -1, -6, 4, -11, 4, 12, 4,
+	4, -2, 4, -4, 23, 26, 10, -7, 14, 11,
+	4, 11, -3, 13, -5, 11, -8, -9, -10, 20,
+	21, 6, 11, 11, 4, 24, 10, 23, 19, 18,
+	-10, -8, 15, 16, 17, -5, -9, -10, 22, 5,
+	5, 5, 24,
 }
 
 var yyDef = [...]int8{
@@ -137,9 +141,9 @@ var yyDef = [...]int8{
 	18, 0, 0, 20, 0, 13, 9, 18, 0, 0,
 	0, 26, 19, 21, 23, 4, 11, 0, 0, 12,
 	0, 16, 0, 0, 0, 8, 14, 28, 30, 0,
-	0, 34, 15, 17, 27, 22, 24, 25, 0, 0,
-	32, 0, 0, 0, 0, 29, 31, 33, 35, 36,
-	37,
+	0, 34, 15, 17, 27, 22, 24, 23, 0, 0,
+	32, 0, 0, 0, 0, 0, 29, 31, 33, 35,
+	36, 37, 25,
 }
 
 var yyTok1 = [...]int8{
@@ -494,7 +498,7 @@ yydefault:
 	case 4:
 		yyDollar = yyS[yypt-4 : yypt+1]
 		{
-			yylex.(*lexer).addPrelude(yyDollar[2].word, yyDollar[4].word)
+			yylex.(*lexer).addPrelude(yyDollar[3].str)
 		}
 	case 7:
 		yyDollar = yyS[yypt-2 : yypt+1]
@@ -510,6 +514,16 @@ yydefault:
 		yyDollar = yyS[yypt-3 : yypt+1]
 		{
 			yylex.(*lexer).anyRule(yyDollar[3].rule)
+		}
+	case 10:
+		yyDollar = yyS[yypt-0 : yypt+1]
+		{
+			yyVAL.str = ""
+		}
+	case 11:
+		yyDollar = yyS[yypt-2 : yypt+1]
+		{
+			yyVAL.str = yyDollar[1].str + yyDollar[2].str
 		}
 	case 12:
 		yyDollar = yyS[yypt-3 : yypt+1]
@@ -564,7 +578,22 @@ yydefault:
 	case 22:
 		yyDollar = yyS[yypt-3 : yypt+1]
 		{
-			yyVAL.str = yylex.(*lexer).between(yyDollar[1].word, yyDollar[3].word)
+			yyVAL.str = strings.TrimSpace(yyDollar[2].str)
+		}
+	case 23:
+		yyDollar = yyS[yypt-0 : yypt+1]
+		{
+			yyVAL.str = ""
+		}
+	case 24:
+		yyDollar = yyS[yypt-2 : yypt+1]
+		{
+			yyVAL.str = yyDollar[1].str + yyDollar[2].str
+		}
+	case 25:
+		yyDollar = yyS[yypt-4 : yypt+1]
+		{
+			yyVAL.str = yyDollar[1].str + "{" + yyDollar[3].str + "}"
 		}
 	case 26:
 		yyDollar = yyS[yypt-0 : yypt+1]

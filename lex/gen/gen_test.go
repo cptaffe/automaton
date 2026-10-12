@@ -1,6 +1,7 @@
 package gen_test
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -250,5 +251,19 @@ func TestNoRulePointsAtABlankLine(t *testing.T) {
 
 	if all == 0 {
 		t.Error("read no rules")
+	}
+}
+
+func TestARuleQuotesItsTokens(t *testing.T) {
+	f, err := gen.Parse(strings.NewReader("start {\n  \"x\"    emit y   ; a note\n\n  [a-z]+ -> start\n}\n"), "t.lex")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, r := range f.Rules {
+		got = append(got, fmt.Sprintf("%d:%s", r.Line, r.Text))
+	}
+	if want := `2:"x" emit y|4:[a-z]+ -> start`; strings.Join(got, "|") != want {
+		t.Errorf("rules quote %q; want %s", got, want)
 	}
 }

@@ -46,20 +46,32 @@ func (s *Spec) Token(kind int) string {
 }
 
 type Token struct {
-	Kind  int
-	Text  string
-	Do    int
-	Start int
-
-	At Where
+	Kind int
+	Text string
+	Do   int
+	At   Pos
 }
 
-func (t Token) End() int { return t.Start + len(t.Text) }
+func (t Token) End() int { return t.At.Offset + len(t.Text) }
 
-type Where struct {
-	File string
-	Line int
-	Col  int
+type Pos struct {
+	Offset int
+	Line   int
+	Col    int
+}
+
+func (p Pos) after(text []byte) Pos {
+	p.Offset += len(text)
+
+	for _, r := range string(text) {
+		if r == '\n' {
+			p.Line, p.Col = p.Line+1, 1
+		} else {
+			p.Col++
+		}
+	}
+
+	return p
 }
 
 func (s *Spec) class(r rune) int {
@@ -77,7 +89,7 @@ type Lexer struct {
 	sc    *bufio.Scanner
 	scope int
 	stack []int
-	at    int
+	pos   Pos
 	tok   Token
 	err   error
 }
@@ -95,7 +107,7 @@ func New(spec *Spec, r io.Reader, scope string) (*Lexer, error) {
 		return nil, fmt.Errorf("no scope called %s", scope)
 	}
 
-	l := &Lexer{spec: spec, scope: at}
+	l := &Lexer{spec: spec, scope: at, pos: Pos{Line: 1, Col: 1}}
 	l.sc = bufio.NewScanner(r)
 	l.sc.Buffer(make([]byte, 4096), math.MaxInt32)
 	l.sc.Split(l.split)
@@ -108,8 +120,6 @@ func (l *Lexer) split(data []byte, atEOF bool) (int, []byte, error) {
 
 	for {
 		if len(data) == done && atEOF {
-			l.at += done
-
 			return done, nil, nil
 		}
 
@@ -120,17 +130,12 @@ func (l *Lexer) split(data []byte, atEOF bool) (int, []byte, error) {
 		}
 
 		if adv == 0 {
-			l.at += done
-
 			return done, nil, nil
 		}
 
 		done += adv
 
 		if tok != nil {
-			l.tok.Start += l.at + done - adv
-			l.at += done
-
 			return done, tok, nil
 		}
 	}
@@ -177,6 +182,8 @@ func (l *Lexer) one(data []byte, atEOF bool) (int, []byte, error) {
 
 	act := s.Acts[rule-1]
 	text := data[:back]
+	at := l.pos
+	l.pos = at.after(text)
 
 	if act.Push != 0 {
 		n := len(l.stack)
@@ -196,7 +203,7 @@ func (l *Lexer) one(data []byte, atEOF bool) (int, []byte, error) {
 		return back, nil, nil
 	}
 
-	l.tok = Token{Kind: act.Emit, Do: act.Do, Text: string(text)}
+	l.tok = Token{Kind: act.Emit, Do: act.Do, Text: string(text), At: at}
 
 	return back, text, nil
 }

@@ -1,7 +1,11 @@
 %{
 package hotkey
 
-import "github.com/cptaffe/automaton/seq"
+import (
+	"strings"
+
+	"github.com/cptaffe/automaton/seq"
+)
 %}
 
 %union {
@@ -12,11 +16,12 @@ import "github.com/cptaffe/automaton/seq"
 	rule rule
 }
 
-%token <word> WORD STRING IDENT DELAY SETTLES DOTS LBRACE RBRACE OPEN CLOSE
-%token NEWLINE COLON ARROW WHEN EQ NE MATCH AND OR NOT LPAREN RPAREN TEXT
+%token <word> WORD STRING IDENT DELAY SETTLES DOTS
+%token <str> TEXT
+%token NEWLINE COLON ARROW WHEN EQ NE MATCH AND OR NOT LPAREN RPAREN LBRACE RBRACE OPEN CLOSE
 
 %type <pat> keys
-%type <str> action goto_ block
+%type <str> action goto_ block body text
 %type <cond> when_ expr term factor
 %type <rule> rule
 
@@ -28,7 +33,7 @@ file:
 
 lines:
 	| lines NEWLINE
-	| lines OPEN text CLOSE   { yylex.(*lexer).addPrelude($2, $4) }
+	| lines OPEN text CLOSE   { yylex.(*lexer).addPrelude($3) }
 	| lines header
 	| lines decl
 	| lines rule              { yylex.(*lexer).rule($2) }
@@ -37,7 +42,8 @@ lines:
 	;
 
 text:
-	| text TEXT
+		{ $$ = "" }
+	| text TEXT   { $$ = $1 + $2 }
 	;
 
 header:
@@ -69,12 +75,13 @@ action:
 	;
 
 block:
-	  LBRACE body RBRACE   { $$ = yylex.(*lexer).between($1, $3) }
+	  LBRACE body RBRACE   { $$ = strings.TrimSpace($2) }
 	;
 
 body:
-	| body TEXT
-	| body block
+		{ $$ = "" }
+	| body TEXT                 { $$ = $1 + $2 }
+	| body LBRACE body RBRACE   { $$ = $1 + "{" + $3 + "}" }
 	;
 
 goto_:

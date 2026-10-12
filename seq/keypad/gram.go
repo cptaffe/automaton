@@ -514,16 +514,16 @@ yydefault:
 	case 13:
 		yyDollar = yyS[yypt-5 : yypt+1]
 		{
-			yyVAL.rule = seq.Rule{Pattern: yylex.(*lexer).text(yyDollar[1].pat), Elems: yyDollar[1].pat.elems, Line: yyDollar[1].pat.line, Action: yyDollar[2].str, Goto: yyDollar[3].move.to, Arg: yyDollar[3].move.arg, When: yyDollar[4].cond}
+			yyVAL.rule = seq.Rule{Pattern: yyDollar[1].pat.text, Elems: yyDollar[1].pat.elems, Line: yyDollar[1].pat.line, Action: yyDollar[2].str, Goto: yyDollar[3].move.to, Arg: yyDollar[3].move.arg, When: yyDollar[4].cond}
 		}
 	case 14:
 		yyDollar = yyS[yypt-6 : yypt+1]
 		{
-			yyVAL.any = seq.Any{Pattern: yylex.(*lexer).text(yyDollar[2].pat), Line: yyDollar[2].pat.line, Action: yyDollar[3].str, Goto: yyDollar[4].move.to, Arg: yyDollar[4].move.arg, When: yyDollar[5].cond}
+			yyVAL.any = seq.Any{Pattern: yyDollar[2].pat.text, Line: yyDollar[2].pat.line, Action: yyDollar[3].str, Goto: yyDollar[4].move.to, Arg: yyDollar[4].move.arg, When: yyDollar[5].cond}
 			if len(yyDollar[2].pat.elems) == 1 {
 				yyVAL.any.Elem = yyDollar[2].pat.elems[0]
 			} else {
-				yylex.(*lexer).FailAt(yyDollar[2].pat.line, "`... %s` is more than one symbol", yylex.(*lexer).text(yyDollar[2].pat))
+				yylex.(*lexer).FailAt(yyDollar[2].pat.line, "`... %s` is more than one symbol", yyDollar[2].pat.text)
 			}
 		}
 	case 15:
