@@ -109,7 +109,23 @@ func Label(a *seq.Accept) string {
 		parts = append(parts, line)
 	}
 	if a.When != nil {
-		parts = append(parts, "when "+a.When.String())
+		parts = append(parts, wrap("when "+a.When.String(), 14))
 	}
-	return strings.Join(parts, " ")
+	return strings.Join(parts, "\n")
+}
+
+func wrap(s string, width int) string {
+	var lines []string
+	line := ""
+	for _, w := range strings.Fields(s) {
+		if line != "" && len(line)+1+len(w) > width {
+			lines = append(lines, line)
+			line = ""
+		}
+		if line != "" {
+			line += " "
+		}
+		line += w
+	}
+	return strings.Join(append(lines, line), "\n")
 }

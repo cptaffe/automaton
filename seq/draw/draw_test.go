@@ -23,7 +23,7 @@ func TestDraw(t *testing.T) {
 		t.Fatal(err)
 	}
 	out := string(b)
-	for _, want := range []string{"2-8", "0-9", "<T>", `class="goto"`, "short when on"} {
+	for _, want := range []string{"2-8", "0-9", "<T>", `class="goto"`, `short\nwhen on`} {
 		if !strings.Contains(out, want) {
 			t.Errorf("the drawing lacks %q", want)
 		}
