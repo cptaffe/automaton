@@ -44,7 +44,7 @@ words {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"lower", "blank", "any - [*/a-z]", "(push start)", "-> return", `class="hands"`} {
+	for _, want := range []string{"lower", "blank", "any - [*/a-z]", "(push start)", "close return", `class="hands"`} {
 		if !strings.Contains(string(whole), want) {
 			t.Errorf("the drawing does not say %q:\n%s", want, whole)
 		}

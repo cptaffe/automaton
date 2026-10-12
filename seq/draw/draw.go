@@ -51,6 +51,13 @@ func (m machine) Moves(s int) []dot.Move {
 	if settle := m.t.Settle[s]; settle != 0 {
 		out = append(out, dot.Move{To: s, Label: m.name(settle), Dashed: true, Class: "settle"})
 	}
+	gone := map[int]bool{}
+	for _, a := range m.t.Accept[s] {
+		if to, ok := m.t.Start[a.Goto]; ok && !gone[to] {
+			gone[to] = true
+			out = append(out, dot.Move{To: to, Dashed: true, Class: "goto"})
+		}
+	}
 	return out
 }
 
@@ -103,9 +110,6 @@ func Label(a *seq.Accept) string {
 	}
 	if a.When != nil {
 		parts = append(parts, "when "+a.When.String())
-	}
-	if a.Goto != "" {
-		parts = append(parts, "-> "+a.Goto)
 	}
 	return strings.Join(parts, " ")
 }

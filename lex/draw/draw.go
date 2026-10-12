@@ -3,6 +3,7 @@ package draw
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/cptaffe/automaton"
 	"github.com/cptaffe/automaton/dot"
@@ -94,20 +95,20 @@ func (d machine) Accepts(s int) (string, bool) {
 	if !ok {
 		return "", false
 	}
-	label := "-> " + r.Acts.Goto
+	var parts []string
 	switch {
 	case r.Acts.Emit != "":
-		label = r.Acts.Emit
+		parts = append(parts, r.Acts.Emit)
 	case r.Acts.Drop:
-		label = "ignore"
+		parts = append(parts, "ignore")
 	}
 	switch {
 	case r.Acts.Pop:
-		label += " -> return"
+		parts = append(parts, "return")
 	case r.Acts.Push != "":
-		label += " (push " + r.Acts.Push + ")"
+		parts = append(parts, "(push "+r.Acts.Push+")")
 	}
-	return label, true
+	return strings.Join(parts, " "), true
 }
 
 func (d machine) Leaves(s int) (string, bool) {

@@ -23,7 +23,7 @@ func TestDraw(t *testing.T) {
 		t.Fatal(err)
 	}
 	out := string(b)
-	for _, want := range []string{"2-8", "0-9", "<T>", "operator -> start", "short when on"} {
+	for _, want := range []string{"2-8", "0-9", "<T>", `class="goto"`, "short when on"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("the drawing lacks %q", want)
 		}
@@ -36,7 +36,7 @@ func TestLabel(t *testing.T) {
 		t.Errorf("label %q", got)
 	}
 	multi := &seq.Accept{Action: "a\nb", Goto: "next"}
-	if got := draw.Label(multi); got != "a... -> next" {
+	if got := draw.Label(multi); got != "a..." {
 		t.Errorf("label %q", got)
 	}
 }
