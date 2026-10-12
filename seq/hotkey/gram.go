@@ -553,7 +553,7 @@ yydefault:
 	case 17:
 		yyDollar = yyS[yypt-4 : yypt+1]
 		{
-			yyVAL.rule = rule{yyDollar[1].pat, yyDollar[2].str, yyDollar[3].str}
+			yyVAL.rule = rule{keys: yyDollar[1].pat, action: yyDollar[2].str, to: yyDollar[3].str}
 		}
 	case 18:
 		yyDollar = yyS[yypt-1 : yypt+1]

@@ -38,6 +38,7 @@ type rule struct {
 	keys   pat
 	action string
 	to     string
+	at     int
 }
 
 type lexer struct {
@@ -50,7 +51,6 @@ type lexer struct {
 	g       *seq.Grammar
 	cur     string
 	rules   []rule
-	at      []int
 	anys    []rule
 	scopes  map[string]bool
 	prelude string
@@ -215,8 +215,8 @@ func (l *lexer) rule(r rule) {
 		l.FailAt(r.keys.line, "a rule with keys and nowhere to go")
 		return
 	}
+	r.at = len(l.g.Rules)
 	l.rules = append(l.rules, r)
-	l.at = append(l.at, len(l.g.Rules))
 	l.g.Rules = append(l.g.Rules, seq.Rule{Scope: l.cur, Action: r.action, Goto: r.to, Label: l.labels[r.keys.line], Line: r.keys.line})
 }
 
@@ -289,8 +289,8 @@ func (l *lexer) resolve(known func(string) error) (*seq.Alphabet, error) {
 		}
 		return seq.Class{Syms: []seq.Sym{a.Of(k)}, Text: w.text}
 	}
-	for i, r := range l.rules {
-		g := &l.g.Rules[l.at[i]]
+	for _, r := range l.rules {
+		g := &l.g.Rules[r.at]
 		var texts []string
 		for _, w := range r.keys.words {
 			g.Elems = append(g.Elems, class(w))

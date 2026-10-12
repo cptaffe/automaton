@@ -19,8 +19,12 @@ const (
 
 type Classes[S Symbol] struct {
 	parts []Set[S]
-	by    []Range[S]
-	at    []Class
+	index []indexed[S]
+}
+
+type indexed[S Symbol] struct {
+	Range[S]
+	class Class
 }
 
 func Partition[S Symbol](sets []Set[S]) *Classes[S] {
@@ -108,25 +112,11 @@ func Partition[S Symbol](sets []Set[S]) *Classes[S] {
 
 	for i, p := range c.parts {
 		for _, x := range p.r {
-			c.by = append(c.by, x)
-			c.at = append(c.at, Class(i))
+			c.index = append(c.index, indexed[S]{x, Class(i)})
 		}
 	}
 
-	order := make([]int, len(c.by))
-
-	for i := range order {
-		order[i] = i
-	}
-
-	sort.Slice(order, func(i, j int) bool { return c.by[order[i]].Lo < c.by[order[j]].Lo })
-	by, at := make([]Range[S], len(order)), make([]Class, len(order))
-
-	for i, o := range order {
-		by[i], at[i] = c.by[o], c.at[o]
-	}
-
-	c.by, c.at = by, at
+	sort.Slice(c.index, func(i, j int) bool { return c.index[i].Lo < c.index[j].Lo })
 
 	return c
 }
@@ -136,10 +126,10 @@ func (c *Classes[S]) Len() int { return len(c.parts) - 1 }
 func (c *Classes[S]) Part(at Class) Set[S] { return c.parts[at] }
 
 func (c *Classes[S]) Of(x S) Class {
-	at := sort.Search(len(c.by), func(i int) bool { return c.by[i].Hi >= x })
+	at := sort.Search(len(c.index), func(i int) bool { return c.index[i].Hi >= x })
 
-	if at < len(c.by) && c.by[at].Lo <= x {
-		return c.at[at]
+	if at < len(c.index) && c.index[at].Lo <= x {
+		return c.index[at].class
 	}
 
 	return NoClass

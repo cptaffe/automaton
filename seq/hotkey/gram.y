@@ -61,7 +61,7 @@ decl:
 	;
 
 rule:
-	  keys action goto_ NEWLINE   { $$ = rule{$1, $2, $3} }
+	  keys action goto_ NEWLINE   { $$ = rule{keys: $1, action: $2, to: $3} }
 	;
 
 keys:
