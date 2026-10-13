@@ -265,72 +265,85 @@ func cycles(f *File) error {
 }
 
 func dynamic(f *File) map[string]bool {
-	param := map[string]string{}
-
-	for _, s := range f.Scopes {
-		if s.Param != "" {
-			param[s.Name] = s.Param
-		}
-	}
-
-	calls := map[string][]Rule{}
-
-	for _, r := range f.Rules {
-		if _, ok := param[r.Scope]; ok && r.Acts.Goto != "" && r.Acts.Goto != param[r.Scope] {
-			calls[r.Scope] = append(calls[r.Scope], r)
-		}
-	}
-
-	reaches := func(from, to string) bool {
-		seen := map[string]bool{}
-		work := []string{from}
-
-		for len(work) > 0 {
-			at := work[len(work)-1]
-			work = work[:len(work)-1]
-
-			for _, r := range calls[at] {
-				next := r.Acts.Goto
-
-				if _, ok := param[next]; !ok || seen[next] {
-					continue
-				}
-
-				if next == to {
-					return true
-				}
-
-				seen[next] = true
-				work = append(work, next)
-			}
-		}
-
-		return false
-	}
-
+	g := callsOf(f)
 	dyn := map[string]bool{}
 
-	for name := range param {
-		dyn[name] = reaches(name, name)
+	var work []string
+
+	for name := range g.param {
+		if g.reaches(name, name) {
+			dyn[name] = true
+			work = append(work, name)
+		}
 	}
 
-	for changed := true; changed; {
-		changed = false
+	for len(work) > 0 {
+		at := work[len(work)-1]
+		work = work[:len(work)-1]
 
-		for name := range param {
-			if !dyn[name] {
-				continue
-			}
-
-			for _, r := range calls[name] {
-				if _, ok := param[r.Acts.Goto]; ok && r.Acts.Arg == param[name] && !dyn[r.Acts.Goto] {
-					dyn[r.Acts.Goto], changed = true, true
-				}
+		for _, c := range g.calls[at] {
+			if c.arg == g.param[at] && !dyn[c.to] {
+				dyn[c.to] = true
+				work = append(work, c.to)
 			}
 		}
 	}
 
 	return dyn
+}
+
+type call struct {
+	to  string
+	arg string
+}
+
+type callGraph struct {
+	param map[string]string
+	calls map[string][]call
+}
+
+func callsOf(f *File) callGraph {
+	g := callGraph{param: map[string]string{}, calls: map[string][]call{}}
+
+	for _, s := range f.Scopes {
+		if s.Param != "" {
+			g.param[s.Name] = s.Param
+		}
+	}
+
+	for _, r := range f.Rules {
+		_, from := g.param[r.Scope]
+		_, to := g.param[r.Acts.Goto]
+
+		if from && to && r.Acts.Goto != g.param[r.Scope] {
+			g.calls[r.Scope] = append(g.calls[r.Scope], call{to: r.Acts.Goto, arg: r.Acts.Arg})
+		}
+	}
+
+	return g
+}
+
+func (g callGraph) reaches(from, to string) bool {
+	seen := map[string]bool{}
+	work := []string{from}
+
+	for len(work) > 0 {
+		at := work[len(work)-1]
+		work = work[:len(work)-1]
+
+		for _, c := range g.calls[at] {
+			if c.to == to {
+				return true
+			}
+
+			if !seen[c.to] {
+				seen[c.to] = true
+				work = append(work, c.to)
+			}
+		}
+	}
+
+	return false
 }
 
 func (f *Flat) Instantiations() []string {
