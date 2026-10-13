@@ -145,10 +145,8 @@ plan's name goes to its first scope.
 ### Hotkeys
 
 Shortcuts run rc scripts that share a prelude. `main` reads in `acme`'s rules
-only while Acme has the keyboard. `control-x` shows the window once a second
-passes with nothing after it, or at once when another key comes; `peek` lets
-that key go on to do what it would have. `group` is a mode that `escape`
-leaves:
+only while Acme has the keyboard. `control-x` is a prefix, as in Emacs: a key
+no rule names after it is taken and does nothing, and so is a second's pause:
 
 ```
 %{
@@ -163,18 +161,16 @@ acme:
 	command-s		{ ctl put }	# save
 	command-w		{ ctl del }	# close
 	control-x control-s	{ ctl put }	# save, the emacs way
-	control-x settle	{ ctl show }	# show, once nothing follows
-	control-x peek any	{ ctl show }	# or at once, and the key goes on
-	command-g		{ ctl nomark } -> group
-
-group:
-	-> acme
-	escape			{ ctl mark } -> main	# one undo takes the group back
+	control-x control-c	{ ctl del }	# close, the emacs way
+	control-x any		{ }		# any other key ends the prefix
+	control-x settle	{ }		# and so does a second's pause
 ```
 
-A key no rule takes passes through. An empty block, as in `control-c any { }`,
-takes a key and does nothing, and `... any { }` in a scope keeps every key
-from the application while the scope is current.
+A key no rule takes passes through, and an empty block takes a key and does
+nothing. Vim instead runs a binding that is complete and lets the next key go
+on: `control-x peek any { ... }` reads that key again after the rule fires.
+`... any { }` in a scope keeps every key from the application while the scope
+is current.
 
 ```go
 r, err := hotkey.Parse(f, "hotkeys", hotkey.US)

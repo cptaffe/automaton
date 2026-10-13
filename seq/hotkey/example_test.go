@@ -24,10 +24,19 @@ func TestTheExampleCompiles(t *testing.T) {
 	acme := seq.Env{"app": "devdraw"}
 	for _, c := range []struct {
 		key   string
-		scope string
-	}{{"command-g", "group"}, {"command-s", "group"}, {"escape", "main"}} {
-		if ok, _ := m.Step(sym(r.Table.Alpha, c.key), acme); !ok || m.Scope() != c.scope {
-			t.Errorf("%s took %v into %s; want %s", c.key, ok, m.Scope(), c.scope)
+		fired string
+	}{
+		{"control-x", ""},
+		{"control-s", "ctl put"},
+		{"control-x", ""},
+		{"j", ""},
+		{"control-x", ""},
+		{"settle", ""},
+		{"command-w", "ctl del"},
+	} {
+		ok, fired := m.Step(sym(r.Table.Alpha, c.key), acme)
+		if !ok || actions(fired) != c.fired || m.Pending() != (c.key == "control-x") {
+			t.Errorf("%s took %v, fired %q and left pending %v; want %q", c.key, ok, actions(fired), m.Pending(), c.fired)
 		}
 	}
 }
