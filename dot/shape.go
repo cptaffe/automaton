@@ -20,50 +20,50 @@ func Shape(rs []Rule, name string) ([]byte, error) {
 	}
 
 	for _, r := range rs {
-		label := r.Name
-
-		for _, alt := range r.Alts {
-			label += "\n  " + alt
-		}
-
-		n := Node{ID: quote(r.Name, "n"), Label: label, Style: "rounded", Flush: true}
-
-		if r.Start {
-			n.Class = "start"
-		}
-
-		g.Nodes = append(g.Nodes, n)
+		g.Nodes = append(g.Nodes, r.node())
 	}
 
 	for _, r := range rs {
-		seen := map[string]bool{}
-
-		for _, alt := range r.Alts {
-			for _, w := range word.FindAllString(alt, -1) {
-				if !gr.is[w] || seen[w] {
-					continue
-				}
-
-				seen[w] = true
-
-				at := loop.group[r.Name]
-				e := Edge{From: quote(r.Name, "n"), To: quote(w, "n")}
-
-				switch {
-				case at != 0 && loop.group[w] == at:
-					e.Class = "cycle"
-
-					if loop.embeds[at] {
-						e.Class, e.Dashed = "cycle nest", true
-					}
-				case w == r.Name:
-					continue
-				}
-
+		for _, w := range gr.refs[r.Name] {
+			if e, ok := loop.edge(r.Name, w); ok {
 				g.Edges = append(g.Edges, e)
 			}
 		}
 	}
 
 	return g.Bytes()
+}
+
+func (r Rule) node() Node {
+	label := r.Name
+
+	for _, alt := range r.Alts {
+		label += "\n  " + alt
+	}
+
+	n := Node{ID: quote(r.Name, "n"), Label: label, Style: "rounded", Flush: true}
+
+	if r.Start {
+		n.Class = "start"
+	}
+
+	return n
+}
+
+func (l loops) edge(from, to string) (Edge, bool) {
+	at := l.group[from]
+	e := Edge{From: quote(from, "n"), To: quote(to, "n")}
+
+	switch {
+	case at != 0 && l.group[to] == at:
+		e.Class = "cycle"
+
+		if l.embeds[at] {
+			e.Class, e.Dashed = "cycle nest", true
+		}
+	case from == to:
+		return e, false
+	}
+
+	return e, true
 }
