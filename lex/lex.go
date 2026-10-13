@@ -145,55 +145,14 @@ func (l *lexer) errorf(at Pos, format string, args ...any) bool {
 
 func (l *lexer) match() bool {
 	s := &l.spec.Scopes[l.scope-1]
-	state, rule, back, backState := s.Start, 0, 0, 0
-	at, first, read, dropped := l.pos, rune(0), 0, false
+	at := l.pos
+	m, err := l.scan(s)
 
-	for {
-		buf := l.in.Bytes()
-
-		if !l.eof && !utf8.FullRune(buf[read:]) {
-			drop, dropState := back, backState
-
-			if rule == 0 {
-				drop, dropState = read, state
-			}
-
-			if drop > 0 && l.quiet[l.scope-1][dropState] {
-				l.pos = l.pos.after(l.in.Next(drop))
-				read, back, dropped = read-drop, 0, true
-			}
-
-			if err := l.fill(); err != nil {
-				return l.errorf(l.pos, "%v", err)
-			}
-
-			continue
-		}
-
-		if read == len(buf) {
-			break
-		}
-
-		r, w := utf8.DecodeRune(buf[read:])
-
-		if read == 0 && !dropped {
-			first = r
-		}
-
-		next := s.Next[state][l.spec.class(r)]
-
-		if next == 0 {
-			break
-		}
-
-		state, read = next, read+w
-
-		if a := s.Accept[state]; a != 0 {
-			rule, back, backState = a, read, state
-		}
+	if err != nil {
+		return l.errorf(l.pos, "%v", err)
 	}
 
-	if l.in.Len() == 0 && !dropped {
+	if l.in.Len() == 0 && !m.dropped {
 		if len(l.stack) > 0 {
 			return l.errorf(at, "the input ends inside %s", s.Name)
 		}
@@ -201,14 +160,97 @@ func (l *lexer) match() bool {
 		return false
 	}
 
-	if rule == 0 {
-		return l.errorf(at, "%s: no rule reads %q", s.Name, first)
+	if m.rule == 0 {
+		return l.errorf(at, "%s: no rule reads %q", s.Name, m.first)
 	}
 
-	act := s.Acts[rule-1]
-	text := l.in.Next(back)
+	act := s.Acts[m.rule-1]
+	text := l.in.Next(m.back)
 	l.pos = l.pos.after(text)
 
+	if !l.apply(s, act, at) {
+		return false
+	}
+
+	if act.Emit == 0 {
+		return true
+	}
+
+	return l.emit(Token{Kind: act.Emit, Do: act.Do, Text: string(text), At: at})
+}
+
+type attempt struct {
+	state     int
+	read      int
+	rule      int
+	back      int
+	backState int
+	first     rune
+	dropped   bool
+}
+
+func (m *attempt) step(next, w, accept int) {
+	m.state, m.read = next, m.read+w
+
+	if accept != 0 {
+		m.rule, m.back, m.backState = accept, m.read, next
+	}
+}
+
+func (m *attempt) droppable() (n, state int) {
+	if m.rule == 0 {
+		return m.read, m.state
+	}
+
+	return m.back, m.backState
+}
+
+func (l *lexer) scan(s *Scope) (attempt, error) {
+	m := attempt{state: s.Start}
+
+	for {
+		buf := l.in.Bytes()
+
+		if !l.eof && !utf8.FullRune(buf[m.read:]) {
+			l.drop(&m)
+
+			if err := l.fill(); err != nil {
+				return m, err
+			}
+
+			continue
+		}
+
+		if m.read == len(buf) {
+			return m, nil
+		}
+
+		r, w := utf8.DecodeRune(buf[m.read:])
+
+		if m.read == 0 && !m.dropped {
+			m.first = r
+		}
+
+		next := s.Next[m.state][l.spec.class(r)]
+
+		if next == 0 {
+			return m, nil
+		}
+
+		m.step(next, w, s.Accept[next])
+	}
+}
+
+func (l *lexer) drop(m *attempt) {
+	n, state := m.droppable()
+
+	if n > 0 && l.quiet[l.scope-1][state] {
+		l.pos = l.pos.after(l.in.Next(n))
+		m.read, m.back, m.dropped = m.read-n, 0, true
+	}
+}
+
+func (l *lexer) apply(s *Scope, act Act, at Pos) bool {
 	if act.Push != 0 {
 		n := len(l.stack)
 		l.stack = append(l.stack[:n:n], act.Push)
@@ -223,11 +265,7 @@ func (l *lexer) match() bool {
 		l.scope = act.Goto
 	}
 
-	if act.Emit == 0 {
-		return true
-	}
-
-	return l.emit(Token{Kind: act.Emit, Do: act.Do, Text: string(text), At: at})
+	return true
 }
 
 func (l *lexer) fill() error {
