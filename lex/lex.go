@@ -286,37 +286,45 @@ func (l *lexer) fill() error {
 func quiet(spec *Spec) [][]bool {
 	out := make([][]bool, len(spec.Scopes))
 
-	for i, s := range spec.Scopes {
-		loud := make([]bool, len(s.Next))
-
-		for st, a := range s.Accept {
-			loud[st] = a != 0 && s.Acts[a-1].Emit != 0
-		}
-
-		for changed := true; changed; {
-			changed = false
-
-			for st := 1; st < len(s.Next); st++ {
-				if loud[st] {
-					continue
-				}
-
-				for _, to := range s.Next[st] {
-					if to != 0 && loud[to] {
-						loud[st], changed = true, true
-
-						break
-					}
-				}
-			}
-		}
-
-		out[i] = make([]bool, len(s.Next))
-
-		for st := 1; st < len(s.Next); st++ {
-			out[i][st] = !loud[st]
-		}
+	for i := range spec.Scopes {
+		out[i] = spec.Scopes[i].quiet()
 	}
 
 	return out
+}
+
+func (s *Scope) quiet() []bool {
+	loud := make([]bool, len(s.Next))
+
+	for st, a := range s.Accept {
+		loud[st] = a != 0 && s.Acts[a-1].Emit != 0
+	}
+
+	for changed := true; changed; {
+		changed = false
+
+		for st := 1; st < len(s.Next); st++ {
+			if !loud[st] && s.reaches(st, loud) {
+				loud[st], changed = true, true
+			}
+		}
+	}
+
+	out := make([]bool, len(s.Next))
+
+	for st := 1; st < len(s.Next); st++ {
+		out[st] = !loud[st]
+	}
+
+	return out
+}
+
+func (s *Scope) reaches(st int, in []bool) bool {
+	for _, to := range s.Next[st] {
+		if to != 0 && in[to] {
+			return true
+		}
+	}
+
+	return false
 }
