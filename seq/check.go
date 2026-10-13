@@ -68,15 +68,6 @@ func Check(g *Grammar) error {
 			return err
 		}
 	}
-	for _, r := range g.Rules {
-		n := len(r.Elems)
-		if n == 0 || !r.Elems[n-1].Many {
-			continue
-		}
-		if _, ok := g.Settles[r.Scope]; !ok {
-			return fmt.Errorf("%s:%d: %q ends in a repeat, and %s has no %%settles to say where it stops", g.Name, r.Line, r.Pattern, r.Scope)
-		}
-	}
 	return cycles(g)
 }
 

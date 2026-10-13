@@ -7,13 +7,13 @@ main:
 	-> acme when app == "devdraw"
 
 acme:
-	%settles settle
 	command-s		{ ctl put }	# save
 	command-w		{ ctl del }	# close
 	control-x control-s	{ ctl put }	# save, the emacs way
-	control-x		{ ctl show }	# show, unless control-s follows
-	command-m		-> marks
+	control-x settle	{ ctl show }	# show, once nothing follows
+	control-x peek any	{ ctl show }	# or at once, and the key goes on
+	command-g		{ ctl nomark } -> group
 
-marks:
-	m			{ ctl mark }
-	escape			{ ctl show } -> main
+group:
+	-> acme
+	escape			{ ctl mark } -> main	# one undo takes the group back

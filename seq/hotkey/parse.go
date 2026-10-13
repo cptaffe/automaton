@@ -78,7 +78,6 @@ var kinds = map[int]int{
 	scan.TokString:  STRING,
 	scan.TokIdent:   IDENT,
 	scan.TokDelay:   DELAY,
-	scan.TokSettles: SETTLES,
 	scan.TokDots:    DOTS,
 	scan.TokLbrace:  LBRACE,
 	scan.TokRbrace:  RBRACE,
@@ -200,21 +199,6 @@ func (l *lexer) delay(line int, name, of string) {
 		l.g.Delays = map[string]time.Duration{}
 	}
 	l.g.Delays[name] = d
-}
-
-func (l *lexer) settles(line int, name string) {
-	if l.cur == "" {
-		l.FailAt(line, "%%settles %s is above every scope, and it settles one scope", name)
-		return
-	}
-	if l.g.Settles == nil {
-		l.g.Settles = map[string]string{}
-	}
-	if was, ok := l.g.Settles[l.cur]; ok && was != name {
-		l.FailAt(line, "%%settles %s: %s already settles %s", name, was, l.cur)
-		return
-	}
-	l.g.Settles[l.cur] = name
 }
 
 func (l *lexer) rule(r rule) {

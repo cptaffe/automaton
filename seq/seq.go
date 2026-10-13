@@ -107,12 +107,11 @@ type Any struct {
 }
 
 type Grammar struct {
-	Name    string
-	Note    string
-	Scopes  []string
-	Params  map[string]string
-	Rules   []Rule
-	Any     []Any
-	Delays  map[string]time.Duration
-	Settles map[string]string
+	Name   string
+	Note   string
+	Scopes []string
+	Params map[string]string
+	Rules  []Rule
+	Any    []Any
+	Delays map[string]time.Duration
 }

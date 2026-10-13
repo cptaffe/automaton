@@ -61,9 +61,9 @@ func (m machine) Moves(s int) []dot.Move {
 		if to == rest {
 			out[i].Label = "any"
 		}
-	}
-	if st.Settles {
-		out = append(out, dot.Move{To: s, Label: m.name(st.Settle), Dashed: true, Class: "settle"})
+		if !slices.ContainsFunc(by[to], m.t.Alpha.IsKey) {
+			out[i].Dashed, out[i].Class = true, "event"
+		}
 	}
 	gone := map[int]bool{}
 	for _, a := range st.Accept {

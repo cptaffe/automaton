@@ -16,7 +16,7 @@ import (
 	rule rule
 }
 
-%token <word> WORD STRING IDENT DELAY SETTLES DOTS
+%token <word> WORD STRING IDENT DELAY DOTS
 %token <str> TEXT
 %token NEWLINE COLON ARROW WHEN PEEK EQ NE MATCH AND OR NOT LPAREN RPAREN LBRACE RBRACE OPEN CLOSE
 
@@ -57,7 +57,6 @@ when_:
 
 decl:
 	  DELAY WORD WORD NEWLINE   { yylex.(*lexer).delay($1.line, $2.text, $3.text) }
-	| SETTLES WORD NEWLINE      { yylex.(*lexer).settles($1.line, $2.text) }
 	;
 
 rule:

@@ -15,7 +15,7 @@ import "github.com/cptaffe/automaton/seq"
 	any  seq.Any
 }
 
-%token <word> IDENT DELAY SETTLES
+%token <word> IDENT DELAY
 %token <sym> SYM
 %token ARROW COLON DOTS DO WHEN AND OR NOT LPAREN RPAREN NEWLINE
 
@@ -51,7 +51,6 @@ param_:
 
 decl:
 	  DELAY IDENT IDENT NEWLINE   { yylex.(*lexer).delay($1.line, $2.text, $3.text) }
-	| SETTLES IDENT NEWLINE       { yylex.(*lexer).settles($1.line, $2.text) }
 	;
 
 rule:

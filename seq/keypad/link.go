@@ -21,7 +21,7 @@ func Link(trees ...*seq.Grammar) (*seq.Grammar, error) {
 		first[g.Name] = g.Name + "." + g.Scopes[0]
 	}
 
-	out := &seq.Grammar{Name: "trees", Params: map[string]string{}, Delays: map[string]time.Duration{}, Settles: map[string]string{}}
+	out := &seq.Grammar{Name: "trees", Params: map[string]string{}, Delays: map[string]time.Duration{}}
 	for _, g := range trees {
 		local := map[string]bool{}
 		for _, s := range g.Scopes {
@@ -43,9 +43,6 @@ func Link(trees ...*seq.Grammar) (*seq.Grammar, error) {
 			out.Scopes = append(out.Scopes, name)
 			if p := g.Params[s]; p != "" {
 				out.Params[name] = p
-			}
-			if d, ok := g.Settles[s]; ok {
-				out.Settles[name] = d
 			}
 		}
 		for _, name := range slices.Sorted(maps.Keys(g.Delays)) {

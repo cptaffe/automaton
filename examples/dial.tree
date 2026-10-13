@@ -2,10 +2,11 @@
 %delay abandon 16s
 
 start:
-  %settles T
-  0             do operator         -> connected
+  0 T           do operator         -> connected
+  0 NXX-XXXX    do collect          -> connected
   *98           do voicemail        -> dialing(mailbox)
-  NXX-XXXX      do local            -> connected
+  NXX-XXXX T    do local            -> connected
+  NXX-XXXX #    do local            -> connected
   960-NXX-XXXX  do long-distance    -> connected
   ... abandon   do dial-again
 

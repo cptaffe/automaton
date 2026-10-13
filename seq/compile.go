@@ -31,12 +31,10 @@ type Scope struct {
 }
 
 type State struct {
-	Next    []int
-	Any     [][]*Accept
-	Accept  []*Accept
-	Live    []Cond
-	Settle  Sym
-	Settles bool
+	Next   []int
+	Any    [][]*Accept
+	Accept []*Accept
+	Live   []Cond
 }
 
 type Table struct {
@@ -111,11 +109,6 @@ func Compile(g *Grammar, a *Alphabet) (*Table, error) {
 		x.Elem = got
 		anys[i] = x
 	}
-	for scope, name := range g.Settles {
-		if _, ok := a.Of(name); !ok {
-			return nil, fmt.Errorf("%s: %s %%settles %s, and nothing declares %s", g.Name, scope, name, name)
-		}
-	}
 
 	sets := []fa.Set[Sym]{fa.Span(0, Sym(a.Size()-1))}
 	for _, r := range rules {
@@ -125,10 +118,6 @@ func Compile(g *Grammar, a *Alphabet) (*Table, error) {
 	}
 	for _, x := range anys {
 		sets = append(sets, x.Elem.set())
-	}
-	for _, name := range g.Settles {
-		s, _ := a.Of(name)
-		sets = append(sets, fa.One(s))
 	}
 
 	t := &Table{Name: g.Name, Note: g.Note, Alpha: a, Classes: fa.Partition(sets), Delays: g.Delays}
@@ -307,27 +296,10 @@ func (c *compiler) finish(s int, done, going []int) {
 		}
 		finished[e.origin] = acc
 		st.Accept = append(st.Accept, acc)
-		if len(going) == 0 {
-			continue
+		if len(live[e.origin]) > 0 {
+			c.conflict(acc.Line, "%q is complete, and %s can still follow -- end it with a delay, or peek at the key after it",
+				acc.Pattern, strings.Join(live[e.origin], ", "))
 		}
-		name, ok := c.g.Settles[e.rule.Scope]
-		if !ok && len(live[e.origin]) == 0 {
-			continue
-		}
-		if !ok {
-			c.conflict(acc.Line, "%q is complete, and %s can still follow -- %s has no %%settles to say which was meant",
-				acc.Pattern, strings.Join(live[e.origin], ", "), e.rule.Scope)
-			continue
-		}
-		sym, _ := t.Alpha.Of(name)
-		if !st.Settles {
-			st.Settle, st.Settles = sym, true
-		} else if st.Settle != sym {
-			c.conflict(acc.Line, "%q settles on %s, and another rule here on %s", acc.Pattern, name, t.Alpha.Name(st.Settle))
-		}
-	}
-	if st.Settles && st.Next[t.Classes.Of(st.Settle)] != 0 {
-		c.conflict(st.Accept[0].Line, "%s settles here and a rule reads %s next -- which is meant", t.Alpha.Name(st.Settle), t.Alpha.Name(st.Settle))
 	}
 }
 
@@ -419,7 +391,7 @@ func (t *Table) Waiting() []string {
 func (t *Table) waits(sym Sym) bool {
 	k := t.Classes.Of(sym)
 	for _, st := range t.States {
-		if st.Settles && st.Settle == sym || st.Next[k] != 0 || len(st.Any[k]) > 0 {
+		if st.Next[k] != 0 || len(st.Any[k]) > 0 {
 			return true
 		}
 	}

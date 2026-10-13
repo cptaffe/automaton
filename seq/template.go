@@ -9,15 +9,12 @@ func expand(g *Grammar) (*Grammar, error) {
 	if len(g.Params) == 0 {
 		return g, nil
 	}
-	out := &Grammar{Name: g.Name, Note: g.Note, Delays: g.Delays, Settles: map[string]string{}}
+	out := &Grammar{Name: g.Name, Note: g.Note, Delays: g.Delays}
 	done := map[string]bool{}
 
 	var want func(name, arg string) (string, error)
 	emit := func(scope, at, param, arg string) error {
 		out.Scopes = append(out.Scopes, at)
-		if s, ok := g.Settles[scope]; ok {
-			out.Settles[at] = s
-		}
 		move := func(to, a string) (string, error) {
 			switch {
 			case to == "":

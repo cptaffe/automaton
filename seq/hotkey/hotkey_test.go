@@ -18,11 +18,11 @@ main:
 	-> acme when app == "devdraw" || app ~ "^9term$"
 
 acme:
-	%settles settle
 	command-s            { put }                 # save
 	shift-command-b      { Lrefs }               # references
 	control-x control-s  { put }
-	control-x            { echo '}' {nested} }   # look
+	control-x settle     { echo '}' {nested} }   # look
+	control-x peek any   { echo '}' {nested} }   # look
 	command--            { Shrink }
 	command-m            -> mode
 
@@ -57,12 +57,12 @@ func TestParse(t *testing.T) {
 	for _, rule := range r.Grammar.Rules {
 		labels[rule.Pattern] = rule.Label
 	}
-	if labels["command-s"] != "save" || labels["control-x"] != "look" {
+	if labels["command-s"] != "save" || labels["control-x settle"] != "look" {
 		t.Errorf("labels %v", labels)
 	}
 	var look string
 	for _, rule := range r.Grammar.Rules {
-		if rule.Pattern == "control-x" {
+		if rule.Pattern == "control-x settle" {
 			look = rule.Action
 		}
 	}
@@ -119,7 +119,7 @@ func TestMatch(t *testing.T) {
 	}
 }
 
-func TestSettleOnTimeout(t *testing.T) {
+func TestATimerEndsARule(t *testing.T) {
 	r := parse(t, keytab)
 	m := machine(t, r)
 	m.Step(sym(r.Table.Alpha, "control-x"), seq.Env{"app": "devdraw"})
@@ -132,7 +132,7 @@ func TestSettleOnTimeout(t *testing.T) {
 func TestErrors(t *testing.T) {
 	for _, c := range []struct{ src, want string }{
 		{"a:\n\tcommand-s { x }\n\tcommand-s { y }\n", "two rules, one key sequence"},
-		{"a:\n\tcontrol-x { x }\n\tcontrol-x control-s { y }\n", "no %settles"},
+		{"a:\n\tcontrol-x { x }\n\tcontrol-x control-s { y }\n", "can still follow"},
 		{"a:\n\tcommand-zz { x }\n", "hotkeys:2: command-zz: no such key"},
 		{"a:\n\tcommand-s { x\n", "ends inside block"},
 		{"command-s { x }\n", "above every scope"},
@@ -166,7 +166,7 @@ func TestCanon(t *testing.T) {
 }
 
 func TestAWildcardAndDelays(t *testing.T) {
-	r := parse(t, "%delay quiet 2s\n... escape { reset } -> main\nmain:\n\t-> edit when app == \"devdraw\"\nedit:\n\t%settles quiet\n\tcommand-k { kill }\n\tcommand-k command-k { kill twice }\n\t... quiet { idle }\n")
+	r := parse(t, "%delay quiet 2s\n... escape { reset } -> main\nmain:\n\t-> edit when app == \"devdraw\"\nedit:\n\tcommand-k quiet { kill }\n\tcommand-k command-k { kill twice }\n\t... quiet { idle }\n")
 	m := machine(t, r)
 	env := seq.Env{"app": "devdraw"}
 	for _, c := range []struct {
@@ -189,8 +189,6 @@ func TestDeclarationErrors(t *testing.T) {
 		{"a:\n\t%delay x 1s\n", "belongs above every scope"},
 		{"%delay x soon\n", "soon is not a duration"},
 		{"%delay x 1s\n%delay x 1s\n", "declared twice"},
-		{"%settles x\n", "above every scope"},
-		{"%delay x 1s\n%delay y 1s\na:\n\t%settles x\n\t%settles y\n", "x already settles a"},
 		{"a:\n\tcommand-s { x }\na:\n", "scope a is declared twice"},
 		{"... command-s command-t { x }\n", "... takes one key"},
 		{"a:\n\tcommand-s { x }\n\t-> nowhere\n", "no such scope"},
@@ -213,7 +211,8 @@ func sym(a *seq.Alphabet, name string) seq.Sym {
 func press(m *seq.Machine, a *seq.Alphabet, key string, env seq.Env) (bool, []*seq.Accept) {
 	s, ok := a.Of(key)
 	if !ok {
-		return false, m.Settle(env)
+		m.Reset()
+		return false, nil
 	}
 	return m.Step(s, env)
 }

@@ -8,7 +8,6 @@ start {
   "\n"                emit newline
   "%{" blank* "\n"    emit open    -> prelude
   "%delay"            emit delay
-  "%settles"          emit settles
   "..."               emit dots
   "->"                emit arrow
   ":"                 emit colon

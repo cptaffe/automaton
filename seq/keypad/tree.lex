@@ -13,7 +13,6 @@ start {
   "->"        emit arrow
 
   "%delay"    emit delay
-  "%settles"  emit settles
 
   "%" ident   emit declaration
 

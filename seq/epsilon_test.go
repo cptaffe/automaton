@@ -18,15 +18,14 @@ func modes(t *testing.T) *Table {
 	t.Helper()
 	a := NewAlphabet([]string{"s", "x", "m", "esc", "k"}, "settle")
 	g := &Grammar{
-		Name:    "keys",
-		Scopes:  []string{"main", "acme", "safari", "marks"},
-		Delays:  map[string]time.Duration{"settle": time.Second},
-		Settles: map[string]string{"acme": "settle"},
+		Name:   "keys",
+		Scopes: []string{"main", "acme", "safari", "marks"},
+		Delays: map[string]time.Duration{"settle": time.Second},
 		Rules: []Rule{
 			{Scope: "main", Include: "acme", When: app("devdraw"), Line: 1},
 			{Scope: "main", Include: "safari", When: app("Safari"), Line: 2},
 			{Scope: "acme", Pattern: "s", Elems: []Class{keys(a, "s")}, Action: "put", Line: 3},
-			{Scope: "acme", Pattern: "x", Elems: []Class{keys(a, "x")}, Action: "show", Line: 4},
+			{Scope: "acme", Pattern: "x settle", Elems: []Class{keys(a, "x"), event("settle")}, Action: "show", Line: 4},
 			{Scope: "acme", Pattern: "x s", Elems: []Class{keys(a, "x"), keys(a, "s")}, Action: "save", Line: 5},
 			{Scope: "acme", Pattern: "m", Elems: []Class{keys(a, "m")}, Goto: "marks", Line: 6},
 			{Scope: "safari", Pattern: "s", Elems: []Class{keys(a, "s")}, Action: "share", Line: 7},
@@ -54,13 +53,7 @@ func run(t *testing.T, tab *Table, steps []step) {
 	t.Helper()
 	m := machine(t, tab, "")
 	for i, s := range steps {
-		var ok bool
-		var fired []*Accept
-		if s.key == "" {
-			fired = m.Settle(Env{"app": s.app})
-		} else {
-			ok, fired = m.Step(sym(tab.Alpha, s.key), Env{"app": s.app})
-		}
+		ok, fired := m.Step(sym(tab.Alpha, s.key), Env{"app": s.app})
 		if ok != s.ok || actions(fired) != s.fired {
 			t.Errorf("step %d, %s in %s: took %v and fired %q; want %v and %q", i, s.key, s.app, ok, actions(fired), s.ok, s.fired)
 		}
@@ -99,13 +92,12 @@ func TestAModeIsLeftByGoingBack(t *testing.T) {
 	})
 }
 
-func TestSettlingFiresTheCompleteRule(t *testing.T) {
+func TestATimerEndsARule(t *testing.T) {
 	a := NewAlphabet([]string{"a", "b"}, "hangup", "settle")
 	g := &Grammar{Name: "g", Scopes: []string{"s"},
-		Delays:  map[string]time.Duration{"hangup": time.Second, "settle": time.Second},
-		Settles: map[string]string{"s": "settle"},
+		Delays: map[string]time.Duration{"hangup": time.Second, "settle": time.Second},
 		Rules: []Rule{
-			{Scope: "s", Pattern: "a", Elems: []Class{keys(a, "a")}, Action: "one"},
+			{Scope: "s", Pattern: "a settle", Elems: []Class{keys(a, "a"), event("settle")}, Action: "one"},
 			{Scope: "s", Pattern: "a b", Elems: []Class{keys(a, "a"), keys(a, "b")}, Action: "two"},
 			{Scope: "s", Pattern: "a <hangup>", Elems: []Class{keys(a, "a"), event("hangup")}, Action: "hung"},
 		}}
@@ -118,8 +110,8 @@ func TestSettlingFiresTheCompleteRule(t *testing.T) {
 	if got := strings.Join(m.Waits(), " "); got != "hangup settle" {
 		t.Errorf("after a, the machine waits for %q", got)
 	}
-	if got := actions(m.Settle(nil)); got != "one" {
-		t.Errorf("settling after a fired %q; want one", got)
+	if _, f := m.Step(sym(a, "settle"), nil); actions(f) != "one" {
+		t.Errorf("settle after a fired %q; want one", actions(f))
 	}
 	m.Step(sym(a, "a"), nil)
 	if _, f := m.Step(sym(a, "hangup"), nil); actions(f) != "hung" {
@@ -173,16 +165,17 @@ func TestAnEpsilonIsChecked(t *testing.T) {
 	}
 }
 
-func TestAnUnknownKeyIsTheCallers(t *testing.T) {
+func TestResetDropsAPrefix(t *testing.T) {
 	tab := modes(t)
 	m := machine(t, tab, "")
 	env := Env{"app": "devdraw"}
 	m.Step(sym(tab.Alpha, "x"), env)
-	if _, ok := tab.Alpha.Of("f13"); ok {
-		t.Fatal("f13 is in the alphabet")
+	if !m.Pending() {
+		t.Fatal("x is not pending")
 	}
-	if f := m.Settle(env); actions(f) != "show" || m.Pending() {
-		t.Errorf("settling fired %q and left pending %v; want show and nothing pending", actions(f), m.Pending())
+	m.Reset()
+	if _, f := m.Step(sym(tab.Alpha, "settle"), env); m.Pending() || len(f) != 0 {
+		t.Errorf("after a reset, settle fired %q", actions(f))
 	}
 }
 
@@ -208,7 +201,7 @@ func hk(t *testing.T, a *Alphabet, g *Grammar) *Table {
 func TestOverlappingRepeatsCompile(t *testing.T) {
 	a := NewAlphabet([]string{"1", "2"}, "T")
 	one := keys(a, "1")
-	g := &Grammar{Name: "g", Scopes: []string{"s"}, Delays: map[string]time.Duration{"T": time.Second}, Settles: map[string]string{"s": "T"},
+	g := &Grammar{Name: "g", Scopes: []string{"s"}, Delays: map[string]time.Duration{"T": time.Second},
 		Rules: []Rule{{Scope: "s", Pattern: "1+1+2", Elems: []Class{many(one), many(one), keys(a, "2")}, Action: "x"}}}
 	done := make(chan error, 1)
 	go func() { _, err := Compile(g, a); done <- err }()
@@ -222,11 +215,9 @@ func TestOverlappingRepeatsCompile(t *testing.T) {
 	}
 }
 
-func TestACompleteRuleAnotherOriginExtendsSettles(t *testing.T) {
-	a := NewAlphabet([]string{"x", "s"}, "settle")
+func TestACompleteRuleFiresThoughAnotherScopeGoesOn(t *testing.T) {
+	a := NewAlphabet([]string{"x", "s"})
 	g := &Grammar{Name: "g", Scopes: []string{"main", "a", "b"},
-		Delays:  map[string]time.Duration{"settle": time.Second},
-		Settles: map[string]string{"a": "settle"},
 		Rules: []Rule{
 			{Scope: "main", Include: "a"},
 			{Scope: "main", Include: "b"},
@@ -234,20 +225,12 @@ func TestACompleteRuleAnotherOriginExtendsSettles(t *testing.T) {
 			{Scope: "b", Pattern: "x s", Elems: []Class{keys(a, "x"), keys(a, "s")}, Action: "two"},
 		}}
 	tab := hk(t, a, g)
+	if len(tab.Conflicts) > 0 {
+		t.Fatal(tab.Conflicts)
+	}
 	m := machine(t, tab, "")
-	m.Step(sym(a, "x"), nil)
-	if got := strings.Join(m.Waits(), " "); got != "settle" {
-		t.Errorf("after x the machine waits for %q; want settle", got)
-	}
-	if _, f := m.Step(sym(a, "settle"), nil); actions(f) != "one" {
-		t.Errorf("settle fired %q; want one", actions(f))
-	}
-
-	delete(g.Settles, "a")
-	tab = hk(t, a, g)
-	m = machine(t, tab, "")
 	if _, f := m.Step(sym(a, "x"), nil); actions(f) != "one" || m.Pending() {
-		t.Errorf("with nothing to settle on, x fired %q and pending is %v; want one at once", actions(f), m.Pending())
+		t.Errorf("x fired %q and pending is %v; want one at once", actions(f), m.Pending())
 	}
 }
 
@@ -270,34 +253,20 @@ func TestOneScopeReadInTwiceIsNoConflict(t *testing.T) {
 	}
 }
 
-func TestAWildcardSettlesWhatWasPending(t *testing.T) {
+func TestAWildcardDropsAPrefix(t *testing.T) {
 	a := NewAlphabet([]string{"x", "s", "j"}, "settle")
 	j := keys(a, "j")
 	tab := hk(t, a, &Grammar{Name: "g", Scopes: []string{"m"},
-		Delays:  map[string]time.Duration{"settle": time.Second},
-		Settles: map[string]string{"m": "settle"},
+		Delays: map[string]time.Duration{"settle": time.Second},
 		Rules: []Rule{
-			{Scope: "m", Pattern: "x", Elems: []Class{keys(a, "x")}, Action: "one"},
+			{Scope: "m", Pattern: "x settle", Elems: []Class{keys(a, "x"), event("settle")}, Action: "one"},
 			{Scope: "m", Pattern: "x s", Elems: []Class{keys(a, "x"), keys(a, "s")}, Action: "two"},
 		},
 		Any: []Any{{Scope: "m", Pattern: "j", Elem: j, Action: "wild"}}})
 	m := machine(t, tab, "")
 	m.Step(sym(a, "x"), nil)
-	if _, f := m.Step(sym(a, "j"), nil); actions(f) != "one,wild" {
-		t.Errorf("j after x fired %q; want one,wild", actions(f))
-	}
-}
-
-func TestARuleOnTheSettleEventConflicts(t *testing.T) {
-	a := NewAlphabet([]string{"1"}, "T")
-	tab := hk(t, a, &Grammar{Name: "g", Scopes: []string{"s"},
-		Delays: map[string]time.Duration{"T": time.Second}, Settles: map[string]string{"s": "T"},
-		Rules: []Rule{
-			{Scope: "s", Pattern: "1", Elems: []Class{keys(a, "1")}, Action: "one"},
-			{Scope: "s", Pattern: "1 T", Elems: []Class{keys(a, "1"), event("T")}, Action: "two"},
-		}})
-	if len(tab.Conflicts) == 0 || !strings.Contains(strings.Join(tab.Conflicts, "\n"), "T settles here and a rule reads T next") {
-		t.Errorf("conflicts %v", tab.Conflicts)
+	if _, f := m.Step(sym(a, "j"), nil); actions(f) != "wild" || m.Pending() {
+		t.Errorf("j after x fired %q; want wild alone", actions(f))
 	}
 }
 

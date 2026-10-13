@@ -126,7 +126,7 @@ func (e Edge) Paint() string {
 		switch c {
 		case "goto", "hands":
 			color = "#7048e8"
-		case "settle":
+		case "event":
 			color = "#e8590c"
 		case "cycle":
 			color = "#1c7ed6"

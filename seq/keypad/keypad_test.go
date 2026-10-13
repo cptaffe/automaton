@@ -11,10 +11,9 @@ const plan = `%delay T 5s
 %delay abandon 16s
 
 start:
-  %settles T
   *98           do voicemail  -> mailbox
   0             do operator
-  NXX-XXXX      do line
+  NXX-XXXX T    do line
   960-XXX-XXXX  do line-ten
   ... abandon   do dial-again
 
@@ -67,7 +66,7 @@ func TestPlan(t *testing.T) {
 	}{
 		{"start", "* 9 8", "voicemail"},
 		{"start", "0", "operator"},
-		{"start", "4 8 2 1 2 3 4", "line"},
+		{"start", "4 8 2 1 2 3 4 T", "line"},
 		{"start", "9 6 0 1 2 3 4 T", "line"},
 		{"start", "9 6 0 4 8 2 1 2 3 4", "line-ten"},
 		{"start", "4 abandon", "dial-again"},
@@ -84,7 +83,7 @@ func TestPlan(t *testing.T) {
 	if a := walk(t, tab, "mailbox", "1"); a == nil || a.When == nil || a.When.String() != "holding" {
 		t.Errorf("when %v", a.When)
 	}
-	if a := walk(t, tab, "start", "4", "8", "2", "1", "2", "3", "4"); a == nil || a.Operand == nil || *a.Operand != (seq.Slice{From: 0, To: 0}) {
+	if a := walk(t, tab, "start", "4", "8", "2", "1", "2", "3", "4", "T"); a == nil || a.Operand == nil || *a.Operand != (seq.Slice{From: 0, To: 0}) {
 		t.Errorf("operand %+v", a.Operand)
 	}
 	if got := strings.Join(tab.Waiting(), " "); got != "T abandon" {
@@ -97,7 +96,7 @@ func TestPlan(t *testing.T) {
 }
 
 func TestATreeHandsOff(t *testing.T) {
-	dial, err := Parse(strings.NewReader("%delay T 1s\nstart:\n  %settles T\n  0     do operator  -> dialing(menu)\n  1     do one\n  NXX   do line  -> connected\n  ... T  do idle\n\ndialing(then):\n  answered  -> then\n\nconnected:\n"), "dial.tree")
+	dial, err := Parse(strings.NewReader("%delay T 1s\nstart:\n  0     do operator  -> dialing(menu)\n  1     do one\n  NXX   do line  -> connected\n  ... T  do idle\n\ndialing(then):\n  answered  -> then\n\nconnected:\n"), "dial.tree")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -146,7 +145,8 @@ func TestATreeHandsOff(t *testing.T) {
 func TestConflicts(t *testing.T) {
 	for _, c := range []struct{ src, want string }{
 		{"s:\n  1 do a\n  1 do b\n", "two rules, one key sequence"},
-		{"s:\n  1 do a\n  12 do b\n", "has no %settles"},
+		{"s:\n  1 do a\n  12 do b\n", "can still follow"},
+		{"s:\n  1X+ do a\n", "can still follow"},
 	} {
 		tab := compile(t, c.src)
 		if len(tab.Conflicts) != 1 || !strings.Contains(tab.Conflicts[0], c.want) {
@@ -161,7 +161,6 @@ func TestErrors(t *testing.T) {
 		{"s:\n  1\n", "nowhere to go"},
 		{"s:\n  1 do Put\n", "not lower case"},
 		{"s:\n  %delay T 1s\n", "t.tree:2: %delay T 1s belongs above every scope"},
-		{"\n%settles T\n", "t.tree:2: %settles T is above every scope"},
 		{"s:\n  1 do a\n\n  2 do Put\n", "t.tree:4: the action"},
 	} {
 		_, err := Parse(strings.NewReader(c.src), "t.tree")
@@ -174,7 +173,6 @@ func TestErrors(t *testing.T) {
 func TestCompileErrors(t *testing.T) {
 	for _, c := range []struct{ src, want string }{
 		{"s:\n  1 do a -> t\n", "no such scope"},
-		{"s:\n  1X+ do a\n", "ends in a repeat"},
 		{"s:\n  1 do a -> w(s)\nw(x):\n  2 -> x(s)\n", "x is w's parameter and cannot take one of its own"},
 		{"s:\n  1 do a -> w\nw(x):\n  2 -> x\n", "w takes a parameter and was given none"},
 		{"s:\n  1 do a -> s(s)\n", "s takes no parameter"},
@@ -215,7 +213,6 @@ func TestMoreErrors(t *testing.T) {
 		{"%delay T soon\n", "soon is not a duration"},
 		{"%delay T 0s\n", "a wait of no time is not a wait"},
 		{"%delay T 1s\n%delay T 2s\n", "it is already 1s"},
-		{"%delay T 1s\ns:\n  %settles T\n  %settles U\n", "T already settles s"},
 		{"s:\n  ... 1 2 do a\n", "is more than one symbol"},
 		{"s:\n  ... 1 do Put\n", "not lower case"},
 	} {

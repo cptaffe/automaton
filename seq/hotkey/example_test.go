@@ -25,7 +25,7 @@ func TestTheExampleCompiles(t *testing.T) {
 	for _, c := range []struct {
 		key   string
 		scope string
-	}{{"command-m", "marks"}, {"escape", "main"}} {
+	}{{"command-g", "group"}, {"command-s", "group"}, {"escape", "main"}} {
 		if ok, _ := m.Step(sym(r.Table.Alpha, c.key), acme); !ok || m.Scope() != c.scope {
 			t.Errorf("%s took %v into %s; want %s", c.key, ok, m.Scope(), c.scope)
 		}

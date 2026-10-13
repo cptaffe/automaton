@@ -81,25 +81,32 @@ Both dialects compile to the same kind of table:
 - `-> scope` on a line of its own reads that scope's rules in, and
   `-> scope when ...` does so only while the condition holds. A key is taken
   only when a rule that holds can use it.
-- A rule that is also the start of a longer one is a conflict, unless the
-  scope says with `%settles` how long to wait for the next key.
+- A delay declared with `%delay` is a symbol in its own right: it arrives when
+  the machine has waited that long. A rule that would otherwise be the start
+  of a longer one ends with it, as `NXX-XXXX T` does; without it the pair is a
+  conflict.
+- `any` reads a key no other rule names at that point, and `... any` is a
+  scope's default.
 - A scope can take a parameter, `dialing(then)`, and `this` names the scope a
   rule is in.
 
 ### Keypad
 
-`N` is 2–9 and `X` is 0–9. `dialing(then)` waits for the call to be answered,
-and `connected`, with no rules, ends the plan:
+`N` is 2–9 and `X` is 0–9. As in an MGCP digit map, `T` is the timer: seven
+digits dial a local call once nothing follows them for five seconds, or at once
+on `#`. `dialing(then)` waits for the call to be answered, and `connected`,
+with no rules, ends the plan:
 
 ```
 %delay T 5s
 %delay abandon 16s
 
 start:
-  %settles T
-  0             do operator         -> connected
+  0 T           do operator         -> connected
+  0 NXX-XXXX    do collect          -> connected
   *98           do voicemail        -> dialing(mailbox)
-  NXX-XXXX      do local            -> connected
+  NXX-XXXX T    do local            -> connected
+  NXX-XXXX #    do local            -> connected
   960-NXX-XXXX  do long-distance    -> connected
   ... abandon   do dial-again
 
@@ -138,7 +145,10 @@ plan's name goes to its first scope.
 ### Hotkeys
 
 Shortcuts run rc scripts that share a prelude. `main` reads in `acme`'s rules
-only while Acme has the keyboard, and `marks` is a mode that `escape` leaves:
+only while Acme has the keyboard. `control-x` shows the window once a second
+passes with nothing after it, or at once when another key comes; `peek` lets
+that key go on to do what it would have. `group` is a mode that `escape`
+leaves:
 
 ```
 %{
@@ -150,20 +160,24 @@ main:
 	-> acme when app == "devdraw"
 
 acme:
-	%settles settle
 	command-s		{ ctl put }	# save
 	command-w		{ ctl del }	# close
 	control-x control-s	{ ctl put }	# save, the emacs way
-	control-x		{ ctl show }	# show, unless control-s follows
-	command-m		-> marks
+	control-x settle	{ ctl show }	# show, once nothing follows
+	control-x peek any	{ ctl show }	# or at once, and the key goes on
+	command-g		{ ctl nomark } -> group
 
-marks:
-	m			{ ctl mark }
-	escape			{ ctl show } -> main
+group:
+	-> acme
+	escape			{ ctl mark } -> main	# one undo takes the group back
 ```
 
+A key no rule takes passes through. An empty block, as in `control-c any { }`,
+takes a key and does nothing, and `... any { }` in a scope keeps every key
+from the application while the scope is current.
+
 ```go
-r, err := hotkey.Parse(f, "hotkeys", nil)
+r, err := hotkey.Parse(f, "hotkeys", hotkey.US)
 if err != nil {
 	return err
 }
@@ -171,22 +185,16 @@ m, err := seq.NewMachine(r.Table, "")
 if err != nil {
 	return err
 }
-env := seq.Env{"app": "devdraw"}
-var taken bool
-var fired []*seq.Accept
-if key, ok := r.Table.Alpha.Of("control-x"); ok {
-	taken, fired = m.Step(key, env)
-} else {
-	fired = m.Settle(env)
-}
+key, _ := r.Table.Alpha.Of("control-x")
+taken, fired := m.Step(key, seq.Env{"app": "devdraw"})
 for _, a := range fired {
 	exec.Command("rc", "-c", r.Prelude+"\n"+a.Action).Start()
 }
 ```
 
-A key no rule names is the caller's to handle: here it settles whatever was
-waiting, and the key passes through untaken. `m.Waits()` names the delays to
-start a timer for. When one runs out, step the machine with it.
+The alphabet is every chord a `Keyboard` can make, so every key the keyboard
+sends has a symbol. `m.Waits()` names the delays to start a timer for. When one
+runs out, step the machine with it.
 
 ![hotkeys](docs/hotkeys.svg)
 

@@ -30,14 +30,13 @@ func event(name string) Class { return Class{Event: name, Text: name} }
 
 func grammar(a *Alphabet) *Grammar {
 	return &Grammar{
-		Name:    "g",
-		Scopes:  []string{"start", "mode"},
-		Delays:  map[string]time.Duration{"T": time.Second},
-		Settles: map[string]string{"start": "T"},
+		Name:   "g",
+		Scopes: []string{"start", "mode"},
+		Delays: map[string]time.Duration{"T": time.Second},
 		Rules: []Rule{
-			{Scope: "start", Pattern: "a", Elems: []Class{keys(a, "a")}, Action: "one", Line: 1},
+			{Scope: "start", Pattern: "a T", Elems: []Class{keys(a, "a"), event("T")}, Action: "one", Line: 1},
 			{Scope: "start", Pattern: "a b", Elems: []Class{keys(a, "a"), keys(a, "b")}, Action: "two", Line: 2},
-			{Scope: "start", Pattern: "c d+", Elems: []Class{keys(a, "c"), many(keys(a, "d", "e"))}, Action: "run", Line: 3},
+			{Scope: "start", Pattern: "c d+ T", Elems: []Class{keys(a, "c"), many(keys(a, "d", "e")), event("T")}, Action: "run", Line: 3},
 			{Scope: "start", Pattern: "m", Elems: []Class{keys(a, "m")}, Goto: "mode", Line: 4},
 			{Scope: "mode", Pattern: "x", Elems: []Class{keys(a, "x")}, Action: "ex", When: Name("on"), Line: 5},
 		},
@@ -97,32 +96,25 @@ func TestMachine(t *testing.T) {
 	m := machine(t, tab, "")
 	on := Env{"on": "1"}
 	for _, c := range []struct {
-		in     string
-		ok     bool
-		fired  string
-		waits  []string
-		settle bool
+		in    string
+		ok    bool
+		fired string
+		waits []string
 	}{
-		{"a", true, "", []string{"T"}, false},
-		{"b", true, "two", nil, false},
-		{"a", true, "", []string{"T"}, false},
-		{"", false, "one", nil, true},
-		{"c", true, "", nil, false},
-		{"d", true, "", []string{"T"}, false},
-		{"e", true, "", []string{"T"}, false},
-		{"T", true, "run", nil, false},
-		{"b", false, "", nil, false},
-		{"m", true, "", nil, false},
-		{"x", true, "ex", nil, false},
-		{"z", true, "zap", nil, false},
-		{"x", false, "", nil, false},
+		{"a", true, "", []string{"T"}},
+		{"b", true, "two", nil},
+		{"a", true, "", []string{"T"}},
+		{"T", true, "one", nil},
+		{"c", true, "", nil},
+		{"d", true, "", []string{"T"}},
+		{"e", true, "", []string{"T"}},
+		{"T", true, "run", nil},
+		{"b", false, "", nil},
+		{"m", true, "", nil},
+		{"x", true, "ex", nil},
+		{"z", true, "zap", nil},
+		{"x", false, "", nil},
 	} {
-		if c.settle {
-			if got := actions(m.Settle(on)); got != c.fired {
-				t.Errorf("settle fired %q, want %q", got, c.fired)
-			}
-			continue
-		}
 		ok, fired := m.Step(sym(tab.Alpha, c.in), on)
 		if ok != c.ok || actions(fired) != c.fired || !reflect.DeepEqual(m.Waits(), c.waits) {
 			t.Errorf("%s: got %v %q %v, want %v %q %v", c.in, ok, actions(fired), m.Waits(), c.ok, c.fired, c.waits)
@@ -166,7 +158,7 @@ func TestConflicts(t *testing.T) {
 		t.Fatal(err)
 	}
 	joined := strings.Join(tab.Conflicts, "\n")
-	if !strings.Contains(joined, "two rules, one key sequence") || !strings.Contains(joined, "no %settles") {
+	if !strings.Contains(joined, "two rules, one key sequence") || !strings.Contains(joined, "can still follow") {
 		t.Errorf("conflicts %v", tab.Conflicts)
 	}
 }
@@ -179,7 +171,6 @@ func TestCheck(t *testing.T) {
 	}{
 		{&Grammar{Name: "g"}, "no scopes"},
 		{&Grammar{Name: "g", Scopes: []string{"s"}, Rules: []Rule{{Scope: "s", Goto: "t", Elems: []Class{keys(a, "a")}}}}, "no such scope"},
-		{&Grammar{Name: "g", Scopes: []string{"s"}, Rules: []Rule{{Scope: "s", Action: "x", Elems: []Class{many(keys(a, "a"))}}}}, "ends in a repeat"},
 	} {
 		if err := Check(c.g); err == nil || !strings.Contains(err.Error(), c.want) {
 			t.Errorf("got %v, want %q", err, c.want)
@@ -187,6 +178,10 @@ func TestCheck(t *testing.T) {
 	}
 	if _, err := Compile(&Grammar{Name: "g", Scopes: []string{"s"}, Rules: []Rule{{Scope: "s", Elems: []Class{event("nope")}}}}, a); err == nil {
 		t.Error("an undeclared event compiled")
+	}
+	tab, err := Compile(&Grammar{Name: "g", Scopes: []string{"s"}, Rules: []Rule{{Scope: "s", Pattern: "a+", Action: "x", Elems: []Class{many(keys(a, "a"))}}}}, a)
+	if err != nil || len(tab.Conflicts) != 1 || !strings.Contains(tab.Conflicts[0], `"a+" is complete, and a+ can still follow`) {
+		t.Errorf("a pattern that ends in a repeat compiled to %v, %v", tab, err)
 	}
 }
 

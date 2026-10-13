@@ -22,26 +22,25 @@ const WORD = 57346
 const STRING = 57347
 const IDENT = 57348
 const DELAY = 57349
-const SETTLES = 57350
-const DOTS = 57351
-const TEXT = 57352
-const NEWLINE = 57353
-const COLON = 57354
-const ARROW = 57355
-const WHEN = 57356
-const PEEK = 57357
-const EQ = 57358
-const NE = 57359
-const MATCH = 57360
-const AND = 57361
-const OR = 57362
-const NOT = 57363
-const LPAREN = 57364
-const RPAREN = 57365
-const LBRACE = 57366
-const RBRACE = 57367
-const OPEN = 57368
-const CLOSE = 57369
+const DOTS = 57350
+const TEXT = 57351
+const NEWLINE = 57352
+const COLON = 57353
+const ARROW = 57354
+const WHEN = 57355
+const PEEK = 57356
+const EQ = 57357
+const NE = 57358
+const MATCH = 57359
+const AND = 57360
+const OR = 57361
+const NOT = 57362
+const LPAREN = 57363
+const RPAREN = 57364
+const LBRACE = 57365
+const RBRACE = 57366
+const OPEN = 57367
+const CLOSE = 57368
 
 var yyToknames = [...]string{
 	"$end",
@@ -51,7 +50,6 @@ var yyToknames = [...]string{
 	"STRING",
 	"IDENT",
 	"DELAY",
-	"SETTLES",
 	"DOTS",
 	"TEXT",
 	"NEWLINE",
@@ -87,65 +85,65 @@ var yyExca = [...]int8{
 
 const yyPrivate = 57344
 
-const yyLast = 70
+const yyLast = 67
 
 var yyAct = [...]int8{
-	43, 38, 42, 41, 10, 29, 50, 11, 12, 9,
-	22, 3, 24, 8, 50, 24, 46, 56, 57, 58,
-	51, 66, 28, 25, 27, 52, 4, 52, 51, 49,
-	62, 44, 45, 53, 36, 26, 31, 19, 48, 47,
-	40, 35, 34, 32, 65, 54, 7, 64, 63, 55,
-	39, 37, 33, 59, 61, 60, 17, 21, 20, 18,
-	16, 6, 5, 2, 1, 30, 15, 23, 13, 14,
+	40, 35, 39, 38, 10, 27, 47, 11, 9, 49,
+	3, 49, 8, 47, 59, 22, 43, 20, 29, 50,
+	48, 63, 26, 22, 18, 4, 23, 48, 46, 45,
+	41, 42, 53, 54, 55, 25, 44, 37, 32, 33,
+	30, 62, 51, 7, 61, 24, 52, 60, 36, 34,
+	56, 58, 57, 16, 31, 19, 17, 15, 6, 5,
+	2, 1, 28, 14, 21, 12, 13,
 }
 
 var yyPact = [...]int16{
-	-1000, -1000, 0, -1000, -1000, -1000, -1000, -1000, 56, 55,
-	25, 54, 53, -1, 20, -5, 22, -1000, -1000, 32,
-	48, 31, 30, 2, 47, -1000, 46, -1000, -1000, -1000,
-	29, 10, -1000, 28, -1000, -1000, 27, -1000, 4, -1000,
-	-1000, 5, 14, -1000, 10, 10, 1, -1000, -1000, -1000,
-	-1000, -1000, 10, 10, -1000, 7, 43, 42, 39, -4,
-	14, -1000, -1000, -1000, -1000, -1000, -1000,
+	-1000, -1000, 0, -1000, -1000, -1000, -1000, -1000, 53, 52,
+	13, 51, 3, 31, -4, 5, -1000, -1000, 30, 50,
+	28, 11, 45, -1000, 44, -1000, -1000, -1000, 27, 10,
+	-1000, 26, -1000, 19, -1000, 4, -1000, -1000, -10, 1,
+	-1000, 10, 10, 17, -1000, -1000, -1000, -1000, -1000, 10,
+	10, -1000, -8, 42, 39, 36, -3, 1, -1000, -1000,
+	-1000, -1000, -1000, -1000,
 }
 
 var yyPgo = [...]int8{
-	0, 69, 68, 10, 67, 1, 66, 65, 3, 2,
-	0, 46, 64, 63, 62, 61,
+	0, 66, 65, 17, 64, 1, 63, 62, 3, 2,
+	0, 43, 61, 60, 59, 58,
 }
 
 var yyR1 = [...]int8{
 	0, 12, 13, 13, 13, 13, 13, 13, 13, 13,
-	6, 6, 14, 7, 7, 15, 15, 11, 11, 2,
-	2, 1, 1, 4, 5, 5, 5, 3, 3, 8,
-	8, 9, 9, 10, 10, 10, 10, 10, 10,
+	6, 6, 14, 7, 7, 15, 11, 11, 2, 2,
+	1, 1, 4, 5, 5, 5, 3, 3, 8, 8,
+	9, 9, 10, 10, 10, 10, 10, 10,
 }
 
 var yyR2 = [...]int8{
 	0, 1, 0, 2, 4, 2, 2, 2, 5, 3,
-	0, 2, 3, 0, 2, 4, 3, 3, 4, 1,
-	3, 1, 2, 3, 0, 2, 4, 0, 2, 1,
-	3, 1, 3, 2, 3, 1, 3, 3, 3,
+	0, 2, 3, 0, 2, 4, 3, 4, 1, 3,
+	1, 2, 3, 0, 2, 4, 0, 2, 1, 3,
+	1, 3, 2, 3, 1, 3, 3, 3,
 }
 
 var yyChk = [...]int16{
-	-1000, -12, -13, 11, 26, -14, -15, -11, 13, 9,
-	4, 7, 8, -2, -1, -6, 4, -11, 4, 12,
-	4, 4, -3, -4, 13, 24, 15, 4, 27, 10,
-	-7, 14, 11, 4, 11, 11, -3, 4, -5, 4,
-	11, -8, -9, -10, 21, 22, 6, 11, 11, 25,
-	10, 24, 20, 19, -10, -8, 16, 17, 18, -5,
-	-9, -10, 23, 5, 5, 5, 25,
+	-1000, -12, -13, 10, 25, -14, -15, -11, 12, 8,
+	4, 7, -2, -1, -6, 4, -11, 4, 11, 4,
+	-3, -4, 12, 23, 14, 4, 26, 9, -7, 13,
+	10, 4, 10, -3, 4, -5, 4, 10, -8, -9,
+	-10, 20, 21, 6, 10, 10, 24, 9, 23, 19,
+	18, -10, -8, 15, 16, 17, -5, -9, -10, 22,
+	5, 5, 5, 24,
 }
 
 var yyDef = [...]int8{
 	2, -2, 1, 3, 10, 5, 6, 7, 0, 0,
-	21, 0, 0, 27, 19, 0, 13, 9, 21, 0,
-	0, 0, 0, 27, 0, 24, 0, 22, 4, 11,
-	0, 0, 12, 0, 16, 17, 0, 28, 0, 20,
-	8, 14, 29, 31, 0, 0, 35, 15, 18, 23,
-	25, 24, 0, 0, 33, 0, 0, 0, 0, 0,
-	30, 32, 34, 36, 37, 38, 26,
+	20, 0, 26, 18, 0, 13, 9, 20, 0, 0,
+	0, 26, 0, 23, 0, 21, 4, 11, 0, 0,
+	12, 0, 16, 0, 27, 0, 19, 8, 14, 28,
+	30, 0, 0, 34, 15, 17, 22, 24, 23, 0,
+	0, 32, 0, 0, 0, 0, 0, 29, 31, 33,
+	35, 36, 37, 25,
 }
 
 var yyTok1 = [...]int8{
@@ -155,7 +153,7 @@ var yyTok1 = [...]int8{
 var yyTok2 = [...]int8{
 	2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
 	12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
-	22, 23, 24, 25, 26, 27,
+	22, 23, 24, 25, 26,
 }
 
 var yyTok3 = [...]int8{
@@ -550,109 +548,104 @@ yydefault:
 	case 16:
 		yyDollar = yyS[yypt-3 : yypt+1]
 		{
-			yylex.(*lexer).settles(yyDollar[1].word.line, yyDollar[2].word.text)
-		}
-	case 17:
-		yyDollar = yyS[yypt-3 : yypt+1]
-		{
 			yyVAL.rule = rule{keys: yyDollar[1].pat, to: yyDollar[2].str}
 		}
-	case 18:
+	case 17:
 		yyDollar = yyS[yypt-4 : yypt+1]
 		{
 			yyVAL.rule = rule{keys: yyDollar[1].pat, action: yyDollar[2].str, block: true, to: yyDollar[3].str}
 		}
-	case 20:
+	case 19:
 		yyDollar = yyS[yypt-3 : yypt+1]
 		{
 			yyVAL.pat = pat{words: append(yyDollar[1].pat.words, yyDollar[3].word), line: yyDollar[1].pat.line, ahead: 1}
 		}
-	case 21:
+	case 20:
 		yyDollar = yyS[yypt-1 : yypt+1]
 		{
 			yyVAL.pat = pat{words: []word{yyDollar[1].word}, line: yyDollar[1].word.line}
 		}
-	case 22:
+	case 21:
 		yyDollar = yyS[yypt-2 : yypt+1]
 		{
 			yyVAL.pat = pat{words: append(yyDollar[1].pat.words, yyDollar[2].word), line: yyDollar[1].pat.line}
 		}
-	case 23:
+	case 22:
 		yyDollar = yyS[yypt-3 : yypt+1]
 		{
 			yyVAL.str = strings.TrimSpace(yyDollar[2].str)
 		}
-	case 24:
+	case 23:
 		yyDollar = yyS[yypt-0 : yypt+1]
 		{
 			yyVAL.str = ""
 		}
-	case 25:
+	case 24:
 		yyDollar = yyS[yypt-2 : yypt+1]
 		{
 			yyVAL.str = yyDollar[1].str + yyDollar[2].str
 		}
-	case 26:
+	case 25:
 		yyDollar = yyS[yypt-4 : yypt+1]
 		{
 			yyVAL.str = yyDollar[1].str + "{" + yyDollar[3].str + "}"
 		}
-	case 27:
+	case 26:
 		yyDollar = yyS[yypt-0 : yypt+1]
 		{
 			yyVAL.str = ""
 		}
-	case 28:
+	case 27:
 		yyDollar = yyS[yypt-2 : yypt+1]
 		{
 			yyVAL.str = yyDollar[2].word.text
 		}
-	case 29:
+	case 28:
 		yyDollar = yyS[yypt-1 : yypt+1]
 		{
 			yyVAL.cond = yyDollar[1].cond
 		}
-	case 30:
+	case 29:
 		yyDollar = yyS[yypt-3 : yypt+1]
 		{
 			yyVAL.cond = seq.AnyOf(yyDollar[1].cond, yyDollar[3].cond)
 		}
-	case 31:
+	case 30:
 		yyDollar = yyS[yypt-1 : yypt+1]
 		{
 			yyVAL.cond = yyDollar[1].cond
 		}
-	case 32:
+	case 31:
 		yyDollar = yyS[yypt-3 : yypt+1]
 		{
 			yyVAL.cond = seq.AllOf(yyDollar[1].cond, yyDollar[3].cond)
 		}
-	case 33:
+	case 32:
 		yyDollar = yyS[yypt-2 : yypt+1]
 		{
 			yyVAL.cond = seq.Not{Of: yyDollar[2].cond}
 		}
-	case 34:
+	case 33:
 		yyDollar = yyS[yypt-3 : yypt+1]
 		{
 			yyVAL.cond = yyDollar[2].cond
 		}
-	case 35:
+	case 34:
 		yyDollar = yyS[yypt-1 : yypt+1]
 		{
 			yyVAL.cond = seq.Name(yyDollar[1].word.text)
 		}
-	case 36:
+	case 35:
 		yyDollar = yyS[yypt-3 : yypt+1]
 		{
 			yyVAL.cond = yylex.(*lexer).compare(yyDollar[1].word, seq.Eq, yyDollar[3].word)
 		}
-	case 37:
+	case 36:
 		yyDollar = yyS[yypt-3 : yypt+1]
 		{
 			yyVAL.cond = yylex.(*lexer).compare(yyDollar[1].word, seq.Ne, yyDollar[3].word)
 		}
-	case 38:
+	case 37:
 		yyDollar = yyS[yypt-3 : yypt+1]
 		{
 			yyVAL.cond = yylex.(*lexer).compare(yyDollar[1].word, seq.Match, yyDollar[3].word)
