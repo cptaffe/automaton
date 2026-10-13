@@ -228,7 +228,7 @@ func TestAPatternReadsAsWritten(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var got []string
+	got := make([]string, 0, len(tree.Rules)+len(tree.Any))
 	for _, r := range tree.Rules {
 		got = append(got, r.Pattern)
 	}

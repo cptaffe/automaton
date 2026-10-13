@@ -19,7 +19,7 @@ func toShape(rs []Rule) []dot.Rule {
 }
 
 func grammar(rs ...[2]string) []Rule {
-	var out []Rule
+	out := make([]Rule, 0, len(rs))
 
 	for i, r := range rs {
 		out = append(out, Rule{Name: r[0], Alts: strings.Split(r[1], "|"), At: i})

@@ -171,7 +171,7 @@ func positions(g *Grammar) []string {
 
 func (c *compiler) minimal() *Table {
 	t := c.t
-	var starts []int
+	starts := make([]int, 0, len(t.Scopes))
 	for _, scope := range t.Scopes {
 		starts = append(starts, scope.Start)
 	}

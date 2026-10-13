@@ -288,7 +288,7 @@ func (r *resolver) key(w word) (string, bool) {
 }
 
 func (r *resolver) alphabet() {
-	var events []string
+	events := make([]string, 0, len(r.g.Delays))
 	for name := range r.g.Delays {
 		events = append(events, name)
 	}
@@ -309,7 +309,7 @@ func (r *resolver) class(w word) seq.Class {
 }
 
 func (r *resolver) classes(p pat) []seq.Class {
-	var out []seq.Class
+	out := make([]seq.Class, 0, len(p.words))
 	for _, w := range p.words {
 		out = append(out, r.class(w))
 	}

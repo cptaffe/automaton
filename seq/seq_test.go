@@ -62,7 +62,7 @@ func compile(t *testing.T) *Table {
 }
 
 func actions(as []*Accept) string {
-	var s []string
+	s := make([]string, 0, len(as))
 	for _, a := range as {
 		s = append(s, a.Action)
 	}

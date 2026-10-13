@@ -8,6 +8,7 @@ linters:
     - gocritic
     - misspell
     - nakedret
+    - prealloc
     - unconvert
     - unparam
     - wastedassign

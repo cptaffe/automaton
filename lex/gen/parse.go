@@ -157,7 +157,7 @@ func (p *parser) rule(r Rule) {
 }
 
 func (p *parser) text(s string) fa.Expr[rune] {
-	var e []fa.Expr[rune]
+	e := make([]fa.Expr[rune], 0, len(s))
 
 	for _, r := range s {
 		e = append(e, fa.Lit(fa.One(r)))
@@ -201,7 +201,7 @@ func (p *parser) without(a, b fa.Expr[rune]) fa.Expr[rune] {
 }
 
 func (p *parser) anycase(s string) fa.Expr[rune] {
-	var e []fa.Expr[rune]
+	e := make([]fa.Expr[rune], 0, len(s))
 
 	for _, r := range s {
 		e = append(e, fa.Lit(fa.Text(string(unicode.ToLower(r))+string(unicode.ToUpper(r)))))

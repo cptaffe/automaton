@@ -254,7 +254,7 @@ func TestARuleQuotesItsTokens(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var got []string
+	got := make([]string, 0, len(f.Rules))
 	for _, r := range f.Rules {
 		got = append(got, fmt.Sprintf("%d:%s", r.Line, r.Text))
 	}

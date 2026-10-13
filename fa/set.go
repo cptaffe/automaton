@@ -75,7 +75,7 @@ func Span[S Symbol](lo, hi S) Set[S] { return Of(Range[S]{lo, hi}) }
 func All[S Symbol]() Set[S] { return Span(bottom[S](), top[S]()) }
 
 func Text(s string) Set[rune] {
-	var rs []Range[rune]
+	rs := make([]Range[rune], 0, len(s))
 
 	for _, r := range s {
 		rs = append(rs, Range[rune]{r, r})

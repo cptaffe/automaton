@@ -271,7 +271,7 @@ func TestAWildcardDropsAPrefix(t *testing.T) {
 }
 
 func scopeNames(tab *Table) string {
-	var names []string
+	names := make([]string, 0, len(tab.Scopes))
 	for _, s := range tab.Scopes {
 		names = append(names, s.Name)
 	}

@@ -41,7 +41,7 @@ clause {
 }
 `)
 
-	var names []string
+	names := make([]string, 0, len(got.Scopes))
 
 	for _, s := range got.Scopes {
 		names = append(names, s.Name)

@@ -42,11 +42,12 @@ type targets struct {
 func (m machine) Moves(s int) []dot.Move {
 	st := &m.t.States[s]
 	t := m.targets(st)
-	out := make([]dot.Move, len(t.order))
+	gotos := m.gotos(st)
+	out := make([]dot.Move, len(t.order), len(t.order)+len(gotos))
 	for i, to := range t.order {
 		out[i] = m.move(t, to)
 	}
-	return append(out, m.gotos(st)...)
+	return append(out, gotos...)
 }
 
 func (m machine) targets(st *seq.State) targets {

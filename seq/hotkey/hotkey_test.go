@@ -41,7 +41,7 @@ func parse(t *testing.T, src string) *Rules {
 }
 
 func actions(as []*seq.Accept) string {
-	var s []string
+	s := make([]string, 0, len(as))
 	for _, a := range as {
 		s = append(s, a.Action)
 	}

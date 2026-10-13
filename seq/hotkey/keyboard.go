@@ -31,7 +31,7 @@ func us() Keyboard {
 func (kb Keyboard) Has(name string) bool { return slices.Contains(kb, name) }
 
 func (kb Keyboard) chords() []string {
-	var out []string
+	out := make([]string, 0, len(kb)*(1<<len(modifiers)))
 	for mask := range 1 << len(modifiers) {
 		var mods []string
 		for i, m := range modifiers {

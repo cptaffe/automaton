@@ -19,7 +19,7 @@ func Whole(f *gen.Flat, ms []gen.Machine) ([]byte, error) {
 }
 
 func Shape(f *gen.Flat) ([]byte, error) {
-	var rs []dot.Rule
+	rs := make([]dot.Rule, 0, len(f.Scopes))
 	for i, s := range f.Scopes {
 		r := dot.Rule{Name: s.Name, Start: i == 0}
 		for _, rule := range f.Rules {

@@ -9,7 +9,7 @@ import (
 )
 
 func text(s string) fa.Expr[rune] {
-	var e []fa.Expr[rune]
+	e := make([]fa.Expr[rune], 0, len(s))
 
 	for _, r := range s {
 		e = append(e, fa.Lit(fa.One(r)))
