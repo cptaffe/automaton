@@ -17,9 +17,24 @@ type Machine struct {
 }
 
 func Build(f *Flat) ([]Machine, []string, error) {
-	var out []Machine
-	live := map[int]bool{}
+	b := builder{flat: f, classes: f.alphabet(), live: map[int]bool{}}
 
+	var out []Machine
+
+	for _, s := range f.Scopes {
+		m, err := b.machine(s)
+
+		if err != nil {
+			return nil, nil, err
+		}
+
+		out = append(out, m)
+	}
+
+	return out, b.dead(), nil
+}
+
+func (f *Flat) alphabet() *fa.Classes[rune] {
 	var all []fa.Rule[rune]
 
 	for _, s := range f.Scopes {
@@ -28,62 +43,71 @@ func Build(f *Flat) ([]Machine, []string, error) {
 		}
 	}
 
-	classes := fa.Partition(fa.Sets(all))
+	return fa.Partition(fa.Sets(all))
+}
 
-	for _, s := range f.Scopes {
-		rules := f.Of(s.Name)
+type builder struct {
+	flat    *Flat
+	classes *fa.Classes[rune]
+	live    map[int]bool
+}
 
-		if len(rules) == 0 {
-			return nil, nil, fmt.Errorf("%s:%d: %s has no rules", f.Path, s.Line, s.Name)
-		}
+func (b *builder) machine(s FlatScope) (Machine, error) {
+	f := b.flat
+	rules := f.Of(s.Name)
 
-		in := make([]fa.Rule[rune], len(rules))
-
-		for i, r := range rules {
-			in[i] = fa.Rule[rune]{Expr: r.Expr, Name: label(r)}
-		}
-
-		d, err := fa.BuildWith(in, classes)
-
-		if err != nil {
-			return nil, nil, fmt.Errorf("%s: in %s, %w", f.Path, s.Name, err)
-		}
-
-		d = d.Minimise()
-
-		m := Machine{Scope: s.Name, DFA: d, Rules: rules}
-
-		for i, r := range rules {
-			if reaches(d, i) {
-				live[key(r)] = true
-
-				continue
-			}
-
-			if r.Inlined {
-				continue
-			}
-
-			m.Covered = append(m.Covered, fmt.Sprintf("%s:%d: %s is covered in %s by %s", f.Path, r.Line, label(r), s.Name, covers(rules, d, i)))
-		}
-
-		out = append(out, m)
+	if len(rules) == 0 {
+		return Machine{}, fmt.Errorf("%s:%d: %s has no rules", f.Path, s.Line, s.Name)
 	}
 
-	var dead []string
+	in := make([]fa.Rule[rune], len(rules))
+
+	for i, r := range rules {
+		in[i] = fa.Rule[rune]{Expr: r.Expr, Name: label(r)}
+	}
+
+	d, err := fa.BuildWith(in, b.classes)
+
+	if err != nil {
+		return Machine{}, fmt.Errorf("%s: in %s, %w", f.Path, s.Name, err)
+	}
+
+	d = d.Minimise()
+
+	m := Machine{Scope: s.Name, DFA: d, Rules: rules}
+
+	for i, r := range rules {
+		if reaches(d, i) {
+			b.live[key(r)] = true
+
+			continue
+		}
+
+		if r.Inlined {
+			continue
+		}
+
+		m.Covered = append(m.Covered, fmt.Sprintf("%s:%d: %s is covered in %s by %s", f.Path, r.Line, label(r), s.Name, covers(rules, d, i)))
+	}
+
+	return m, nil
+}
+
+func (b *builder) dead() []string {
+	var out []string
 
 	told := map[int]bool{}
 
-	for _, r := range f.Rules {
-		if r.Include == "" && !live[key(r)] && !told[key(r)] {
+	for _, r := range b.flat.Rules {
+		if r.Include == "" && !b.live[key(r)] && !told[key(r)] {
 			told[key(r)] = true
-			dead = append(dead, fmt.Sprintf("%s:%d: %s is covered in every scope it runs in", f.Path, r.Line, label(r)))
+			out = append(out, fmt.Sprintf("%s:%d: %s is covered in every scope it runs in", b.flat.Path, r.Line, label(r)))
 		}
 	}
 
-	sort.Strings(dead)
+	sort.Strings(out)
 
-	return out, dead, nil
+	return out
 }
 
 func reaches(d *fa.DFA[rune], rule int) bool {
