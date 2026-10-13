@@ -85,43 +85,12 @@ func Compile(g *Grammar, a *Alphabet) (*Table, error) {
 	if err != nil {
 		return nil, err
 	}
-	rules := make([]Rule, len(g.Rules))
-	for i, r := range g.Rules {
-		r.Elems = append([]Class(nil), r.Elems...)
-		for j, c := range r.Elems {
-			got, err := resolve(c, a)
-			if err != nil {
-				return nil, fmt.Errorf("%s:%d: %w", g.Name, r.Line, err)
-			}
-			r.Elems[j] = got
-		}
-		rules[i] = r
+	c := &compiler{g: g, index: map[string]int{}}
+	if err := c.bind(a); err != nil {
+		return nil, err
 	}
-	anys := make([]Any, len(g.Any))
-	for i, x := range g.Any {
-		got, err := resolve(x.Elem, a)
-		if err != nil {
-			return nil, fmt.Errorf("%s:%d: %w", g.Name, x.Line, err)
-		}
-		if got.Many {
-			return nil, fmt.Errorf("%s:%d: `... %s` repeats, and a wildcard reads one key", g.Name, x.Line, x.Pattern)
-		}
-		x.Elem = got
-		anys[i] = x
-	}
-
-	sets := []fa.Set[Sym]{fa.Span(0, Sym(a.Size()-1))}
-	for _, r := range rules {
-		for _, el := range r.Elems {
-			sets = append(sets, el.set())
-		}
-	}
-	for _, x := range anys {
-		sets = append(sets, x.Elem.set())
-	}
-
-	t := &Table{Name: g.Name, Note: g.Note, Alpha: a, Classes: fa.Partition(sets), Delays: g.Delays}
-	c := &compiler{t: t, g: g, rules: rules, anys: anys, index: map[string]int{}}
+	t := &Table{Name: g.Name, Note: g.Note, Alpha: a, Classes: c.partition(a), Delays: g.Delays}
+	c.t = t
 	for i, name := range positions(g) {
 		t.Scopes = append(t.Scopes, Scope{Name: name})
 		c.index[name] = i + 1
@@ -135,6 +104,48 @@ func Compile(g *Grammar, a *Alphabet) (*Table, error) {
 	sort.Strings(t.Conflicts)
 	t.Conflicts = slices.Compact(t.Conflicts)
 	return c.minimal(), nil
+}
+
+func (c *compiler) bind(a *Alphabet) error {
+	g := c.g
+	c.rules = make([]Rule, len(g.Rules))
+	for i, r := range g.Rules {
+		r.Elems = append([]Class(nil), r.Elems...)
+		for j, el := range r.Elems {
+			got, err := resolve(el, a)
+			if err != nil {
+				return fmt.Errorf("%s:%d: %w", g.Name, r.Line, err)
+			}
+			r.Elems[j] = got
+		}
+		c.rules[i] = r
+	}
+	c.anys = make([]Any, len(g.Any))
+	for i, x := range g.Any {
+		got, err := resolve(x.Elem, a)
+		if err != nil {
+			return fmt.Errorf("%s:%d: %w", g.Name, x.Line, err)
+		}
+		if got.Many {
+			return fmt.Errorf("%s:%d: `... %s` repeats, and a wildcard reads one key", g.Name, x.Line, x.Pattern)
+		}
+		x.Elem = got
+		c.anys[i] = x
+	}
+	return nil
+}
+
+func (c *compiler) partition(a *Alphabet) *fa.Classes[Sym] {
+	sets := []fa.Set[Sym]{fa.Span(0, Sym(a.Size()-1))}
+	for _, r := range c.rules {
+		for _, el := range r.Elems {
+			sets = append(sets, el.set())
+		}
+	}
+	for _, x := range c.anys {
+		sets = append(sets, x.Elem.set())
+	}
+	return fa.Partition(sets)
 }
 
 func positions(g *Grammar) []string {
