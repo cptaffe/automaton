@@ -233,74 +233,98 @@ func (l *lexer) compare(name word, op seq.Op, value word) seq.Cond {
 	return c
 }
 
-func (l *lexer) resolve(kb Keyboard) (*seq.Alphabet, error) {
-	var errs []string
-	fail := func(line int, f string, a ...any) {
-		errs = append(errs, fmt.Sprintf("%s:%d: %s", l.g.Name, line, fmt.Sprintf(f, a...)))
-	}
-	keyOf := func(w word) (string, bool) {
-		if w.text == "any" {
-			return "", false
-		}
-		if _, ok := l.g.Delays[w.text]; ok {
-			return w.text, true
-		}
-		k, err := Canon(w.text)
-		if err != nil {
-			fail(w.line, "%s: %v", w.text, err)
-			return "", false
-		}
-		if !kb.Has(Name(k)) {
-			fail(w.line, "%s: no such key", w.text)
-			return "", false
-		}
-		return k, false
-	}
+type resolver struct {
+	g    *seq.Grammar
+	kb   Keyboard
+	a    *seq.Alphabet
+	errs []string
+}
 
-	for _, r := range append(append([]rule(nil), l.rules...), l.anys...) {
-		for _, w := range r.keys.words {
-			keyOf(w)
+func (l *lexer) resolve(kb Keyboard) (*seq.Alphabet, error) {
+	r := &resolver{g: l.g, kb: kb}
+	for _, x := range append(append([]rule(nil), l.rules...), l.anys...) {
+		for _, w := range x.keys.words {
+			r.key(w)
 		}
 	}
-	if len(errs) > 0 {
-		return nil, fmt.Errorf("%s", strings.Join(errs, "\n"))
+	if len(r.errs) > 0 {
+		return nil, fmt.Errorf("%s", strings.Join(r.errs, "\n"))
 	}
+	r.alphabet()
+	for _, x := range l.rules {
+		g := &l.g.Rules[x.at]
+		g.Elems = r.classes(x.keys)
+		g.Ahead = x.keys.ahead
+		g.Pattern = x.keys.pattern()
+	}
+	for i, x := range l.anys {
+		l.g.Any[i].Elem = r.class(x.keys.words[0])
+		l.g.Any[i].Pattern = x.keys.words[0].text
+	}
+	return r.a, nil
+}
+
+func (r *resolver) fail(line int, f string, a ...any) {
+	r.errs = append(r.errs, fmt.Sprintf("%s:%d: %s", r.g.Name, line, fmt.Sprintf(f, a...)))
+}
+
+func (r *resolver) key(w word) (string, bool) {
+	if w.text == "any" {
+		return "", false
+	}
+	if _, ok := r.g.Delays[w.text]; ok {
+		return w.text, true
+	}
+	k, err := Canon(w.text)
+	if err != nil {
+		r.fail(w.line, "%s: %v", w.text, err)
+		return "", false
+	}
+	if !r.kb.Has(Name(k)) {
+		r.fail(w.line, "%s: no such key", w.text)
+		return "", false
+	}
+	return k, false
+}
+
+func (r *resolver) alphabet() {
 	var events []string
-	for name := range l.g.Delays {
+	for name := range r.g.Delays {
 		events = append(events, name)
 	}
 	sort.Strings(events)
-	a := seq.NewAlphabet(kb.chords(), events...)
+	r.a = seq.NewAlphabet(r.kb.chords(), events...)
+}
 
-	class := func(w word) seq.Class {
-		if w.text == "any" {
-			return seq.Class{Any: true, Text: w.text}
-		}
-		k, event := keyOf(w)
-		if event {
-			return seq.Class{Event: k, Text: w.text}
-		}
-		s, _ := a.Of(k)
-		return seq.Class{Syms: []seq.Sym{s}, Text: w.text}
+func (r *resolver) class(w word) seq.Class {
+	if w.text == "any" {
+		return seq.Class{Any: true, Text: w.text}
 	}
-	for _, r := range l.rules {
-		g := &l.g.Rules[r.at]
-		var texts []string
-		for i, w := range r.keys.words {
-			g.Elems = append(g.Elems, class(w))
-			if i == len(r.keys.words)-r.keys.ahead {
-				texts = append(texts, "peek")
-			}
-			texts = append(texts, w.text)
+	k, event := r.key(w)
+	if event {
+		return seq.Class{Event: k, Text: w.text}
+	}
+	s, _ := r.a.Of(k)
+	return seq.Class{Syms: []seq.Sym{s}, Text: w.text}
+}
+
+func (r *resolver) classes(p pat) []seq.Class {
+	var out []seq.Class
+	for _, w := range p.words {
+		out = append(out, r.class(w))
+	}
+	return out
+}
+
+func (p pat) pattern() string {
+	var texts []string
+	for i, w := range p.words {
+		if i == len(p.words)-p.ahead {
+			texts = append(texts, "peek")
 		}
-		g.Ahead = r.keys.ahead
-		g.Pattern = strings.Join(texts, " ")
+		texts = append(texts, w.text)
 	}
-	for i, r := range l.anys {
-		l.g.Any[i].Elem = class(r.keys.words[0])
-		l.g.Any[i].Pattern = r.keys.words[0].text
-	}
-	return a, nil
+	return strings.Join(texts, " ")
 }
 
 func Canon(s string) (string, error) {
