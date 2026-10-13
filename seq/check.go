@@ -59,6 +59,8 @@ func Check(g *Grammar) error {
 			return fmt.Errorf("%s:%d: -> %s with no pattern reads %s's rules, and does nothing else", g.Name, r.Line, r.Include, r.Include)
 		case r.Include == "" && len(r.Elems) == 0:
 			return fmt.Errorf("%s:%d: a rule with no pattern", g.Name, r.Line)
+		case r.Ahead < 0 || r.Ahead >= len(r.Elems) && r.Include == "":
+			return fmt.Errorf("%s:%d: %q reads ahead of every key it has, and would never consume one", g.Name, r.Line, r.Pattern)
 		}
 	}
 	for _, a := range g.Any {

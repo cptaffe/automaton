@@ -1,10 +1,6 @@
 package seq
 
-import (
-	"fmt"
-
-	"github.com/cptaffe/automaton/fa"
-)
+import "fmt"
 
 type Machine struct {
 	t     *Table
@@ -33,15 +29,14 @@ func (m *Machine) Step(s Sym, env Env) (bool, []*Accept) {
 	if m.t.Alpha.IsEvent(s) {
 		return m.event(s, env)
 	}
-	k := m.t.Classes.Of(s)
 	var fired []*Accept
 	if m.state != 0 {
-		if ok, f := m.from(m.state, k, env); ok {
-			return true, f
+		if ok, f := m.from(m.state, s, env); ok || len(f) > 0 {
+			return ok, f
 		}
 		fired = m.Settle(env)
 	}
-	ok, f := m.from(m.start(), k, env)
+	ok, f := m.from(m.start(), s, env)
 	return ok, append(fired, f...)
 }
 
@@ -49,11 +44,10 @@ func (m *Machine) event(s Sym, env Env) (bool, []*Accept) {
 	if st := &m.t.States[m.state]; st.Settles && s == st.Settle {
 		return true, m.Settle(env)
 	}
-	k := m.t.Classes.Of(s)
 	if m.state != 0 {
-		return m.from(m.state, k, env)
+		return m.from(m.state, s, env)
 	}
-	return m.from(m.start(), k, env)
+	return m.from(m.start(), s, env)
 }
 
 func (m *Machine) Settle(env Env) []*Accept {
@@ -80,10 +74,15 @@ func (m *Machine) Waits() []string {
 	return out
 }
 
-func (m *Machine) from(at int, k fa.Class, env Env) (bool, []*Accept) {
+func (m *Machine) from(at int, s Sym, env Env) (bool, []*Accept) {
+	k := m.t.Classes.Of(s)
 	if n := m.t.States[at].Next[k]; n != 0 {
 		ready, going := m.ready(n, env), m.going(n, env)
 		switch {
+		case ready != nil && ready.Ahead > 0:
+			fired := m.fire(ready)
+			taken, more := m.Step(s, env)
+			return taken, append(fired, more...)
 		case ready != nil && (!going || !m.t.States[n].Settles):
 			return true, m.fire(ready)
 		case ready != nil || going:

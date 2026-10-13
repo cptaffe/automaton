@@ -33,6 +33,7 @@ type word struct {
 type pat struct {
 	words []word
 	line  int
+	ahead int
 }
 
 type rule struct {
@@ -63,6 +64,7 @@ var kinds = map[int]int{
 	scan.TokColon:   COLON,
 	scan.TokArrow:   ARROW,
 	scan.TokWhen:    WHEN,
+	scan.TokPeek:    PEEK,
 	scan.TokEq:      EQ,
 	scan.TokNe:      NE,
 	scan.TokMatch:   MATCH,
@@ -230,7 +232,7 @@ func (l *lexer) rule(r rule) {
 }
 
 func (l *lexer) anyRule(r rule) {
-	if len(r.keys.words) != 1 {
+	if len(r.keys.words) != 1 || r.keys.ahead > 0 {
 		l.FailAt(r.keys.line, "... takes one key")
 		return
 	}
@@ -300,10 +302,14 @@ func (l *lexer) resolve(kb Keyboard) (*seq.Alphabet, error) {
 	for _, r := range l.rules {
 		g := &l.g.Rules[r.at]
 		var texts []string
-		for _, w := range r.keys.words {
+		for i, w := range r.keys.words {
 			g.Elems = append(g.Elems, class(w))
+			if i == len(r.keys.words)-r.keys.ahead {
+				texts = append(texts, "peek")
+			}
 			texts = append(texts, w.text)
 		}
+		g.Ahead = r.keys.ahead
 		g.Pattern = strings.Join(texts, " ")
 	}
 	for i, r := range l.anys {

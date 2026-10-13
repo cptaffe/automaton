@@ -21,6 +21,7 @@ type Accept struct {
 	When    Cond
 	Pattern string
 	Line    int
+	Ahead   int
 	Operand *Slice
 }
 
@@ -299,7 +300,7 @@ func (c *compiler) finish(s int, done, going []int) {
 	for _, i := range done {
 		e := c.entries[i]
 		acc := &Accept{Action: e.rule.Action, Goto: c.index[e.rule.Goto], When: e.when,
-			Pattern: e.rule.Pattern, Line: e.rule.Line, Operand: operand(e.rule)}
+			Pattern: e.rule.Pattern, Line: e.rule.Line, Ahead: e.rule.Ahead, Operand: operand(e.rule)}
 		if was, ok := finished[e.origin]; ok {
 			c.conflict(acc.Line, "%q and %q both finish here -- two rules, one key sequence", was.Pattern, acc.Pattern)
 			continue

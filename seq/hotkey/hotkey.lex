@@ -14,6 +14,7 @@ start {
   ":"                 emit colon
   "{"                 emit lbrace  -> block(this)
   "when"              emit when    -> cond
+  "peek"              emit peek
   key                 emit word
 }
 

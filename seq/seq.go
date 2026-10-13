@@ -84,6 +84,7 @@ type Rule struct {
 	Scope   string
 	Pattern string
 	Elems   []Class
+	Ahead   int
 	Action  string
 	Goto    string
 	Arg     string

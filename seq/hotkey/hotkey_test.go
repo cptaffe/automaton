@@ -261,3 +261,36 @@ mode:
 		t.Errorf("any reads the delays %v; it reads keys", waits)
 	}
 }
+
+func TestPeekReadsTheNextKeyAgain(t *testing.T) {
+	r := parse(t, `main:
+	control-x control-s	{ put }
+	control-x peek any	{ show }
+	command-s		{ save }
+`)
+	m, err := seq.NewMachine(r.Table, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range []struct {
+		key   string
+		taken bool
+		fired string
+	}{
+		{"control-x", true, ""},
+		{"control-s", true, "put"},
+		{"control-x", true, ""},
+		{"command-s", true, "show,save"},
+		{"control-x", true, ""},
+		{"j", false, "show"},
+		{"j", false, ""},
+	} {
+		taken, fired := press(m, r.Table.Alpha, c.key, nil)
+		if taken != c.taken || actions(fired) != c.fired || m.Pending() != (c.key == "control-x") {
+			t.Errorf("%s: took %v and fired %q, pending %v; want %v and %q", c.key, taken, actions(fired), m.Pending(), c.taken, c.fired)
+		}
+	}
+	if got := r.Grammar.Rules[1].Pattern; got != "control-x peek any" {
+		t.Errorf("the pattern reads %q", got)
+	}
+}

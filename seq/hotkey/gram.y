@@ -18,9 +18,9 @@ import (
 
 %token <word> WORD STRING IDENT DELAY SETTLES DOTS
 %token <str> TEXT
-%token NEWLINE COLON ARROW WHEN EQ NE MATCH AND OR NOT LPAREN RPAREN LBRACE RBRACE OPEN CLOSE
+%token NEWLINE COLON ARROW WHEN PEEK EQ NE MATCH AND OR NOT LPAREN RPAREN LBRACE RBRACE OPEN CLOSE
 
-%type <pat> keys
+%type <pat> keys pattern
 %type <str> goto_ block body text
 %type <cond> when_ expr term factor
 %type <rule> rule
@@ -61,8 +61,13 @@ decl:
 	;
 
 rule:
-	  keys goto_ NEWLINE         { $$ = rule{keys: $1, to: $2} }
-	| keys block goto_ NEWLINE   { $$ = rule{keys: $1, action: $2, block: true, to: $3} }
+	  pattern goto_ NEWLINE         { $$ = rule{keys: $1, to: $2} }
+	| pattern block goto_ NEWLINE   { $$ = rule{keys: $1, action: $2, block: true, to: $3} }
+	;
+
+pattern:
+	  keys
+	| keys PEEK WORD   { $$ = pat{words: append($1.words, $3), line: $1.line, ahead: 1} }
 	;
 
 keys:
