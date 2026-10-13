@@ -16,76 +16,99 @@ type Tokens struct {
 func (g *Grammar) Tokens() *Tokens { return tokensOf(g.Rules) }
 
 func tokensOf(rs []Rule) *Tokens {
-	is := map[string]bool{}
+	v := vocabOf(rs)
 
-	for _, r := range rs {
-		is[r.Name] = true
-	}
-
-	at := map[string]int{}
-	var words []string
-
-	for _, r := range rs {
-		for _, alt := range r.Alts {
-			for _, w := range strings.Fields(alt) {
-				if is[w] || w == "nothing" {
-					continue
-				}
-
-				if _, seen := at[w]; !seen {
-					words = append(words, w)
-					at[w] = len(words)
-				}
-			}
-		}
-	}
-
-	if len(words) == 0 {
+	if len(v.words) == 0 {
 		return nil
 	}
 
-	var n fa.NFA[int]
-
-	open := map[string]int{}
-	shut := map[string]int{}
+	g := &nest{vocab: v, spans: map[string]span{}}
 
 	for _, r := range rs {
-		open[r.Name], shut[r.Name] = n.State(), n.State()
+		g.spans[r.Name] = span{g.n.State(), g.n.State()}
 	}
 
 	for _, r := range rs {
 		for _, alt := range r.Alts {
-			ws := strings.Fields(alt)
-			here := open[r.Name]
-
-			for _, w := range ws {
-				if w == "nothing" {
-					continue
-				}
-
-				next := n.State()
-
-				if is[w] {
-
-					n.Eps(here, open[w])
-					n.Eps(shut[w], next)
-				} else {
-					n.On(here, fa.One(at[w]), next)
-				}
-
-				here = next
-			}
-
-			n.Eps(here, shut[r.Name])
+			g.alt(r.Name, alt)
 		}
 	}
 
-	n.Start(open[rs[0].Name])
-	n.Accepts(shut[rs[0].Name], fa.Match(1))
+	top := g.spans[rs[0].Name]
+	g.n.Start(top.open)
+	g.n.Accepts(top.shut, fa.Match(1))
 
-	d := n.DFA().Minimise()
+	return &Tokens{dfa: g.n.DFA().Minimise(), words: v.words, at: v.at}
+}
 
-	return &Tokens{dfa: d, words: words, at: at}
+func symbols(alt string) []string {
+	var out []string
+
+	for _, w := range strings.Fields(alt) {
+		if w != "nothing" {
+			out = append(out, w)
+		}
+	}
+
+	return out
+}
+
+type vocab struct {
+	rules map[string]bool
+	words []string
+	at    map[string]int
+}
+
+func vocabOf(rs []Rule) vocab {
+	v := vocab{rules: map[string]bool{}, at: map[string]int{}}
+
+	for _, r := range rs {
+		v.rules[r.Name] = true
+	}
+
+	for _, r := range rs {
+		for _, alt := range r.Alts {
+			for _, w := range symbols(alt) {
+				v.add(w)
+			}
+		}
+	}
+
+	return v
+}
+
+func (v *vocab) add(w string) {
+	if _, seen := v.at[w]; !seen && !v.rules[w] {
+		v.words = append(v.words, w)
+		v.at[w] = len(v.words)
+	}
+}
+
+type span struct{ open, shut int }
+
+type nest struct {
+	vocab
+	n     fa.NFA[int]
+	spans map[string]span
+}
+
+func (g *nest) alt(name, alt string) {
+	here := g.spans[name].open
+
+	for _, w := range symbols(alt) {
+		next := g.n.State()
+
+		if inner, ok := g.spans[w]; ok {
+			g.n.Eps(here, inner.open)
+			g.n.Eps(inner.shut, next)
+		} else {
+			g.n.On(here, fa.One(g.at[w]), next)
+		}
+
+		here = next
+	}
+
+	g.n.Eps(here, g.spans[name].shut)
 }
 
 func (t *Tokens) DFA() *fa.DFA[int] { return t.dfa }
