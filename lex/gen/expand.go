@@ -2,151 +2,132 @@ package gen
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 )
 
 func Expand(f *File) (*Flat, error) {
-	var entry string
-
-	for _, s := range f.Scopes {
-		if s.Param == "" {
-			entry = s.Name
-
-			break
-		}
-	}
-
 	if err := cycles(f); err != nil {
 		return nil, err
 	}
+
+	entry := f.entry()
 
 	if entry == "" {
 		return nil, fmt.Errorf("%s: every scope takes a parameter, so there is nowhere to begin", f.Path)
 	}
 
-	out := &Flat{Path: f.Path, Shadowed: f.Shadowed, Defs: f.Defs}
-	done := map[string]bool{}
-	dyn := dynamic(f)
-
-	var want func(name, arg string, chain []string) (string, error)
-
-	want = func(name, arg string, chain []string) (string, error) {
-		s := f.Scope(name)
-
-		if s == nil {
-			return "", fmt.Errorf("%s: -> %s, and there is no such scope", f.Path, name)
-		}
-
-		if s.Param == "" {
-			if arg != "" {
-				return "", fmt.Errorf("%s:%d: %s takes no parameter, and %s was given one", f.Path, s.Line, name, arg)
-			}
-
-			at := name
-
-			if done[at] {
-				return at, nil
-			}
-
-			done[at] = true
-
-			return at, emit(f, out, s, at, "", "", dyn, want, chain)
-		}
-
-		if arg == "" {
-			return "", fmt.Errorf("%s:%d: %s takes a parameter and was used without one", f.Path, s.Line, name)
-		}
-
-		if dyn[name] {
-			if done[name] {
-				return name, nil
-			}
-
-			done[name] = true
-
-			return name, emit(f, out, s, name, s.Param, "", dyn, want, chain)
-		}
-
-		at := name + "(" + arg + ")"
-
-		if done[at] {
-			return at, nil
-		}
-
-		for _, was := range chain {
-			if was == name {
-				return "", fmt.Errorf("%s:%d: %s stands inside itself, so where it goes next is not known until it runs; that needs a stack, which is not built", f.Path, s.Line, name)
-			}
-		}
-
-		done[at] = true
-
-		return at, emit(f, out, s, at, s.Param, arg, dyn, want, append(chain, name))
+	e := &expander{
+		file: f,
+		out:  &Flat{Path: f.Path, Shadowed: f.Shadowed, Defs: f.Defs},
+		done: map[string]bool{},
+		dyn:  dynamic(f),
 	}
 
-	if _, err := want(entry, "", nil); err != nil {
+	if _, err := e.want(entry, "", nil); err != nil {
 		return nil, err
 	}
 
-	sort.SliceStable(out.Scopes, func(i, j int) bool { return out.Scopes[i].Line < out.Scopes[j].Line })
+	sort.SliceStable(e.out.Scopes, func(i, j int) bool { return e.out.Scopes[i].Line < e.out.Scopes[j].Line })
 
-	included := map[string]bool{}
-
-	for _, r := range f.Rules {
-		if r.Include != "" {
-			included[r.Include] = true
-		}
+	if err := e.unreached(); err != nil {
+		return nil, err
 	}
 
+	return e.out, nil
+}
+
+func (f *File) entry() string {
 	for _, s := range f.Scopes {
-		used := included[s.Name]
-
-		for _, got := range out.Scopes {
-			if got.Name == s.Name || strings.HasPrefix(got.Name, s.Name+"(") {
-				used = true
-			}
-		}
-
-		if !used {
-			return nil, fmt.Errorf("%s:%d: nothing reaches %s", f.Path, s.Line, s.Name)
+		if s.Param == "" {
+			return s.Name
 		}
 	}
 
-	return out, nil
+	return ""
 }
 
-type wanter func(name, arg string, chain []string) (string, error)
-
-func emit(f *File, out *Flat, s *Scope, at, param, arg string, dyn map[string]bool, want wanter, chain []string) error {
-	out.Scopes = append(out.Scopes, FlatScope{Name: at, Line: s.Line})
-
-	return rules(f, out, s.Name, at, param, arg, false, dyn, want, chain)
+type expander struct {
+	file *File
+	out  *Flat
+	done map[string]bool
+	dyn  map[string]bool
 }
 
-func rules(f *File, out *Flat, scope, at, param, arg string, inlined bool, dyn map[string]bool, want wanter, chain []string) error {
-	for _, r := range f.Rules {
+type instance struct {
+	at    string
+	param string
+	arg   string
+	chain []string
+}
+
+func (in instance) runtime() bool { return in.param != "" && in.arg == "" }
+
+func (e *expander) want(name, arg string, chain []string) (string, error) {
+	f := e.file
+	s := f.Scope(name)
+
+	switch {
+	case s == nil:
+		return "", fmt.Errorf("%s: -> %s, and there is no such scope", f.Path, name)
+	case s.Param == "" && arg != "":
+		return "", fmt.Errorf("%s:%d: %s takes no parameter, and %s was given one", f.Path, s.Line, name, arg)
+	case s.Param == "":
+		return e.instantiate(s, instance{at: name, chain: chain})
+	case arg == "":
+		return "", fmt.Errorf("%s:%d: %s takes a parameter and was used without one", f.Path, s.Line, name)
+	case e.dyn[name]:
+		return e.instantiate(s, instance{at: name, param: s.Param, chain: chain})
+	}
+
+	at := name + "(" + arg + ")"
+
+	if e.done[at] {
+		return at, nil
+	}
+
+	if slices.Contains(chain, name) {
+		return "", fmt.Errorf("%s:%d: %s stands inside itself, so where it goes next is not known until it runs; that needs a stack, which is not built", f.Path, s.Line, name)
+	}
+
+	return e.instantiate(s, instance{at: at, param: s.Param, arg: arg, chain: append(chain, name)})
+}
+
+func (e *expander) instantiate(s *Scope, in instance) (string, error) {
+	if e.done[in.at] {
+		return in.at, nil
+	}
+
+	e.done[in.at] = true
+	e.out.Scopes = append(e.out.Scopes, FlatScope{Name: in.at, Line: s.Line})
+
+	return in.at, e.rules(s.Name, in, false)
+}
+
+func (e *expander) rules(scope string, in instance, inlined bool) error {
+	for _, r := range e.file.Rules {
 		if r.Scope != scope {
 			continue
 		}
 
 		if r.Include != "" {
 			if !inlined {
-				out.Rules = append(out.Rules, FlatRule{Include: r.Include, Scope: at, Line: r.Line, Text: r.Text})
+				e.out.Rules = append(e.out.Rules, FlatRule{Include: r.Include, Scope: in.at, Line: r.Line, Text: r.Text})
 			}
 
-			if err := rules(f, out, r.Include, at, "", "", true, dyn, want, chain); err != nil {
+			if err := e.rules(r.Include, instance{at: in.at, chain: in.chain}, true); err != nil {
 				return err
 			}
 
 			continue
 		}
 
-		got := FlatRule{Expr: r.Expr, Scope: at, Line: r.Line, Text: r.Text, Inlined: inlined,
+		got := FlatRule{Expr: r.Expr, Scope: in.at, Line: r.Line, Text: r.Text, Inlined: inlined,
 			Acts: FlatActs{Emit: r.Acts.Emit, Do: r.Acts.Do, Drop: r.Acts.Drop}}
 
 		if r.Acts.Goto != "" {
-			acts, err := move(f, r, at, param, arg, dyn, want, chain)
+			acts, err := e.move(r, in)
 
 			if err != nil {
 				return err
@@ -155,47 +136,46 @@ func rules(f *File, out *Flat, scope, at, param, arg string, inlined bool, dyn m
 			got.Acts.Goto, got.Acts.Push, got.Acts.Pop = acts.Goto, acts.Push, acts.Pop
 		}
 
-		out.Rules = append(out.Rules, got)
+		e.out.Rules = append(e.out.Rules, got)
 	}
 
 	return nil
 }
 
-func move(f *File, r Rule, at, param, arg string, dyn map[string]bool, want wanter, chain []string) (FlatActs, error) {
+func (e *expander) move(r Rule, in instance) (FlatActs, error) {
 	to, a := r.Acts.Goto, r.Acts.Arg
-	inDyn := param != "" && arg == ""
 
-	if to == param {
+	if to == in.param {
 		if a != "" {
-			return FlatActs{}, fmt.Errorf("%s:%d: %s is this scope's parameter and cannot take one of its own", f.Path, r.Line, to)
+			return FlatActs{}, fmt.Errorf("%s:%d: %s is this scope's parameter and cannot take one of its own", e.file.Path, r.Line, to)
 		}
 
-		if inDyn {
+		if in.runtime() {
 			return FlatActs{Pop: true}, nil
 		}
 
-		to, a = arg, ""
+		to, a = in.arg, ""
 	}
 
-	if a == param && param != "" && !inDyn {
-		a = arg
+	if a == in.param && in.param != "" && !in.runtime() {
+		a = in.arg
 	}
 
-	if !dyn[to] {
+	if !e.dyn[to] {
 		if a == "this" {
-			a = at
+			a = in.at
 		}
 
-		got, err := want(to, a, chain)
+		got, err := e.want(to, a, in.chain)
 
 		return FlatActs{Goto: got}, err
 	}
 
 	if a == "" {
-		return FlatActs{}, fmt.Errorf("%s:%d: %s takes a parameter and was used without one", f.Path, r.Line, to)
+		return FlatActs{}, fmt.Errorf("%s:%d: %s takes a parameter and was used without one", e.file.Path, r.Line, to)
 	}
 
-	got, err := want(to, a, chain)
+	got, err := e.want(to, a, in.chain)
 
 	if err != nil {
 		return FlatActs{}, err
@@ -203,14 +183,42 @@ func move(f *File, r Rule, at, param, arg string, dyn map[string]bool, want want
 
 	switch {
 	case a == "this":
-		return FlatActs{Goto: got, Push: at}, nil
-	case inDyn && a == param:
+		return FlatActs{Goto: got, Push: in.at}, nil
+	case in.runtime() && a == in.param:
 		return FlatActs{Goto: got}, nil
 	}
 
-	back, err := want(a, "", chain)
+	back, err := e.want(a, "", in.chain)
 
 	return FlatActs{Goto: got, Push: back}, err
+}
+
+func (e *expander) unreached() error {
+	included := map[string]bool{}
+
+	for _, r := range e.file.Rules {
+		if r.Include != "" {
+			included[r.Include] = true
+		}
+	}
+
+	for _, s := range e.file.Scopes {
+		if !included[s.Name] && !e.out.instantiates(s.Name) {
+			return fmt.Errorf("%s:%d: nothing reaches %s", e.file.Path, s.Line, s.Name)
+		}
+	}
+
+	return nil
+}
+
+func (f *Flat) instantiates(scope string) bool {
+	for _, s := range f.Scopes {
+		if s.Name == scope || strings.HasPrefix(s.Name, scope+"(") {
+			return true
+		}
+	}
+
+	return false
 }
 
 func cycles(f *File) error {
