@@ -16,62 +16,106 @@ import (
 
 func Spec(f *Flat, ms []Machine) (*lex.Spec, error) {
 	tokens, kind := numbered(f, func(a FlatActs) string { return a.Emit })
-	does, act := numbered(f, func(a FlatActs) string { return a.Do })
+	does, do := numbered(f, func(a FlatActs) string { return a.Do })
 
-	at := map[string]int{}
+	n := numbers{kind: kind, do: do, at: map[string]int{}}
 
 	for i, m := range ms {
-		at[m.Scope] = i + 1
+		n.at[m.Scope] = i + 1
 	}
 
 	spec := &lex.Spec{Tokens: tokens, Does: does}
 
 	for _, m := range ms {
-		s := lex.Scope{Name: m.Scope, Start: int(m.DFA.Start())}
+		s, err := n.scope(f, m)
 
-		for i := fa.State(0); int(i) <= m.DFA.States(); i++ {
-			row := make([]int, m.DFA.Classes().Len()+1)
-
-			for c := range row {
-				row[c] = int(m.DFA.Next(i, fa.Class(c)))
-			}
-
-			s.Next = append(s.Next, row)
-			s.Accept = append(s.Accept, int(m.DFA.Accept(i)))
-		}
-
-		for _, r := range m.Rules {
-			a := lex.Act{Emit: kind[r.Acts.Emit], Do: act[r.Acts.Do], Pop: r.Acts.Pop}
-
-			if r.Acts.Goto != "" {
-				if a.Goto = at[r.Acts.Goto]; a.Goto == 0 {
-					return nil, fmt.Errorf("%s:%d: -> %s, and there is no such scope", f.Path, r.Line, r.Acts.Goto)
-				}
-			}
-
-			if r.Acts.Push != "" {
-				if a.Push = at[r.Acts.Push]; a.Push == 0 {
-					return nil, fmt.Errorf("%s:%d: returns to %s, and there is no such scope", f.Path, r.Line, r.Acts.Push)
-				}
-			}
-
-			s.Acts = append(s.Acts, a)
+		if err != nil {
+			return nil, err
 		}
 
 		spec.Scopes = append(spec.Scopes, s)
 	}
 
-	if len(ms) > 0 {
-		spec.Ranges = ranges(ms[0].DFA.Classes())
+	rs, err := commonRanges(f, ms)
+
+	if err != nil {
+		return nil, err
 	}
 
-	for i := range ms {
-		if got := ranges(ms[i].DFA.Classes()); !sameRanges(got, spec.Ranges) {
-			return nil, fmt.Errorf("%s: %s reads a different alphabet; one file, one alphabet", f.Path, ms[i].Scope)
+	spec.Ranges = rs
+
+	return spec, nil
+}
+
+type numbers struct {
+	kind map[string]int
+	do   map[string]int
+	at   map[string]int
+}
+
+func (n numbers) scope(f *Flat, m Machine) (lex.Scope, error) {
+	s := lex.Scope{Name: m.Scope, Start: int(m.DFA.Start())}
+
+	for i := fa.State(0); int(i) <= m.DFA.States(); i++ {
+		s.Next = append(s.Next, row(m.DFA, i))
+		s.Accept = append(s.Accept, int(m.DFA.Accept(i)))
+	}
+
+	for _, r := range m.Rules {
+		a, err := n.act(f, r)
+
+		if err != nil {
+			return lex.Scope{}, err
+		}
+
+		s.Acts = append(s.Acts, a)
+	}
+
+	return s, nil
+}
+
+func row(d *fa.DFA[rune], from fa.State) []int {
+	out := make([]int, d.Classes().Len()+1)
+
+	for c := range out {
+		out[c] = int(d.Next(from, fa.Class(c)))
+	}
+
+	return out
+}
+
+func (n numbers) act(f *Flat, r FlatRule) (lex.Act, error) {
+	a := lex.Act{Emit: n.kind[r.Acts.Emit], Do: n.do[r.Acts.Do], Pop: r.Acts.Pop}
+
+	if r.Acts.Goto != "" {
+		if a.Goto = n.at[r.Acts.Goto]; a.Goto == 0 {
+			return lex.Act{}, fmt.Errorf("%s:%d: -> %s, and there is no such scope", f.Path, r.Line, r.Acts.Goto)
 		}
 	}
 
-	return spec, nil
+	if r.Acts.Push != "" {
+		if a.Push = n.at[r.Acts.Push]; a.Push == 0 {
+			return lex.Act{}, fmt.Errorf("%s:%d: returns to %s, and there is no such scope", f.Path, r.Line, r.Acts.Push)
+		}
+	}
+
+	return a, nil
+}
+
+func commonRanges(f *Flat, ms []Machine) ([]lex.Range, error) {
+	if len(ms) == 0 {
+		return nil, nil
+	}
+
+	out := ranges(ms[0].DFA.Classes())
+
+	for _, m := range ms[1:] {
+		if !sameRanges(ranges(m.DFA.Classes()), out) {
+			return nil, fmt.Errorf("%s: %s reads a different alphabet; one file, one alphabet", f.Path, m.Scope)
+		}
+	}
+
+	return out, nil
 }
 
 func numbered(f *Flat, of func(FlatActs) string) ([]string, map[string]int) {
