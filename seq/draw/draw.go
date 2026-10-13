@@ -33,38 +33,66 @@ func (m machine) Starts() []dot.Start {
 	return out
 }
 
+type targets struct {
+	order []int
+	syms  map[int][]seq.Sym
+	rest  int
+}
+
 func (m machine) Moves(s int) []dot.Move {
 	st := &m.t.States[s]
-	by := map[int][]seq.Sym{}
-	var order []int
+	t := m.targets(st)
+	out := make([]dot.Move, len(t.order))
+	for i, to := range t.order {
+		out[i] = m.move(t, to)
+	}
+	return append(out, m.gotos(st)...)
+}
+
+func (m machine) targets(st *seq.State) targets {
+	t := targets{syms: map[int][]seq.Sym{}}
 	for k, to := range st.Next {
 		if to == 0 {
 			continue
 		}
-		if _, ok := by[to]; !ok {
-			order = append(order, to)
+		if _, ok := t.syms[to]; !ok {
+			t.order = append(t.order, to)
 		}
-		for _, r := range m.t.Classes.Part(fa.Class(k)).Ranges() {
-			for sym := r.Lo; sym <= r.Hi; sym++ {
-				by[to] = append(by[to], sym)
-			}
+		if syms := m.syms(fa.Class(k)); len(syms) > 0 {
+			t.syms[to] = append(t.syms[to], syms...)
 		}
 	}
-	sort.Ints(order)
-	for _, syms := range by {
+	sort.Ints(t.order)
+	for _, syms := range t.syms {
 		slices.Sort(syms)
 	}
-	rest := m.rest(by)
-	out := make([]dot.Move, len(order))
-	for i, to := range order {
-		out[i] = dot.Move{To: to, Label: m.names(by[to])}
-		if to == rest {
-			out[i].Label = "any"
-		}
-		if !slices.ContainsFunc(by[to], m.t.Alpha.IsKey) {
-			out[i].Dashed, out[i].Class = true, "event"
+	t.rest = m.rest(t.syms)
+	return t
+}
+
+func (m machine) syms(c fa.Class) []seq.Sym {
+	var out []seq.Sym
+	for _, r := range m.t.Classes.Part(c).Ranges() {
+		for sym := r.Lo; sym <= r.Hi; sym++ {
+			out = append(out, sym)
 		}
 	}
+	return out
+}
+
+func (m machine) move(t targets, to int) dot.Move {
+	mv := dot.Move{To: to, Label: m.names(t.syms[to])}
+	if to == t.rest {
+		mv.Label = "any"
+	}
+	if !slices.ContainsFunc(t.syms[to], m.t.Alpha.IsKey) {
+		mv.Dashed, mv.Class = true, "event"
+	}
+	return mv
+}
+
+func (m machine) gotos(st *seq.State) []dot.Move {
+	var out []dot.Move
 	gone := map[int]bool{}
 	for _, a := range st.Accept {
 		if a.Goto == 0 {
