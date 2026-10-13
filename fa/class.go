@@ -28,88 +28,102 @@ type indexed[S Symbol] struct {
 }
 
 func Partition[S Symbol](sets []Set[S]) *Classes[S] {
-	cuts := map[S]bool{}
-	reachesTop := false
-
-	for _, s := range sets {
-		for _, x := range s.r {
-			cuts[x.Lo] = true
-
-			if x.Hi == top[S]() {
-				reachesTop = true
-			} else {
-				cuts[x.Hi+1] = true
-			}
-		}
-	}
-
-	edges := make([]S, 0, len(cuts))
-
-	for r := range cuts {
-		edges = append(edges, r)
-	}
-
-	sort.Slice(edges, func(i, j int) bool { return edges[i] < edges[j] })
-
-	type atom struct {
-		Range[S]
-		sig string
-	}
-
-	var atoms []atom
-
-	for i := range edges {
-		var a atom
-
-		switch {
-		case i+1 < len(edges):
-			a.Range = Range[S]{edges[i], edges[i+1] - 1}
-		case reachesTop:
-			a.Range = Range[S]{edges[i], top[S]()}
-		default:
-			continue
-		}
-
-		in := make([]byte, len(sets))
-
-		for j, s := range sets {
-			if s.Has(a.Lo) {
-				in[j] = 1
-			}
-		}
-
-		a.sig = string(in)
-		atoms = append(atoms, a)
-	}
-
-	c := &Classes[S]{}
-	seen := map[string]int{}
+	g := grouping[S]{seen: map[string]int{}}
 	none := string(make([]byte, len(sets)))
 
-	var held [][]Range[S]
-
-	for _, a := range atoms {
-		if a.sig == none {
-			continue
+	for _, a := range cutsOf(sets).atoms() {
+		if sig := signature(sets, a.Lo); sig != none {
+			g.add(sig, a)
 		}
-
-		at, ok := seen[a.sig]
-
-		if !ok {
-			at = len(held)
-			seen[a.sig] = at
-			held = append(held, nil)
-		}
-
-		held[at] = append(held[at], a.Range)
 	}
 
-	c.parts = []Set[S]{{}}
+	c := &Classes[S]{parts: []Set[S]{{}}}
 
-	for _, rs := range held {
+	for _, rs := range g.held {
 		c.parts = append(c.parts, Of(rs...))
 	}
 
+	c.reindex()
+
+	return c
+}
+
+type cuts[S Symbol] struct {
+	at  []S
+	top bool
+}
+
+func cutsOf[S Symbol](sets []Set[S]) cuts[S] {
+	in := map[S]bool{}
+	var c cuts[S]
+
+	for _, s := range sets {
+		for _, x := range s.r {
+			in[x.Lo] = true
+
+			if x.Hi == top[S]() {
+				c.top = true
+			} else {
+				in[x.Hi+1] = true
+			}
+		}
+	}
+
+	c.at = make([]S, 0, len(in))
+
+	for r := range in {
+		c.at = append(c.at, r)
+	}
+
+	sort.Slice(c.at, func(i, j int) bool { return c.at[i] < c.at[j] })
+
+	return c
+}
+
+func (c cuts[S]) atoms() []Range[S] {
+	var out []Range[S]
+
+	for i := 1; i < len(c.at); i++ {
+		out = append(out, Range[S]{c.at[i-1], c.at[i] - 1})
+	}
+
+	if c.top && len(c.at) > 0 {
+		out = append(out, Range[S]{c.at[len(c.at)-1], top[S]()})
+	}
+
+	return out
+}
+
+func signature[S Symbol](sets []Set[S], x S) string {
+	in := make([]byte, len(sets))
+
+	for j, s := range sets {
+		if s.Has(x) {
+			in[j] = 1
+		}
+	}
+
+	return string(in)
+}
+
+type grouping[S Symbol] struct {
+	seen map[string]int
+	held [][]Range[S]
+}
+
+func (g *grouping[S]) add(sig string, r Range[S]) {
+	at, ok := g.seen[sig]
+
+	if !ok {
+		at = len(g.held)
+		g.seen[sig] = at
+		g.held = append(g.held, nil)
+	}
+
+	g.held[at] = append(g.held[at], r)
+}
+
+func (c *Classes[S]) reindex() {
 	for i, p := range c.parts {
 		for _, x := range p.r {
 			c.index = append(c.index, indexed[S]{x, Class(i)})
@@ -117,8 +131,6 @@ func Partition[S Symbol](sets []Set[S]) *Classes[S] {
 	}
 
 	sort.Slice(c.index, func(i, j int) bool { return c.index[i].Lo < c.index[j].Lo })
-
-	return c
 }
 
 func (c *Classes[S]) Len() int { return len(c.parts) - 1 }
