@@ -69,76 +69,83 @@ func BuildWith[S Symbol](rules []Rule[S], classes *Classes[S]) (*DFA[S], error) 
 
 func (n *nfa[S]) determinise(start int, classes *Classes[S]) *DFA[S] {
 	d := &DFA[S]{classes: classes, nodes: []node{{next: make([]State, classes.Len()+1)}}}
-	seen := map[string]int{}
+	b := &subsets[S]{n: n, d: d, seen: map[string]State{}}
+	d.start = b.add([]int{start})
 
-	var add func(of []int) State
+	return d
+}
 
-	add = func(of []int) State {
-		set := n.closure(of)
-		sort.Ints(set)
-		key := fmt.Sprint(set)
+type subsets[S Symbol] struct {
+	n    *nfa[S]
+	d    *DFA[S]
+	seen map[string]State
+}
 
-		if at, ok := seen[key]; ok {
-			return State(at)
-		}
+func (b *subsets[S]) add(of []int) State {
+	set := b.n.closure(of)
+	sort.Ints(set)
+	key := fmt.Sprint(set)
 
-		at := State(len(d.nodes))
-		seen[key] = int(at)
-		d.nodes = append(d.nodes, node{})
-
-		row := make([]State, d.classes.Len()+1)
-
-		done, going := map[Match]bool{}, map[Match]bool{}
-
-		for _, s := range set {
-			if a := n.accept[s]; a != NoMatch {
-				done[a] = true
-			}
-
-			for _, e := range n.out[s] {
-				if !e.eps && n.owner[s] != NoMatch {
-					going[n.owner[s]] = true
-				}
-			}
-		}
-
-		d.nodes[at].done, d.nodes[at].going = sorted(done), sorted(going)
-
-		for c := Class(1); int(c) <= d.classes.Len(); c++ {
-			var to, weak []int
-			lo := d.classes.Part(c).r[0].Lo
-
-			for _, s := range set {
-				for _, e := range n.out[s] {
-					switch {
-					case e.eps || !e.set.Has(lo):
-					case e.weak:
-						weak = append(weak, e.to)
-					default:
-						to = append(to, e.to)
-					}
-				}
-			}
-
-			if len(to) == 0 {
-				to = weak
-			}
-
-			if len(to) == 0 {
-				continue
-			}
-
-			row[c] = add(to)
-		}
-
-		d.nodes[at].next = row
-
+	if at, ok := b.seen[key]; ok {
 		return at
 	}
 
-	d.start = add([]int{start})
+	at := State(len(b.d.nodes))
+	b.seen[key] = at
+	b.d.nodes = append(b.d.nodes, node{})
+	b.d.nodes[at].done, b.d.nodes[at].going = b.n.matches(set)
 
-	return d
+	row := make([]State, b.d.classes.Len()+1)
+
+	for c := Class(1); int(c) <= b.d.classes.Len(); c++ {
+		if to := b.n.step(set, b.d.classes.Part(c).r[0].Lo); len(to) > 0 {
+			row[c] = b.add(to)
+		}
+	}
+
+	b.d.nodes[at].next = row
+
+	return at
+}
+
+func (n *nfa[S]) matches(set []int) (done, going []Match) {
+	ends, goes := map[Match]bool{}, map[Match]bool{}
+
+	for _, s := range set {
+		if a := n.accept[s]; a != NoMatch {
+			ends[a] = true
+		}
+
+		for _, e := range n.out[s] {
+			if !e.eps && n.owner[s] != NoMatch {
+				goes[n.owner[s]] = true
+			}
+		}
+	}
+
+	return sorted(ends), sorted(goes)
+}
+
+func (n *nfa[S]) step(set []int, x S) []int {
+	var to, weak []int
+
+	for _, s := range set {
+		for _, e := range n.out[s] {
+			switch {
+			case e.eps || !e.set.Has(x):
+			case e.weak:
+				weak = append(weak, e.to)
+			default:
+				to = append(to, e.to)
+			}
+		}
+	}
+
+	if len(to) == 0 {
+		return weak
+	}
+
+	return to
 }
 
 func sorted(in map[Match]bool) []Match {
