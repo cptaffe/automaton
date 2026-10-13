@@ -40,11 +40,12 @@ func run(args []string, stderr io.Writer) int {
 	case *goOut != "" && *pkg == "":
 		err = errors.New("-go needs -package")
 	}
+	o := output{dir: *dir, goOut: *goOut, pkg: *pkg, verbose: *verbose, stderr: stderr}
 	for _, path := range fs.Args() {
 		if err != nil {
 			break
 		}
-		err = one(path, *dir, *goOut, *pkg, *verbose, stderr)
+		err = o.one(path)
 	}
 	if err != nil {
 		fmt.Fprintln(stderr, "genlex:", err)
@@ -53,17 +54,16 @@ func run(args []string, stderr io.Writer) int {
 	return 0
 }
 
-func one(path, dir, goOut, pkg string, verbose bool, stderr io.Writer) error {
-	f, err := os.Open(path)
-	if err != nil {
-		return err
-	}
-	parsed, err := gen.Parse(f, path)
-	f.Close()
-	if err != nil {
-		return err
-	}
-	flat, err := gen.Expand(parsed)
+type output struct {
+	dir     string
+	goOut   string
+	pkg     string
+	verbose bool
+	stderr  io.Writer
+}
+
+func (o output) one(path string) error {
+	flat, err := expand(path)
 	if err != nil {
 		return err
 	}
@@ -72,50 +72,75 @@ func one(path, dir, goOut, pkg string, verbose bool, stderr io.Writer) error {
 		return err
 	}
 
-	for _, s := range flat.Shadowed {
-		fmt.Fprintf(stderr, "genlex: shadowed: %s\n", s)
-	}
-	for _, m := range ms {
-		if verbose {
-			fmt.Fprintf(stderr, "genlex: %s\n", draw.Summary(m))
-		}
-		for _, c := range m.Covered {
-			fmt.Fprintf(stderr, "genlex: %s\n", c)
-		}
-	}
+	o.warn(flat, ms)
 	if len(dead) > 0 {
 		return errors.New(strings.Join(dead, "\n"))
 	}
 
-	if dir != "" {
-		shape, err := draw.Shape(flat)
-		if err != nil {
-			return err
+	if err := o.dot(flat, ms); err != nil {
+		return err
+	}
+	return o.table(path, flat, ms)
+}
+
+func expand(path string) (*gen.Flat, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	parsed, err := gen.Parse(f, path)
+	f.Close()
+	if err != nil {
+		return nil, err
+	}
+	return gen.Expand(parsed)
+}
+
+func (o output) warn(flat *gen.Flat, ms []gen.Machine) {
+	for _, s := range flat.Shadowed {
+		fmt.Fprintf(o.stderr, "genlex: shadowed: %s\n", s)
+	}
+	for _, m := range ms {
+		if o.verbose {
+			fmt.Fprintf(o.stderr, "genlex: %s\n", draw.Summary(m))
 		}
-		whole, err := draw.Whole(flat, ms)
-		if err != nil {
-			return err
-		}
-		if err := write(filepath.Join(dir, flat.Name()+"-shape.dot"), shape); err != nil {
-			return err
-		}
-		if err := write(filepath.Join(dir, flat.Name()+".dot"), whole); err != nil {
-			return err
+		for _, c := range m.Covered {
+			fmt.Fprintf(o.stderr, "genlex: %s\n", c)
 		}
 	}
+}
 
-	if goOut == "" {
+func (o output) dot(flat *gen.Flat, ms []gen.Machine) error {
+	if o.dir == "" {
+		return nil
+	}
+	shape, err := draw.Shape(flat)
+	if err != nil {
+		return err
+	}
+	whole, err := draw.Whole(flat, ms)
+	if err != nil {
+		return err
+	}
+	if err := write(filepath.Join(o.dir, flat.Name()+"-shape.dot"), shape); err != nil {
+		return err
+	}
+	return write(filepath.Join(o.dir, flat.Name()+".dot"), whole)
+}
+
+func (o output) table(path string, flat *gen.Flat, ms []gen.Machine) error {
+	if o.goOut == "" {
 		return nil
 	}
 	spec, err := gen.Spec(flat, ms)
 	if err != nil {
 		return err
 	}
-	src, err := gen.Go(spec, pkg, filepath.Base(path))
+	src, err := gen.Go(spec, o.pkg, filepath.Base(path))
 	if err != nil {
 		return fmt.Errorf("%s: %w", path, err)
 	}
-	return write(goOut, src)
+	return write(o.goOut, src)
 }
 
 func write(path string, b []byte) error {
