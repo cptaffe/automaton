@@ -1,6 +1,9 @@
 package dot
 
-import "strings"
+import (
+	"slices"
+	"strings"
+)
 
 type loops struct {
 	group map[string]int
@@ -8,121 +11,123 @@ type loops struct {
 	embeds map[int]bool
 }
 
-func find(rs []Rule, is map[string]bool) loops {
-	out := loops{group: map[string]int{}, embeds: map[int]bool{}}
+type grammar struct {
+	rules []Rule
 
-	refs := map[string][]string{}
+	is map[string]bool
+
+	refs map[string][]string
+}
+
+func read(rs []Rule) grammar {
+	gr := grammar{rules: rs, is: map[string]bool{}, refs: map[string][]string{}}
+
+	for _, r := range rs {
+		gr.is[r.Name] = true
+	}
 
 	for _, r := range rs {
 		seen := map[string]bool{}
 
 		for _, alt := range r.Alts {
 			for _, w := range word.FindAllString(alt, -1) {
-				if is[w] && !seen[w] {
+				if gr.is[w] && !seen[w] {
 					seen[w] = true
-					refs[r.Name] = append(refs[r.Name], w)
+					gr.refs[r.Name] = append(gr.refs[r.Name], w)
 				}
 			}
 		}
 	}
 
-	var at, n int
-	idx, low := map[string]int{}, map[string]int{}
-	var stack []string
-	on := map[string]bool{}
+	return gr
+}
 
-	type frame struct {
-		name string
-		next int
+func (gr grammar) cycle(comp []string) bool {
+	return len(comp) > 1 || slices.Contains(gr.refs[comp[0]], comp[0])
+}
+
+type tarjan struct {
+	refs map[string][]string
+
+	idx, low map[string]int
+
+	stack []string
+	on    map[string]bool
+
+	comps [][]string
+}
+
+func (gr grammar) components() [][]string {
+	t := tarjan{refs: gr.refs, idx: map[string]int{}, low: map[string]int{}, on: map[string]bool{}}
+
+	for _, r := range gr.rules {
+		if _, ok := t.idx[r.Name]; !ok {
+			t.visit(r.Name)
+		}
 	}
 
-	for _, r := range rs {
-		if _, ok := idx[r.Name]; ok {
+	return t.comps
+}
+
+func (t *tarjan) visit(name string) {
+	at := len(t.idx)
+	t.idx[name], t.low[name] = at, at
+	t.stack = append(t.stack, name)
+	t.on[name] = true
+
+	for _, w := range t.refs[name] {
+		if _, ok := t.idx[w]; !ok {
+			t.visit(w)
+			t.low[name] = min(t.low[name], t.low[w])
+		} else if t.on[w] {
+			t.low[name] = min(t.low[name], t.idx[w])
+		}
+	}
+
+	if t.low[name] == t.idx[name] {
+		t.comps = append(t.comps, t.pop(name))
+	}
+}
+
+func (t *tarjan) pop(name string) []string {
+	var comp []string
+
+	for {
+		w := t.stack[len(t.stack)-1]
+		t.stack = t.stack[:len(t.stack)-1]
+		t.on[w] = false
+		comp = append(comp, w)
+
+		if w == name {
+			return comp
+		}
+	}
+}
+
+func find(gr grammar) loops {
+	out := loops{group: map[string]int{}, embeds: map[int]bool{}}
+
+	var n int
+
+	for _, comp := range gr.components() {
+		if !gr.cycle(comp) {
 			continue
 		}
 
-		work := []frame{{name: r.Name}}
-		idx[r.Name], low[r.Name] = at, at
-		at++
-		stack = append(stack, r.Name)
-		on[r.Name] = true
+		n++
 
-		for len(work) > 0 {
-			f := &work[len(work)-1]
-			down := false
-
-			for f.next < len(refs[f.name]) {
-				w := refs[f.name][f.next]
-				f.next++
-
-				if _, ok := idx[w]; !ok {
-					idx[w], low[w] = at, at
-					at++
-					stack = append(stack, w)
-					on[w] = true
-					work = append(work, frame{name: w})
-					down = true
-
-					break
-				} else if on[w] {
-					low[f.name] = min(low[f.name], idx[w])
-				}
-			}
-
-			if down {
-				continue
-			}
-
-			name := f.name
-			work = work[:len(work)-1]
-
-			if low[name] == idx[name] {
-				var comp []string
-
-				for {
-					w := stack[len(stack)-1]
-					stack = stack[:len(stack)-1]
-					on[w] = false
-					comp = append(comp, w)
-
-					if w == name {
-						break
-					}
-				}
-
-				if len(comp) == 1 {
-					self := false
-
-					for _, w := range refs[comp[0]] {
-						self = self || w == comp[0]
-					}
-
-					if !self {
-						continue
-					}
-				}
-
-				n++
-
-				for _, w := range comp {
-					out.group[w] = n
-				}
-			}
-
-			if len(work) > 0 {
-				up := work[len(work)-1].name
-				low[up] = min(low[up], low[name])
-			}
+		for _, w := range comp {
+			out.group[w] = n
 		}
 	}
 
-	out.nest(rs, is)
+	out.nest(gr)
 
 	return out
 }
 
-func (l loops) nest(rs []Rule, is map[string]bool) {
-	for _, r := range rs {
+func (l loops) nest(gr grammar) {
+	for _, r := range gr.rules {
 		g := l.group[r.Name]
 
 		if g == 0 {
@@ -134,7 +139,7 @@ func (l loops) nest(rs []Rule, is map[string]bool) {
 			var at []int
 
 			for i, w := range ws {
-				if is[w] && l.group[w] == g {
+				if gr.is[w] && l.group[w] == g {
 					at = append(at, i)
 				}
 			}
@@ -147,13 +152,7 @@ func (l loops) nest(rs []Rule, is map[string]bool) {
 }
 
 func Nested(rs []Rule) []string {
-	is := map[string]bool{}
-
-	for _, r := range rs {
-		is[r.Name] = true
-	}
-
-	loop := find(rs, is)
+	loop := find(read(rs))
 
 	var out []string
 

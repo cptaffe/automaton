@@ -11,13 +11,8 @@ type Rule struct {
 var word = regexp.MustCompile(`[A-Za-z_][A-Za-z_0-9.-]*`)
 
 func Shape(rs []Rule, name string) ([]byte, error) {
-	is := map[string]bool{}
-
-	for _, r := range rs {
-		is[r.Name] = true
-	}
-
-	loop := find(rs, is)
+	gr := read(rs)
+	loop := find(gr)
 
 	g := Graph{
 		Name: name,
@@ -45,7 +40,7 @@ func Shape(rs []Rule, name string) ([]byte, error) {
 
 		for _, alt := range r.Alts {
 			for _, w := range word.FindAllString(alt, -1) {
-				if !is[w] || seen[w] {
+				if !gr.is[w] || seen[w] {
 					continue
 				}
 
