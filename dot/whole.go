@@ -2,6 +2,12 @@ package dot
 
 import "fmt"
 
+type box struct {
+	m    Machine
+	i    int
+	skip map[int]bool
+}
+
 func Whole(ms []Machine, name string) ([]byte, error) {
 	g := Graph{
 		Name:     name,
@@ -9,62 +15,85 @@ func Whole(ms []Machine, name string) ([]byte, error) {
 		Compound: true,
 	}
 
-	skips := make([]map[int]bool, len(ms))
+	bs := make([]box, len(ms))
 
 	for i, m := range ms {
-		skips[i] = kept(m)
+		bs[i] = box{m: m, i: i, skip: kept(m)}
 	}
 
-	for i, m := range ms {
-		box := Group{ID: fmt.Sprint(i), Label: m.Name()}
+	for _, b := range bs {
+		g.Groups = append(g.Groups, b.group())
+		g.Edges = append(g.Edges, b.edges()...)
+	}
 
-		for s := 1; s <= m.States(); s++ {
-			if skips[i][s] {
-				continue
-			}
+	for _, b := range bs {
+		g.Edges = append(g.Edges, b.hands(bs)...)
+	}
 
-			box.Nodes = append(box.Nodes, state(fmt.Sprintf("%s%d", tag(i), s), s, m.Name(), s == start(m), m))
-		}
+	return g.Bytes()
+}
 
-		g.Groups = append(g.Groups, box)
+func (b box) id(s int) string { return fmt.Sprintf("%s%d", tag(b.i), s) }
 
-		for s := 1; s <= m.States(); s++ {
-			if skips[i][s] {
-				continue
-			}
+func (b box) states() []int {
+	var out []int
 
-			for _, r := range runs(m, skips[i], s) {
-				g.Edges = append(g.Edges, Edge{
-					From:  fmt.Sprintf("%s%d", tag(i), s),
-					To:    fmt.Sprintf("%s%d", tag(i), r.to),
-					Label: " " + times(r.label, r.n) + " ",
-				})
-			}
+	for s := 1; s <= b.m.States(); s++ {
+		if !b.skip[s] {
+			out = append(out, s)
 		}
 	}
 
-	for i, m := range ms {
-		leaves, ok := m.(Leaves)
+	return out
+}
+
+func (b box) group() Group {
+	out := Group{ID: fmt.Sprint(b.i), Label: b.m.Name()}
+
+	for _, s := range b.states() {
+		out.Nodes = append(out.Nodes, state(b.id(s), s, b.m.Name(), s == start(b.m), b.m))
+	}
+
+	return out
+}
+
+func (b box) edges() []Edge {
+	var out []Edge
+
+	for _, s := range b.states() {
+		for _, r := range runs(b.m, b.skip, s) {
+			out = append(out, Edge{
+				From:  b.id(s),
+				To:    b.id(r.to),
+				Label: " " + times(r.label, r.n) + " ",
+			})
+		}
+	}
+
+	return out
+}
+
+func (b box) hands(bs []box) []Edge {
+	leaves, ok := b.m.(Leaves)
+
+	if !ok {
+		return nil
+	}
+
+	var out []Edge
+
+	for s := 1; s <= b.m.States(); s++ {
+		scope, ok := leaves.Leaves(s)
 
 		if !ok {
 			continue
 		}
 
-		for s := 1; s <= m.States(); s++ {
-			scope, ok := leaves.Leaves(s)
-
-			if !ok {
-				continue
-			}
-
-			for j, other := range ms {
-				if other.Name() != scope {
-					continue
-				}
-
-				g.Edges = append(g.Edges, Edge{
-					From:   fmt.Sprintf("%s%d", tag(i), s),
-					To:     fmt.Sprintf("%s%d", tag(j), start(other)),
+		for _, to := range bs {
+			if to.m.Name() == scope {
+				out = append(out, Edge{
+					From:   b.id(s),
+					To:     to.id(start(to.m)),
 					Class:  "hands",
 					Dashed: true,
 					Loose:  true,
@@ -73,7 +102,7 @@ func Whole(ms []Machine, name string) ([]byte, error) {
 		}
 	}
 
-	return g.Bytes()
+	return out
 }
 
 func tag(i int) string { return fmt.Sprintf("m%d_s", i) }
