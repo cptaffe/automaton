@@ -200,8 +200,22 @@ func TestReadOrdersRulesByTheirFirstNumber(t *testing.T) {
 	}
 }
 
-func TestReadRefusesABadRuleNumber(t *testing.T) {
-	if _, err := Read(strings.NewReader("\tfile: lines (99999999999999999999)\n")); err == nil {
-		t.Error("a rule number too large for an int is read without complaint")
+func TestReadRefusesWhatIsNotAReport(t *testing.T) {
+	for _, c := range []struct {
+		name  string
+		given string
+		then  string
+	}{
+		{"a rule number too large for an int", "\tfile: lines (99999999999999999999)\n", "rule 99999999999999999999: "},
+		{"nothing at all", "", "no grammar rules"},
+		{"text with no rules in it", "state 0\n\n\t$accept: . file $end\n", "no grammar rules"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			_, err := Read(strings.NewReader(c.given))
+
+			if err == nil || !strings.Contains(err.Error(), c.then) {
+				t.Errorf("got %v; want an error saying %q", err, c.then)
+			}
+		})
 	}
 }

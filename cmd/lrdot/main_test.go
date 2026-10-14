@@ -49,6 +49,10 @@ func parse(t *testing.T, path string) drawn {
 func TestLrdotExitsWithACodeAndSaysWhy(t *testing.T) {
 	in := report(t)
 	dir := t.TempDir()
+	empty := filepath.Join(dir, "empty.output")
+	if err := os.WriteFile(empty, nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
 	for _, c := range []struct {
 		name  string
 		given []string
@@ -61,6 +65,7 @@ func TestLrdotExitsWithACodeAndSaysWhy(t *testing.T) {
 		{"an unknown flag is a usage error", []string{in, "a.dot"}, []string{"-x"}, result{2, "flag provided but not defined: -x"}},
 		{"a missing report is an error", []string{"missing", filepath.Join(dir, "a.dot")}, nil, result{1, "lrdot: open missing: no such file or directory\n"}},
 		{"a drawing that cannot be written is an error", []string{in, filepath.Join(dir, "no", "a.dot")}, nil, result{1, "no such file or directory\n"}},
+		{"a report with no rules is an error", []string{empty, filepath.Join(dir, "a.dot")}, nil, result{1, "lrdot: " + empty + ": no grammar rules"}},
 		{"a drawing that can be written says nothing", []string{in, filepath.Join(dir, "a.dot")}, nil, result{0, ""}},
 	} {
 		t.Run(c.name, func(t *testing.T) {

@@ -2,6 +2,7 @@ package lr
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"regexp"
@@ -70,6 +71,10 @@ func Read(r io.Reader) (*Grammar, error) {
 
 	if err := sc.Err(); err != nil {
 		return nil, err
+	}
+
+	if len(out) == 0 {
+		return nil, errors.New("no grammar rules: this is not a report goyacc wrote with -v")
 	}
 
 	return &Grammar{Rules: out, lhs: lhs}, nil
