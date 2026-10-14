@@ -37,8 +37,8 @@ func TestAReadErrorReachesTheCaller(t *testing.T) {
 
 	_, ok := r.Next()
 
-	if ok || r.Err() == nil || r.Err().Error() != "t.lex:1: broken" {
-		t.Errorf("read %t, %v; want the error t.lex:1: broken", ok, r.Err())
+	if ok || r.Err() == nil || r.Err().Error() != "t.lex:1: broken" || !errors.Is(r.Err(), errBroken) {
+		t.Errorf("read %t, %v; want the error t.lex:1: broken, wrapping errBroken", ok, r.Err())
 	}
 }
 

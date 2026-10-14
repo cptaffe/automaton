@@ -149,7 +149,7 @@ func (l *lexer) match() bool {
 	m, err := l.scan(s)
 
 	if err != nil {
-		return l.errorf(l.pos, "%v", err)
+		return l.errorf(l.pos, "%w", err)
 	}
 
 	if l.in.Len() == 0 && !m.dropped {
