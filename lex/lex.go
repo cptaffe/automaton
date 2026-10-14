@@ -22,11 +22,15 @@ type Act struct {
 	Pop  bool
 }
 
+type State struct {
+	Next   []int
+	Accept int
+}
+
 type Scope struct {
 	Name   string
 	Start  int
-	Next   [][]int
-	Accept []int
+	States []State
 	Acts   []Act
 }
 
@@ -231,13 +235,13 @@ func (l *lexer) scan(s *Scope) (attempt, error) {
 			m.first = r
 		}
 
-		next := s.Next[m.state][l.spec.class(r)]
+		next := s.States[m.state].Next[l.spec.class(r)]
 
 		if next == 0 {
 			return m, nil
 		}
 
-		m.step(next, w, s.Accept[next])
+		m.step(next, w, s.States[next].Accept)
 	}
 }
 
@@ -294,25 +298,25 @@ func quiet(spec *Spec) [][]bool {
 }
 
 func (s *Scope) quiet() []bool {
-	loud := make([]bool, len(s.Next))
+	loud := make([]bool, len(s.States))
 
-	for st, a := range s.Accept {
-		loud[st] = a != 0 && s.Acts[a-1].Emit != 0
+	for st, state := range s.States {
+		loud[st] = state.Accept != 0 && s.Acts[state.Accept-1].Emit != 0
 	}
 
 	for changed := true; changed; {
 		changed = false
 
-		for st := 1; st < len(s.Next); st++ {
+		for st := 1; st < len(s.States); st++ {
 			if !loud[st] && s.reaches(st, loud) {
 				loud[st], changed = true, true
 			}
 		}
 	}
 
-	out := make([]bool, len(s.Next))
+	out := make([]bool, len(s.States))
 
-	for st := 1; st < len(s.Next); st++ {
+	for st := 1; st < len(s.States); st++ {
 		out[st] = !loud[st]
 	}
 
@@ -320,7 +324,7 @@ func (s *Scope) quiet() []bool {
 }
 
 func (s *Scope) reaches(st int, in []bool) bool {
-	for _, to := range s.Next[st] {
+	for _, to := range s.States[st].Next {
 		if to != 0 && in[to] {
 			return true
 		}

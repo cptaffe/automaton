@@ -57,8 +57,7 @@ func (n numbers) scope(f *Flat, m Machine) (lex.Scope, error) {
 	s := lex.Scope{Name: m.Scope, Start: int(m.DFA.Start())}
 
 	for i := fa.State(0); int(i) <= m.DFA.States(); i++ {
-		s.Next = append(s.Next, row(m.DFA, i))
-		s.Accept = append(s.Accept, int(m.DFA.Accept(i)))
+		s.States = append(s.States, lex.State{Next: row(m.DFA, i), Accept: int(m.DFA.Accept(i))})
 	}
 
 	for _, r := range m.Rules {
@@ -206,13 +205,13 @@ func Go(spec *lex.Spec, pkg, from string) ([]byte, error) {
 	b.WriteString("\t},\n\tScopes: []lex.Scope{\n")
 
 	for _, s := range spec.Scopes {
-		fmt.Fprintf(&b, "\t\t{\n\t\t\tName: %q, Start: %d,\n\t\t\tNext: [][]int{\n", s.Name, s.Start)
+		fmt.Fprintf(&b, "\t\t{\n\t\t\tName: %q, Start: %d,\n\t\t\tStates: []lex.State{\n", s.Name, s.Start)
 
-		for _, row := range s.Next {
-			fmt.Fprintf(&b, "\t\t\t\t{%s},\n", list(row))
+		for _, st := range s.States {
+			fmt.Fprintf(&b, "\t\t\t\t{Next: []int{%s}%s},\n", list(st.Next), accepts(st.Accept))
 		}
 
-		fmt.Fprintf(&b, "\t\t\t},\n\t\t\tAccept: []int{%s},\n\t\t\tActs: []lex.Act{\n", list(s.Accept))
+		b.WriteString("\t\t\t},\n\t\t\tActs: []lex.Act{\n")
 
 		for _, a := range s.Acts {
 			fmt.Fprintf(&b, "\t\t\t\t{%s},\n", fields(a))
@@ -294,4 +293,12 @@ func idents(prefix string, names []string) ([]string, error) {
 	}
 
 	return out, errors.Join(errs...)
+}
+
+func accepts(rule int) string {
+	if rule == 0 {
+		return ""
+	}
+
+	return fmt.Sprintf(", Accept: %d", rule)
 }

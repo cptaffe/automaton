@@ -125,8 +125,7 @@ func TestAReturnWithNothingPushedIsAnError(t *testing.T) {
 		Scopes: []lex.Scope{{
 			Name:   "start",
 			Start:  1,
-			Next:   [][]int{{0, 0}, {0, 2}, {0, 0}},
-			Accept: []int{0, 0, 1},
+			States: []lex.State{{Next: []int{0, 0}}, {Next: []int{0, 2}}, {Next: []int{0, 0}, Accept: 1}},
 			Acts:   []lex.Act{{Emit: 1, Pop: true}},
 		}},
 	}

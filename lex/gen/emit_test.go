@@ -20,11 +20,15 @@ func TestTheTableIsGoThatDeclaresTheSpec(t *testing.T) {
 		Does:   []string{"name"},
 		Ranges: []lex.Range{{Lo: '(', Hi: '(', Class: 2}, {Lo: 'a', Hi: 'z', Class: 1}},
 		Scopes: []lex.Scope{{
-			Name:   "start",
-			Start:  1,
-			Next:   [][]int{{0, 0, 0}, {0, 2, 3}, {0, 2, 0}, {0, 0, 0}},
-			Accept: []int{0, 0, 1, 2},
-			Acts:   []lex.Act{{Emit: 3, Do: 1}, {Emit: 2, Goto: 1, Push: 1}, {Pop: true}},
+			Name:  "start",
+			Start: 1,
+			States: []lex.State{
+				{Next: []int{0, 0, 0}},
+				{Next: []int{0, 2, 3}},
+				{Next: []int{0, 2, 0}, Accept: 1},
+				{Next: []int{0, 0, 0}, Accept: 2},
+			},
+			Acts: []lex.Act{{Emit: 3, Do: 1}, {Emit: 2, Goto: 1, Push: 1}, {Pop: true}},
 		}},
 	}
 
@@ -62,7 +66,7 @@ func TestTheTableIsGoThatDeclaresTheSpec(t *testing.T) {
 		`Tokens: []string{"close.paren", "open-paren", "word"}`,
 		`Does: []string{"name"}`,
 		"Ranges: []lex.Range{{Lo: 40, Hi: 40, Class: 2}, {Lo: 97, Hi: 122, Class: 1}}",
-		`Scopes: []lex.Scope{{Name: "start", Start: 1, Next: [][]int{{0, 0, 0}, {0, 2, 3}, {0, 2, 0}, {0, 0, 0}}, Accept: []int{0, 0, 1, 2}, Acts: []lex.Act{{Emit: 3, Do: 1}, {Emit: 2, Goto: 1, Push: 1}, {Pop: true}}}}`,
+		`Scopes: []lex.Scope{{Name: "start", Start: 1, States: []lex.State{{Next: []int{0, 0, 0}}, {Next: []int{0, 2, 3}}, {Next: []int{0, 2, 0}, Accept: 1}, {Next: []int{0, 0, 0}, Accept: 2}}, Acts: []lex.Act{{Emit: 3, Do: 1}, {Emit: 2, Goto: 1, Push: 1}, {Pop: true}}}}`,
 	}; !reflect.DeepEqual(got, want) {
 		t.Errorf("the spec holds\n%q\nwant\n%q", got, want)
 	}
