@@ -100,6 +100,8 @@ func Parse(r io.Reader, from string, kb Keyboard) (*Rules, error) {
 	failed := yyParse(l) != 0
 	switch {
 	case l.Err() != nil:
+	case failed && l.tok == NEWLINE:
+		l.FailAt(l.line, "a new line cannot stand here")
 	case failed && l.tok != 0:
 		l.FailAt(l.line, "%s cannot stand here", strings.TrimSpace(l.text))
 	case failed:

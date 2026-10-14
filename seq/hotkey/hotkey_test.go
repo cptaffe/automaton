@@ -217,6 +217,16 @@ func TestABadFileDoesNotParse(t *testing.T) {
 			then:  "hotkeys:2: : cannot stand here",
 		},
 		{
+			name:  "a delay with no duration",
+			given: "%delay x\n",
+			then:  "hotkeys:1: a new line cannot stand here",
+		},
+		{
+			name:  "a when with no condition",
+			given: "a:\n\t-> a when\n",
+			then:  "hotkeys:2: a new line cannot stand here",
+		},
+		{
 			name:  "an include above every scope",
 			given: "-> a\na:\n\tcommand-s { x }\n",
 			then:  "hotkeys:1: -> a is above every scope, and it reads a's rules into one",
