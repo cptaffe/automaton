@@ -9,6 +9,7 @@ import (
 
 type Step struct {
 	Key     string
+	Env     seq.Env
 	Taken   bool
 	Fired   string
 	Pending bool
@@ -16,7 +17,6 @@ type Step struct {
 
 func Machine(t testing.TB, tab *seq.Table, scope string) *seq.Machine {
 	t.Helper()
-
 	m, err := seq.NewMachine(tab, scope)
 	if err != nil {
 		t.Fatal(err)
@@ -42,13 +42,27 @@ func Actions(as []*seq.Accept) string {
 	return strings.Join(out, ",")
 }
 
+func Prefix(keys string) []Step {
+	fields := strings.Fields(keys)
+	out := make([]Step, 0, len(fields))
+	for _, k := range fields {
+		out = append(out, Step{Key: k, Taken: true, Pending: true})
+	}
+	return out
+}
+
 func Run(t testing.TB, m *seq.Machine, a *seq.Alphabet, env seq.Env, steps []Step) {
 	t.Helper()
 	for i, want := range steps {
-		taken, fired := Press(m, a, want.Key, env)
-		got := Step{Key: want.Key, Taken: taken, Fired: fired, Pending: m.Pending()}
-		if got != want {
-			t.Fatalf("step %d: got %+v; want %+v", i+1, got, want)
+		in := env
+		if want.Env != nil {
+			in = want.Env
+		}
+		taken, fired := Press(m, a, want.Key, in)
+		if taken != want.Taken || fired != want.Fired || m.Pending() != want.Pending {
+			t.Fatalf("step %d, %s: taken %v, fired %q, pending %v; want taken %v, fired %q, pending %v",
+				i+1, want.Key, taken, fired, m.Pending(), want.Taken, want.Fired, want.Pending)
+			return
 		}
 	}
 }
