@@ -148,12 +148,4 @@ func (a *NFA[S]) Sets() []Set[S] {
 	return out
 }
 
-func (a *NFA[S]) Determinise(classes *Classes[S]) (*DFA[S], error) {
-	if err := classes.refine(a.Sets()); err != nil {
-		return nil, err
-	}
-
-	return a.n.determinise(a.start, classes), nil
-}
-
 func (a *NFA[S]) DFA() *DFA[S] { return a.n.determinise(a.start, Partition(a.Sets())) }
