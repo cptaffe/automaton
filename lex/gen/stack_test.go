@@ -60,6 +60,28 @@ inner(then) {
 }
 `
 
+func TestAParameterPassesThroughATemplateThatDoesNotRecur(t *testing.T) {
+	spec := lextest.Compile(t, `
+start {
+  "<"  emit open -> outer(start)
+}
+
+outer(then) {
+  "!"  emit bang -> inner(then)
+}
+
+inner(then) {
+  ">"  emit close -> then
+}
+`)
+
+	got, err := lextest.Read(t, spec, "<!><!>")
+
+	if want := []string{"open(<)", "bang(!)", "close(>)", "open(<)", "bang(!)", "close(>)"}; err != nil || !reflect.DeepEqual(got, want) {
+		t.Errorf("read %q, %v; want %q", got, err, want)
+	}
+}
+
 func TestAStackReturnsToWhereItWasPushed(t *testing.T) {
 	for _, c := range []struct {
 		name  string

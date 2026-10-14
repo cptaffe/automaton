@@ -1,7 +1,9 @@
 package gen_test
 
 import (
+	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/cptaffe/automaton/lex/lextest"
@@ -25,6 +27,7 @@ func TestAPatternReadsWhatItSays(t *testing.T) {
 		{"a group", `(lower | "_")+  emit x`, "a_b", []string{"x(a_b)"}},
 		{"a class", `[abc]+  emit x`, "cab", []string{"x(cab)"}},
 		{"a range", `[a-c]+  emit x`, "cab", []string{"x(cab)"}},
+		{"a range of one rune", `[a-a]+  emit x`, "aa", []string{"x(aa)"}},
 		{"a negated class", "[^a]+  emit x\n  \"a\"  emit a", "bcab", []string{"x(bc)", "a(a)", "x(b)"}},
 		{"an escape in a class", `[\]\-\n]+  emit x`, "]-\n", []string{"x(]-\n)"}},
 		{"a prelude name", "digit+  emit x", "042", []string{"x(042)"}},
@@ -66,5 +69,21 @@ func TestAPatternRefusesWhatItDoesNotSay(t *testing.T) {
 				t.Errorf("read %q, %v; want the error %q", got, err, c.then)
 			}
 		})
+	}
+}
+
+func TestADoRidesOnTheTokenWhicheverSideOfTheEmitItIsWritten(t *testing.T) {
+	spec := lextest.Compile(t, "start {\n  \"a\"  do first emit a\n  \"b\"  emit b\n  \"c\"  emit c do second\n}\n")
+
+	toks := lextest.Tokens(t, spec, strings.NewReader("abc"))
+
+	got := make([]string, 0, len(toks))
+
+	for _, tok := range toks {
+		got = append(got, fmt.Sprintf("%s(%s) do %d", spec.Token(tok.Kind), tok.Text, tok.Do))
+	}
+
+	if want := []string{"a(a) do 1", "b(b) do 0", "c(c) do 2"}; !reflect.DeepEqual(got, want) || !reflect.DeepEqual(spec.Does, []string{"first", "second"}) {
+		t.Errorf("read %q with does %q; want %q with does [first second]", got, spec.Does, want)
 	}
 }
