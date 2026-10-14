@@ -149,6 +149,16 @@ func TestADrawingHasANodePerStateAndAnEdgePerMove(t *testing.T) {
 			},
 		},
 		{
+			name:  "Draw draws the moves of the last state",
+			given: []dot.Machine{back},
+			when:  draw,
+			then: picture{
+				groups: []string{},
+				nodes:  []string{"s (start)", "2", "3 end (accept)"},
+				edges:  []string{"s -a-> 3 end", "2 -c-> s", "3 end -b-> 2"},
+			},
+		},
+		{
 			name:  "Whole folds a run of one label into one edge",
 			given: []dot.Machine{chain()},
 			when:  whole,
@@ -259,6 +269,7 @@ func TestAShapeDrawsRulesAndTheirLoops(t *testing.T) {
 		{Name: "a", Alts: []string{"b X"}},
 		{Name: "b", Alts: []string{"a Y", "Z"}},
 		{Name: "c", Alts: []string{"c P c"}},
+		{Name: "r", Alts: []string{"I C r"}},
 	}
 
 	for _, c := range []struct {
@@ -271,7 +282,7 @@ func TestAShapeDrawsRulesAndTheirLoops(t *testing.T) {
 			name:  "a rule is a node with its alternatives",
 			given: given,
 			when:  func(rs []dot.Rule) []string { return dottest.Nodes(dot.Shape(rs, "g")) },
-			then:  []string{"e N L e R (start)", "l l C I I", "p e l", "a b X", "b a Y Z", "c c P c"},
+			then:  []string{"e N L e R (start)", "l l C I I", "p e l", "a b X", "b a Y Z", "c c P c", "r I C r"},
 		},
 		{
 			name:  "a reference is an edge, and a reference within a loop is a cycle",
@@ -285,6 +296,7 @@ func TestAShapeDrawsRulesAndTheirLoops(t *testing.T) {
 				"a b X --> b a Y Z (cycle)",
 				"b a Y Z --> a b X (cycle)",
 				"c c P c --> c c P c (cycle nest)",
+				"r I C r --> r I C r (cycle)",
 			},
 		},
 		{

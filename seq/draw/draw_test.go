@@ -221,6 +221,7 @@ func TestLabel(t *testing.T) {
 		{"a condition follows the action", "put", seq.Name("on"), "put\nwhen on"},
 		{"a condition stands alone without an action", "", seq.Name("on"), "when on"},
 		{"a condition of 14 bytes is one line", "", seq.And{seq.Name("on"), seq.Name("up")}, "when on and up"},
+		{"a condition of 15 bytes wraps", "", seq.And{seq.Name("on"), seq.Name("upx")}, "when on and\nupx"},
 		{"a longer condition wraps at 14 bytes", "", seq.And{seq.Name("on"), seq.Name("up"), seq.Name("in")}, "when on and up\nand in"},
 		{"a long word has a line of its own", "", seq.Name("averyveryverylongname"), "when\naveryveryverylongname"},
 	} {
