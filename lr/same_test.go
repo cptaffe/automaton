@@ -6,6 +6,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/cptaffe/automaton/fa"
@@ -105,6 +107,80 @@ func TestTheDrawingIsTheLRAutomatonWithoutItsStack(t *testing.T) {
 
 			if ok, why := same(mine.dfa, theirs, mine.words); !ok {
 				t.Errorf("the two constructions differ: %s", why)
+			}
+		})
+	}
+}
+
+func yacc(t *testing.T, gram string) []byte {
+	t.Helper()
+
+	dir := t.TempDir()
+
+	if err := os.WriteFile(filepath.Join(dir, "gram.y"), []byte(gram), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	cmd := exec.Command("go", "tool", "goyacc", "-l", "-p", "yy", "-o", os.DevNull, "-v", filepath.Join(dir, "y.output"), filepath.Join(dir, "gram.y"))
+
+	if got, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("goyacc: %v: %s", err, got)
+	}
+
+	out, err := os.ReadFile(filepath.Join(dir, "y.output"))
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return out
+}
+
+func TestBothConstructionsGiveTheExpectedMachine(t *testing.T) {
+	for _, c := range []struct {
+		name  string
+		given string
+		then  []string
+	}{
+		{
+			"a list by right recursion",
+			"%token ITEM COMMA\n%%\nlist: ITEM | ITEM COMMA list ;\n",
+			[]string{"start 1", "0", "1 ITEM->2", "2 accept COMMA->1"},
+		},
+		{
+			"lines by left recursion from nothing",
+			"%token NEWLINE\n%%\nfile: lines ;\nlines: | lines NEWLINE ;\n",
+			[]string{"start 1", "0", "1 accept NEWLINE->1"},
+		},
+		{
+			"brackets that self-embed",
+			"%token NUM LP RP\n%%\nexpr: NUM | LP expr RP ;\n",
+			[]string{"start 1", "0", "1 NUM->2 LP->1", "2 accept RP->2"},
+		},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			text := yacc(t, c.given)
+			g, err := Read(bytes.NewReader(text))
+
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			ss, err := g.states(bytes.NewReader(text))
+
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			mine := g.Tokens()
+			theirs := stackless(ss, mine.at)
+
+			if got := rows(mine.dfa, mine.words); !reflect.DeepEqual(got, c.then) {
+				t.Errorf("over the grammar the machine is\n%s\nwant\n%s", strings.Join(got, "\n"), strings.Join(c.then, "\n"))
+			}
+
+			if got := rows(theirs, mine.words); !reflect.DeepEqual(got, c.then) {
+				t.Errorf("from the LR states the machine is\n%s\nwant\n%s", strings.Join(got, "\n"), strings.Join(c.then, "\n"))
 			}
 		})
 	}
