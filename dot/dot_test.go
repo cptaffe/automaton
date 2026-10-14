@@ -49,7 +49,7 @@ func drawn(t *testing.T) func([]byte, error) string {
 }
 
 func TestAMoveIsAnEdge(t *testing.T) {
-	out := drawn(t)(dot.Draw(words()))
+	out := drawn(t)(dot.Draw(words()).Bytes())
 
 	if n := strings.Count(out, "->"); n != 2 {
 		t.Errorf("the drawing has %d edges; want 2:\n%s", n, out)
@@ -65,7 +65,7 @@ func TestTheFirstStartNamesAShared(t *testing.T) {
 	m := words()
 	m.starts = []dot.Start{{Name: "b", State: 1}, {Name: "a", State: 1}}
 	for range 20 {
-		if out := drawn(t)(dot.Draw(m)); !strings.Contains(out, `label="b"`) {
+		if out := drawn(t)(dot.Draw(m).Bytes()); !strings.Contains(out, `label="b"`) {
 			t.Fatalf("two starts on one state are drawn as the second:\n%s", out)
 		}
 	}
@@ -87,7 +87,7 @@ func chain() toy {
 }
 
 func TestARunOfOneLabelIsFolded(t *testing.T) {
-	out := drawn(t)(dot.Whole([]dot.Machine{chain()}, "whole"))
+	out := drawn(t)(dot.Whole([]dot.Machine{chain()}, "whole").Bytes())
 
 	if !strings.Contains(out, "x ×3") {
 		t.Errorf("three x in a row are not folded into one edge:\n%s", out)
@@ -100,7 +100,7 @@ func TestARunOfOneLabelIsFolded(t *testing.T) {
 func TestAHandOffCrossesMachines(t *testing.T) {
 	a := words()
 	a.leaves = map[int]string{2: "chain"}
-	out := drawn(t)(dot.Whole([]dot.Machine{a, chain()}, "whole"))
+	out := drawn(t)(dot.Whole([]dot.Machine{a, chain()}, "whole").Bytes())
 
 	if !strings.Contains(out, `m0_s2 -> m1_s1 [label="", color="#7048e8", fontcolor="#7048e8", class="hands", style=dashed, constraint=false]`) {
 		t.Errorf("the hand-off from toy to chain is not drawn:\n%s", out)
@@ -115,7 +115,7 @@ func TestAShapeMarksEmbeddingCycles(t *testing.T) {
 		{Name: "expr", Alts: []string{"NUM", "LP expr RP"}, Start: true},
 		{Name: "list", Alts: []string{"ITEM", "ITEM COMMA list"}},
 	}
-	out := drawn(t)(dot.Shape(rs, "g"))
+	out := drawn(t)(dot.Shape(rs, "g").Bytes())
 
 	if !strings.Contains(out, `class="start"`) {
 		t.Errorf("the first rule is not marked as the start:\n%s", out)

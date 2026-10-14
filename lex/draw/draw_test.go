@@ -40,7 +40,7 @@ words {
 		t.Fatal(err)
 	}
 
-	whole, err := draw.Whole(flat, ms)
+	whole, err := draw.Whole(flat, ms).Bytes()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,7 +50,7 @@ words {
 		}
 	}
 
-	shape, err := draw.Shape(flat)
+	shape, err := draw.Shape(flat).Bytes()
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -10,7 +10,7 @@ import (
 	"github.com/cptaffe/automaton/lex/gen"
 )
 
-func Whole(f *gen.Flat, ms []gen.Machine) ([]byte, error) {
+func Whole(f *gen.Flat, ms []gen.Machine) dot.Graph {
 	all := make([]dot.Machine, len(ms))
 	for i, m := range ms {
 		all[i] = machine{m: m, names: f.Defs}
@@ -18,7 +18,7 @@ func Whole(f *gen.Flat, ms []gen.Machine) ([]byte, error) {
 	return dot.Whole(all, f.Name())
 }
 
-func Shape(f *gen.Flat) ([]byte, error) {
+func Shape(f *gen.Flat) dot.Graph {
 	rs := make([]dot.Rule, 0, len(f.Scopes))
 	for i, s := range f.Scopes {
 		r := dot.Rule{Name: s.Name, Start: i == 0}

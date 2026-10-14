@@ -51,7 +51,7 @@ func one(in, out, name string, shapeOnly bool) error {
 	if err != nil {
 		return fmt.Errorf("%s: %w", in, err)
 	}
-	b, err := draw.Shape(g, name)
+	b, err := draw.Shape(g, name).Bytes()
 	if err == nil {
 		err = os.WriteFile(out, b, 0o644)
 	}
@@ -62,7 +62,7 @@ func one(in, out, name string, shapeOnly bool) error {
 	if t == nil || shapeOnly {
 		return nil
 	}
-	b, err = dot.Draw(t)
+	b, err = dot.Draw(t).Bytes()
 	if err != nil {
 		return err
 	}

@@ -8,7 +8,7 @@ type box struct {
 	skip map[int]bool
 }
 
-func Whole(ms []Machine, name string) ([]byte, error) {
+func Whole(ms []Machine, name string) Graph {
 	g := Graph{
 		Name:     name,
 		Look:     "machine",
@@ -30,7 +30,7 @@ func Whole(ms []Machine, name string) ([]byte, error) {
 		g.Edges = append(g.Edges, b.hands(bs)...)
 	}
 
-	return g.Bytes()
+	return g
 }
 
 func (b box) id(s int) string { return fmt.Sprintf("%s%d", tag(b.i), s) }

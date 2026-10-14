@@ -114,11 +114,11 @@ func (o output) dot(flat *gen.Flat, ms []gen.Machine) error {
 	if o.dir == "" {
 		return nil
 	}
-	shape, err := draw.Shape(flat)
+	shape, err := draw.Shape(flat).Bytes()
 	if err != nil {
 		return err
 	}
-	whole, err := draw.Whole(flat, ms)
+	whole, err := draw.Whole(flat, ms).Bytes()
 	if err != nil {
 		return err
 	}

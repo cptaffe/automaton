@@ -21,14 +21,14 @@ func TestTheDrawingsSayWhatTheGrammarIs(t *testing.T) {
 	} {
 		g := &lr.Grammar{Rules: c.rules}
 		m := draw.Tokens(g, "g")
-		b, err := dot.Draw(m)
+		b, err := dot.Draw(m).Bytes()
 		if err != nil {
 			t.Fatal(err)
 		}
 		if out := string(b); !strings.Contains(m.Note(), c.note) || !strings.Contains(out, c.edge) {
 			t.Errorf("%v: note %q, drawing:\n%s", c.rules, m.Note(), out)
 		}
-		if _, err := draw.Shape(g, "g"); err != nil {
+		if _, err := draw.Shape(g, "g").Bytes(); err != nil {
 			t.Error(err)
 		}
 	}

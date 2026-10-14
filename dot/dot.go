@@ -30,7 +30,7 @@ type Leaves interface {
 	Leaves(state int) (scope string, ok bool)
 }
 
-func Draw(m Machine) ([]byte, error) {
+func Draw(m Machine) Graph {
 	g := Graph{
 		Name: m.Name(),
 		Note: m.Note(),
@@ -62,7 +62,7 @@ func Draw(m Machine) ([]byte, error) {
 		}
 	}
 
-	return g.Bytes()
+	return g
 }
 
 func state(id string, s int, name string, start bool, m Machine) Node {

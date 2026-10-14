@@ -19,7 +19,7 @@ func TestDraw(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	b, err := draw.Draw(tab)
+	b, err := draw.Draw(tab).Bytes()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,7 +47,7 @@ func TestAFallbackIsDrawnAsAny(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	b, err := draw.Draw(r.Table)
+	b, err := draw.Draw(r.Table).Bytes()
 	if err != nil {
 		t.Fatal(err)
 	}

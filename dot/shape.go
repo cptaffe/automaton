@@ -10,7 +10,7 @@ type Rule struct {
 
 var word = regexp.MustCompile(`[A-Za-z_][A-Za-z_0-9.-]*`)
 
-func Shape(rs []Rule, name string) ([]byte, error) {
+func Shape(rs []Rule, name string) Graph {
 	gr := read(rs)
 	loop := find(gr)
 
@@ -31,7 +31,7 @@ func Shape(rs []Rule, name string) ([]byte, error) {
 		}
 	}
 
-	return g.Bytes()
+	return g
 }
 
 func (r Rule) node() Node {

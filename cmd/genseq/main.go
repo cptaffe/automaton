@@ -58,7 +58,7 @@ func draw(paths []string, dialect, dir string, verbose bool, stderr io.Writer) e
 		if dir == "" {
 			continue
 		}
-		b, err := seqdraw.Draw(t)
+		b, err := seqdraw.Draw(t).Bytes()
 		if err == nil {
 			err = os.MkdirAll(dir, 0o755)
 		}

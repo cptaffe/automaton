@@ -18,7 +18,7 @@ func rules(g *lr.Grammar) []dot.Rule {
 	return out
 }
 
-func Shape(g *lr.Grammar, name string) ([]byte, error) {
+func Shape(g *lr.Grammar, name string) dot.Graph {
 	return dot.Shape(rules(g), name)
 }
 

@@ -11,7 +11,7 @@ import (
 	"github.com/cptaffe/automaton/seq"
 )
 
-func Draw(t *seq.Table) ([]byte, error) { return dot.Draw(Machine(t)) }
+func Draw(t *seq.Table) dot.Graph { return dot.Draw(Machine(t)) }
 
 func Machine(t *seq.Table) dot.Machine { return machine{t} }
 
