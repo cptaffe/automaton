@@ -24,6 +24,7 @@ func TestUnionMergesRangesThatOverlapOrTouch(t *testing.T) {
 		{"apart", fa.Span(1, 3), fa.Span(5, 9), ranges{{1, 3}, {5, 9}}},
 		{"the later one first", fa.Span(5, 9), fa.Span(1, 5), ranges{{1, 9}}},
 		{"one inside the other", fa.Span(1, 9), fa.Span(3, 4), ranges{{1, 9}}},
+		{"starting together", fa.Span(1, 9), fa.Span(1, 3), ranges{{1, 9}}},
 		{"filling a gap", fa.Of(fa.Range[int]{1, 2}, fa.Range[int]{6, 7}), fa.Span(3, 5), ranges{{1, 7}}},
 		{"a backward range", fa.Span(1, 5), fa.Span(9, 1), ranges{{1, 5}}},
 		{"onto nothing", fa.Set[int]{}, fa.One(3), ranges{{3, 3}}},
