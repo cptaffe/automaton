@@ -78,11 +78,6 @@ func (e *expander) rule(in instance, r Rule) error {
 	if err != nil {
 		return err
 	}
-	if r.Include != "" {
-		if _, err := e.want(r.Include, ""); err != nil {
-			return err
-		}
-	}
 	r.Scope, r.Goto, r.Arg = in.at, to, ""
 	e.out.Rules = append(e.out.Rules, r)
 	return nil

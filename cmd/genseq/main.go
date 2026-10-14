@@ -53,7 +53,7 @@ func draw(paths []string, dialect, dir string, verbose bool, stderr io.Writer) e
 		}
 		named[t.Name] = true
 		if verbose {
-			fmt.Fprintf(stderr, "genseq: %s, %d states, waits for %s\n", t.Name, len(t.States)-1, strings.Join(t.Waiting(), " "))
+			fmt.Fprintf(stderr, "genseq: %s, %d states%s\n", t.Name, len(t.States)-1, waits(t.Waiting()))
 		}
 		if dir == "" {
 			continue
@@ -118,4 +118,11 @@ func compile(paths []string, dialect string) ([]*seq.Table, error) {
 		return nil, errors.New(strings.Join(t.Conflicts, "\n"))
 	}
 	return append(out, t), nil
+}
+
+func waits(events []string) string {
+	if len(events) == 0 {
+		return ""
+	}
+	return ", waits for " + strings.Join(events, " ")
 }
