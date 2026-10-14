@@ -4,10 +4,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/cptaffe/automaton/seq"
+	"github.com/cptaffe/automaton/seq/seqtest"
 )
 
-func TestTheExampleCompiles(t *testing.T) {
+func TestTheExampleRuns(t *testing.T) {
 	f, err := os.Open("../../examples/hotkeys")
 	if err != nil {
 		t.Fatal(err)
@@ -17,26 +17,15 @@ func TestTheExampleCompiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	m, err := seq.NewMachine(r.Table, "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	acme := seq.Env{"app": "devdraw"}
-	for _, c := range []struct {
-		key   string
-		fired string
-	}{
-		{"control-x", ""},
-		{"control-s", "ctl put"},
-		{"control-x", ""},
-		{"j", ""},
-		{"control-x", ""},
-		{"settle", ""},
-		{"command-w", "ctl del"},
-	} {
-		ok, fired := m.Step(sym(r.Table.Alpha, c.key), acme)
-		if !ok || actions(fired) != c.fired || m.Pending() != (c.key == "control-x") {
-			t.Errorf("%s took %v, fired %q and left pending %v; want %q", c.key, ok, actions(fired), m.Pending(), c.fired)
-		}
-	}
+	m := seqtest.Machine(t, r.Table, "")
+
+	seqtest.Run(t, m, r.Table.Alpha, acme, []seqtest.Step{
+		{Key: "control-x", Taken: true, Pending: true},
+		{Key: "control-s", Taken: true, Fired: "ctl put"},
+		{Key: "control-x", Taken: true, Pending: true},
+		{Key: "j", Taken: true},
+		{Key: "control-x", Taken: true, Pending: true},
+		{Key: "settle", Taken: true},
+		{Key: "command-w", Taken: true, Fired: "ctl del"},
+	})
 }

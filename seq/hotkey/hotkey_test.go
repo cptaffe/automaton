@@ -6,11 +6,15 @@ import (
 	"testing"
 
 	"github.com/cptaffe/automaton/seq"
+	"github.com/cptaffe/automaton/seq/seqtest"
 )
 
 const keytab = `# Edit ,>9p write acme-hotkey/rules
 %{
 fn put { echo put | 9p write acme/$winid/ctl }
+%}
+%{
+fn del { echo del | 9p write acme/$winid/ctl }
 %}
 %delay settle 1s
 
@@ -40,181 +44,404 @@ func parse(t *testing.T, src string) *Rules {
 	return r
 }
 
-func actions(as []*seq.Accept) string {
-	s := make([]string, 0, len(as))
-	for _, a := range as {
-		s = append(s, a.Action)
-	}
-	return strings.Join(s, ",")
+type parsed struct {
+	scope, pattern, include, action, to, label string
 }
 
-func TestParse(t *testing.T) {
+func TestParseReadsEachRule(t *testing.T) {
+	given := keytab
+
+	r := parse(t, given)
+
+	got := make([]parsed, 0, len(r.Grammar.Rules))
+	for _, x := range r.Grammar.Rules {
+		got = append(got, parsed{x.Scope, x.Pattern, x.Include, x.Action, x.Goto, x.Label})
+	}
+	want := []parsed{
+		{"main", "", "acme", "", "", ""},
+		{"acme", "command-s", "", "put", "", "save"},
+		{"acme", "shift-command-b", "", "Lrefs", "", "references"},
+		{"acme", "control-x control-s", "", "put", "", ""},
+		{"acme", "control-x settle", "", "echo '}' {nested}", "", "look"},
+		{"acme", "control-x peek any", "", "echo '}' {nested}", "", "look"},
+		{"acme", "command--", "", "Shrink", "", ""},
+		{"acme", "command-m", "", "", "mode", ""},
+		{"mode", "j", "", "down", "", ""},
+		{"mode", "escape", "", "exit", "main", ""},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("the rules are\n%+v\nwant\n%+v", got, want)
+	}
+	if when := r.Grammar.Rules[0].When.String(); when != `app == "devdraw" or app ~ "^9term$"` {
+		t.Errorf("the include holds when %s", when)
+	}
+}
+
+func TestParseJoinsThePreludes(t *testing.T) {
+	given := keytab
+
+	r := parse(t, given)
+
+	if want := "fn put { echo put | 9p write acme/$winid/ctl }\nfn del { echo del | 9p write acme/$winid/ctl }"; r.Prelude != want {
+		t.Errorf("the prelude is %q; want %q", r.Prelude, want)
+	}
+}
+
+var (
+	acme   = seq.Env{"app": "devdraw"}
+	nine   = seq.Env{"app": "9term"}
+	safari = seq.Env{"app": "Safari"}
+)
+
+func TestAMachineMatchesKeysByApp(t *testing.T) {
 	r := parse(t, keytab)
-	if got := r.Prelude; got != "fn put { echo put | 9p write acme/$winid/ctl }" {
-		t.Errorf("prelude %q", got)
-	}
-	labels := map[string]string{}
-	for _, rule := range r.Grammar.Rules {
-		labels[rule.Pattern] = rule.Label
-	}
-	if labels["command-s"] != "save" || labels["control-x settle"] != "look" {
-		t.Errorf("labels %v", labels)
-	}
-	var look string
-	for _, rule := range r.Grammar.Rules {
-		if rule.Pattern == "control-x settle" {
-			look = rule.Action
-		}
-	}
-	if look != "echo '}' {nested}" {
-		t.Errorf("a block with a quoted brace and a nested block reads %q", look)
+	m := seqtest.Machine(t, r.Table, "")
+
+	seqtest.Run(t, m, r.Table.Alpha, acme, []seqtest.Step{
+		{Key: "command-s", Taken: true, Fired: "put"},
+		{Key: "command-shift-b", Taken: true, Fired: "Lrefs"},
+		{Key: "command--", Taken: true, Fired: "Shrink"},
+		{Key: "command-s", Env: nine, Taken: true, Fired: "put"},
+		{Key: "command-s", Env: safari},
+		{Key: "space"},
+		{Key: "control-x", Taken: true, Pending: true},
+		{Key: "control-s", Taken: true, Fired: "put"},
+		{Key: "control-x", Taken: true, Pending: true},
+		{Key: "space", Fired: "echo '}' {nested}"},
+		{Key: "control-x", Taken: true, Pending: true},
+		{Key: "command-s", Taken: true, Fired: "echo '}' {nested},put"},
+		{Key: "control-x", Taken: true, Pending: true},
+		{Key: "settle", Taken: true, Fired: "echo '}' {nested}"},
+		{Key: "command-m", Taken: true},
+		{Key: "j", Env: safari, Taken: true, Fired: "down"},
+		{Key: "command-s"},
+		{Key: "escape", Taken: true, Fired: "exit"},
+		{Key: "j"},
+		{Key: "command-s", Env: safari},
+		{Key: "command-s", Taken: true, Fired: "put"},
+	})
+}
+
+func TestAPrefixWaitsForItsDelay(t *testing.T) {
+	r := parse(t, keytab)
+	for _, c := range []struct {
+		name  string
+		given string
+		then  []string
+	}{
+		{name: "nothing pressed", given: "", then: nil},
+		{name: "a prefix a delay ends", given: "control-x", then: []string{"settle"}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			m := seqtest.Machine(t, r.Table, "")
+			seqtest.Run(t, m, r.Table.Alpha, acme, seqtest.Prefix(c.given))
+
+			waits := m.Waits()
+
+			if !reflect.DeepEqual(waits, c.then) {
+				t.Errorf("after %q the machine waits for %q; want %q", c.given, waits, c.then)
+			}
+		})
 	}
 }
 
-func machine(t *testing.T, r *Rules) *seq.Machine {
-	t.Helper()
-	m, err := seq.NewMachine(r.Table, "")
+func TestABadFileDoesNotParse(t *testing.T) {
+	for _, c := range []struct {
+		name  string
+		given string
+		then  string
+	}{
+		{
+			name:  "two rules of one key",
+			given: "a:\n\tcommand-s { x }\n\tcommand-s { y }\n",
+			then:  `hotkeys:3: "command-s" and "command-s" both finish here -- two rules, one key sequence`,
+		},
+		{
+			name:  "a key that another rule goes on from",
+			given: "a:\n\tcontrol-x { x }\n\tcontrol-x control-s { y }\n",
+			then:  `hotkeys:2: "control-x" is complete, and control-x control-s can still follow -- end it with a delay, or peek at the key after it`,
+		},
+		{
+			name:  "a key not on the keyboard",
+			given: "a:\n\tcommand-zz { x }\n",
+			then:  "hotkeys:2: command-zz: no such key",
+		},
+		{
+			name:  "two keys not on the keyboard",
+			given: "a:\n\tcommand-zz { x }\n\tcontrol-x yy { y }\n",
+			then:  "hotkeys:2: command-zz: no such key\nhotkeys:3: yy: no such key",
+		},
+		{
+			name:  "a wildcard of a key not on the keyboard",
+			given: "... command-zz { x }\n",
+			then:  "hotkeys:1: command-zz: no such key",
+		},
+		{
+			name:  "a modifier twice",
+			given: "a:\n\tcommand-command-s { x }\n",
+			then:  "hotkeys:2: command-command-s: command twice",
+		},
+		{
+			name:  "a block left open",
+			given: "a:\n\tcommand-s { x\n",
+			then:  "hotkeys:3: the input ends inside block",
+		},
+		{
+			name:  "a rule above every scope",
+			given: "command-s { x }\n",
+			then:  "hotkeys:1: a rule above every scope; only a ... rule can be there",
+		},
+		{
+			name:  "a rule with nowhere to go",
+			given: "a:\n\tcommand-s\n",
+			then:  "hotkeys:2: a rule with keys and nowhere to go",
+		},
+		{
+			name:  "a pattern that does not compile",
+			given: "a:\n\t-> a when app ~ \"(\"\n",
+			then:  "hotkeys:2: error parsing regexp: missing closing ): `(`",
+		},
+		{
+			name:  "a when on a scope",
+			given: "a: when app == \"x\"\n",
+			then:  "hotkeys:1: when cannot stand here",
+		},
+		{
+			name:  "a stray colon",
+			given: "a:\n\tcommand-s { x } :\n",
+			then:  "hotkeys:2: : cannot stand here",
+		},
+		{
+			name:  "an include above every scope",
+			given: "-> a\na:\n\tcommand-s { x }\n",
+			then:  "hotkeys:1: -> a is above every scope, and it reads a's rules into one",
+		},
+		{
+			name:  "scopes read into each other",
+			given: "a:\n\t-> b\nb:\n\t-> a\n",
+			then:  "hotkeys:4: -> a goes round in a loop back to b",
+		},
+		{
+			name:  "a goto to no scope",
+			given: "a:\n\tcommand-s -> b\n",
+			then:  "hotkeys:2: -> b, and there is no such scope",
+		},
+		{
+			name:  "an include of no scope",
+			given: "a:\n\tcommand-s { x }\n\t-> nowhere\n",
+			then:  "hotkeys:3: -> nowhere, and there is no such scope",
+		},
+		{
+			name:  "a delay in a scope",
+			given: "a:\n\t%delay x 1s\n",
+			then:  "hotkeys:2: %delay x belongs above every scope",
+		},
+		{
+			name:  "a delay that is not a duration",
+			given: "%delay x soon\n",
+			then:  "hotkeys:1: %delay x soon: soon is not a duration",
+		},
+		{
+			name:  "a delay of no time",
+			given: "%delay x 0s\n",
+			then:  "hotkeys:1: %delay x 0s: 0s is not a duration",
+		},
+		{
+			name:  "a delay of less than no time",
+			given: "%delay x -1s\n",
+			then:  "hotkeys:1: %delay x -1s: -1s is not a duration",
+		},
+		{
+			name:  "a delay declared twice",
+			given: "%delay x 1s\n%delay x 1s\n",
+			then:  "hotkeys:2: %delay x is declared twice",
+		},
+		{
+			name:  "a delay called any",
+			given: "%delay any 1s\n",
+			then:  "hotkeys:1: %delay any: any is every key, not a delay",
+		},
+		{
+			name:  "a scope declared twice",
+			given: "a:\n\tcommand-s { x }\na:\n",
+			then:  "hotkeys:3: scope a is declared twice",
+		},
+		{
+			name:  "a wildcard of two keys",
+			given: "... command-s command-t { x }\n",
+			then:  "hotkeys:1: ... takes one key",
+		},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			_, err := Parse(strings.NewReader(c.given), "hotkeys", nil)
+
+			if err == nil || err.Error() != c.then {
+				t.Errorf("Parse = %v; want %s", err, c.then)
+			}
+		})
+	}
+}
+
+func TestCanonOrdersTheModifiers(t *testing.T) {
+	for _, c := range []struct {
+		name  string
+		given string
+		then  string
+	}{
+		{name: "a bare key", given: "b", then: "b"},
+		{name: "two modifiers out of order", given: "shift-command-b", then: "command-shift-b"},
+		{name: "every modifier out of order", given: "option-control-shift-command-b", then: "command-shift-control-option-b"},
+		{name: "a modifier on the minus key", given: "command--", then: "command--"},
+		{name: "the minus key", given: "-", then: "-"},
+		{name: "a modifier with nothing after it", given: "command-", then: "command-"},
+		{name: "a modifier before a modifier with nothing after it", given: "shift-command-", then: "shift-command-"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			got, err := Canon(c.given)
+
+			if err != nil || got != c.then {
+				t.Errorf("Canon(%q) = %q, %v; want %q", c.given, got, err, c.then)
+			}
+		})
+	}
+}
+
+func TestCanonRefusesAModifierTwice(t *testing.T) {
+	for _, c := range []struct {
+		name  string
+		given string
+		then  string
+	}{
+		{name: "next to each other", given: "command-command-s", then: "command twice"},
+		{name: "apart", given: "shift-command-shift-s", then: "shift twice"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			_, err := Canon(c.given)
+
+			if err == nil || err.Error() != c.then {
+				t.Errorf("Canon(%q) = %v; want %s", c.given, err, c.then)
+			}
+		})
+	}
+}
+
+func TestNameIsTheKeyUnderTheModifiers(t *testing.T) {
+	for _, c := range []struct {
+		name  string
+		given string
+		then  string
+	}{
+		{name: "a bare key", given: "b", then: "b"},
+		{name: "a chord", given: "command-shift-b", then: "b"},
+		{name: "the minus key", given: "control--", then: "-"},
+		{name: "a modifier with nothing after it", given: "shift-command-", then: "command-"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			if got := Name(c.given); got != c.then {
+				t.Errorf("Name(%q) = %q; want %q", c.given, got, c.then)
+			}
+		})
+	}
+}
+
+func TestTheUSKeyboardRunsFromAToF16(t *testing.T) {
+	for _, c := range []struct {
+		name  string
+		given int
+		then  string
+	}{
+		{name: "the first letter", given: 0, then: "a"},
+		{name: "the last letter", given: 25, then: "z"},
+		{name: "the first digit", given: 26, then: "0"},
+		{name: "the last digit", given: 35, then: "9"},
+		{name: "the first mark", given: 36, then: "-"},
+		{name: "the last mark", given: 46, then: "`"},
+		{name: "the first named key", given: 47, then: "return"},
+		{name: "the last named key", given: 62, then: "clear"},
+		{name: "the first function key", given: 63, then: "f1"},
+		{name: "the last function key", given: 78, then: "f16"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			if got := US[c.given]; got != c.then {
+				t.Errorf("US[%d] = %q; want %q", c.given, got, c.then)
+			}
+		})
+	}
+	if len(US) != 79 {
+		t.Errorf("the US keyboard has %d keys; want 79", len(US))
+	}
+}
+
+func TestAKeyboardHasOnlyItsKeys(t *testing.T) {
+	for _, c := range []struct {
+		name  string
+		given string
+		then  bool
+	}{
+		{name: "a letter", given: "z", then: true},
+		{name: "a function key", given: "f16", then: true},
+		{name: "a function key past the last", given: "f17", then: false},
+		{name: "a capital letter", given: "Z", then: false},
+		{name: "a chord", given: "command-z", then: false},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			if got := US.Has(c.given); got != c.then {
+				t.Errorf("US.Has(%q) = %v; want %v", c.given, got, c.then)
+			}
+		})
+	}
+}
+
+func TestTheAlphabetIsEveryChordOfTheKeyboard(t *testing.T) {
+	given := Keyboard{"a", "b"}
+
+	r, err := Parse(strings.NewReader("%delay settle 1s\nmain:\n\tb settle { x }\n"), "hotkeys", given)
+
 	if err != nil {
 		t.Fatal(err)
 	}
-	return m
-}
-
-func TestMatch(t *testing.T) {
-	r := parse(t, keytab)
-	acme := seq.Env{"app": "devdraw"}
-	m := machine(t, r)
-	for _, c := range []struct {
-		key     string
-		env     seq.Env
-		consume bool
-		fired   string
-		waits   []string
-	}{
-		{"command-s", acme, true, "put", nil},
-		{"command-shift-b", acme, true, "Lrefs", nil},
-		{"command--", acme, true, "Shrink", nil},
-		{"command-s", seq.Env{"app": "9term"}, true, "put", nil},
-		{"command-s", seq.Env{"app": "Safari"}, false, "", nil},
-		{"space", acme, false, "", nil},
-		{"control-x", acme, true, "", []string{"settle"}},
-		{"control-s", acme, true, "put", nil},
-		{"control-x", acme, true, "", []string{"settle"}},
-		{"space", acme, false, "echo '}' {nested}", nil},
-		{"control-x", acme, true, "", []string{"settle"}},
-		{"command-s", acme, true, "echo '}' {nested},put", nil},
-		{"command-m", acme, true, "", nil},
-		{"j", seq.Env{"app": "Safari"}, true, "down", nil},
-		{"command-s", acme, false, "", nil},
-		{"escape", acme, true, "exit", nil},
-		{"j", acme, false, "", nil},
-		{"command-s", seq.Env{"app": "Safari"}, false, "", nil},
-		{"command-s", acme, true, "put", nil},
-	} {
-		consume, fired := press(m, r.Table.Alpha, c.key, c.env)
-		waits := m.Waits()
-		if consume != c.consume || actions(fired) != c.fired || !reflect.DeepEqual(waits, c.waits) {
-			t.Errorf("%s in %v: got %v %q %v, want %v %q %v", c.key, c.env["app"], consume, actions(fired), waits, c.consume, c.fired, c.waits)
-		}
+	a := r.Table.Alpha
+	got := make([]string, 0, a.Size())
+	for s := range a.Size() {
+		got = append(got, a.Name(seq.Sym(s)))
+	}
+	want := []string{
+		"a", "b",
+		"command-a", "command-b",
+		"shift-a", "shift-b",
+		"command-shift-a", "command-shift-b",
+		"control-a", "control-b",
+		"command-control-a", "command-control-b",
+		"shift-control-a", "shift-control-b",
+		"command-shift-control-a", "command-shift-control-b",
+		"option-a", "option-b",
+		"command-option-a", "command-option-b",
+		"shift-option-a", "shift-option-b",
+		"command-shift-option-a", "command-shift-option-b",
+		"control-option-a", "control-option-b",
+		"command-control-option-a", "command-control-option-b",
+		"shift-control-option-a", "shift-control-option-b",
+		"command-shift-control-option-a", "command-shift-control-option-b",
+		"settle",
+	}
+	if !reflect.DeepEqual(got, want) || a.Keys() != 32 {
+		t.Errorf("the alphabet is %q with %d keys; want %q with 32", got, a.Keys(), want)
 	}
 }
 
-func TestATimerEndsARule(t *testing.T) {
-	r := parse(t, keytab)
-	m := machine(t, r)
-	m.Step(sym(r.Table.Alpha, "control-x"), seq.Env{"app": "devdraw"})
-	_, fired := m.Step(sym(r.Table.Alpha, "settle"), seq.Env{"app": "devdraw"})
-	if waits := m.Waits(); actions(fired) != "echo '}' {nested}" || waits != nil {
-		t.Errorf("settle fired %q, waits %v", actions(fired), waits)
-	}
-}
-
-func TestErrors(t *testing.T) {
-	for _, c := range []struct{ src, want string }{
-		{"a:\n\tcommand-s { x }\n\tcommand-s { y }\n", "two rules, one key sequence"},
-		{"a:\n\tcontrol-x { x }\n\tcontrol-x control-s { y }\n", "can still follow"},
-		{"a:\n\tcommand-zz { x }\n", "hotkeys:2: command-zz: no such key"},
-		{"a:\n\tcommand-s { x\n", "ends inside block"},
-		{"command-s { x }\n", "above every scope"},
-		{"a:\n\tcommand-s\n", "nowhere to go"},
-		{"a:\n\tcommand-command-s { x }\n", "command twice"},
-		{"a:\n\t-> a when app ~ \"(\"\n", "missing closing )"},
-		{"a: when app == \"x\"\n", "when cannot stand here"},
-		{"-> a\na:\n\tcommand-s { x }\n", "above every scope"},
-		{"a:\n\t-> b\nb:\n\t-> a\n", "goes round in a loop"},
-		{"a:\n\tcommand-s -> b\n", "no such scope"},
-		{"%{\nfn x\n", "hotkeys:"},
-	} {
-		_, err := Parse(strings.NewReader(c.src), "hotkeys", nil)
-		if err == nil || !strings.Contains(err.Error(), c.want) {
-			t.Errorf("%q: got %v, want %q", c.src, err, c.want)
-		}
-	}
-}
-
-func TestCanon(t *testing.T) {
-	for in, want := range map[string]string{
-		"shift-command-b":  "command-shift-b",
-		"command--":        "command--",
-		"option-control-x": "control-option-x",
-		"-":                "-",
-	} {
-		if got, err := Canon(in); err != nil || got != want {
-			t.Errorf("Canon(%q) = %q, %v; want %q", in, got, err, want)
-		}
-	}
-}
-
-func TestAWildcardAndDelays(t *testing.T) {
+func TestAWildcardMayEndAPrefixOrLeaveAScope(t *testing.T) {
 	r := parse(t, "%delay quiet 2s\n... escape { reset } -> main\nmain:\n\t-> edit when app == \"devdraw\"\nedit:\n\tcommand-k quiet { kill }\n\tcommand-k command-k { kill twice }\n\t... quiet { idle }\n")
-	m := machine(t, r)
-	env := seq.Env{"app": "devdraw"}
-	for _, c := range []struct {
-		key   string
-		fired string
-	}{
-		{"command-k", ""},
-		{"quiet", "kill"},
-		{"escape", "reset"},
-		{"quiet", "idle"},
-	} {
-		if _, fired := press(m, r.Table.Alpha, c.key, env); actions(fired) != c.fired {
-			t.Errorf("%s fired %q; want %q", c.key, actions(fired), c.fired)
-		}
-	}
-}
+	m := seqtest.Machine(t, r.Table, "")
 
-func TestDeclarationErrors(t *testing.T) {
-	for _, c := range []struct{ src, want string }{
-		{"a:\n\t%delay x 1s\n", "belongs above every scope"},
-		{"%delay x soon\n", "soon is not a duration"},
-		{"%delay x 1s\n%delay x 1s\n", "declared twice"},
-		{"a:\n\tcommand-s { x }\na:\n", "scope a is declared twice"},
-		{"... command-s command-t { x }\n", "... takes one key"},
-		{"a:\n\tcommand-s { x }\n\t-> nowhere\n", "no such scope"},
-	} {
-		_, err := Parse(strings.NewReader(c.src), "hotkeys", nil)
-		if err == nil || !strings.Contains(err.Error(), c.want) {
-			t.Errorf("%q: got %v, want %q", c.src, err, c.want)
-		}
-	}
-}
-
-func sym(a *seq.Alphabet, name string) seq.Sym {
-	s, ok := a.Of(name)
-	if !ok {
-		panic("no symbol " + name)
-	}
-	return s
-}
-
-func press(m *seq.Machine, a *seq.Alphabet, key string, env seq.Env) (bool, []*seq.Accept) {
-	s, ok := a.Of(key)
-	if !ok {
-		m.Reset()
-		return false, nil
-	}
-	return m.Step(s, env)
+	seqtest.Run(t, m, r.Table.Alpha, acme, []seqtest.Step{
+		{Key: "command-k", Taken: true, Pending: true},
+		{Key: "quiet", Taken: true, Fired: "kill"},
+		{Key: "command-k", Taken: true, Pending: true},
+		{Key: "escape", Taken: true, Fired: "reset"},
+		{Key: "quiet", Taken: true, Fired: "idle"},
+		{Key: "command-k", Taken: true, Pending: true},
+		{Key: "command-k", Taken: true, Fired: "kill twice"},
+	})
 }
 
 func TestAnyTakesWhatNoOtherRuleNames(t *testing.T) {
@@ -230,34 +457,25 @@ mode:
 	escape			-> main
 	... any			{ }
 `)
-	m, err := seq.NewMachine(r.Table, "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, c := range []struct {
-		key   string
-		taken bool
-		fired string
-	}{
-		{"control-x", true, ""},
-		{"control-s", true, "put"},
-		{"control-x", true, ""},
-		{"j", true, ""},
-		{"command-s", false, ""},
-		{"command-m", true, ""},
-		{"j", true, "down"},
-		{"k", true, ""},
-		{"command-s", true, ""},
-		{"escape", true, ""},
-		{"k", false, ""},
-	} {
-		taken, fired := press(m, r.Table.Alpha, c.key, nil)
-		if taken != c.taken || actions(fired) != c.fired {
-			t.Errorf("%s in %s: took %v and fired %q; want %v and %q", c.key, m.Scope(), taken, actions(fired), c.taken, c.fired)
-		}
-	}
+	m := seqtest.Machine(t, r.Table, "")
+
+	seqtest.Run(t, m, r.Table.Alpha, nil, []seqtest.Step{
+		{Key: "control-x", Taken: true, Pending: true},
+		{Key: "control-s", Taken: true, Fired: "put"},
+		{Key: "control-x", Taken: true, Pending: true},
+		{Key: "j", Taken: true},
+		{Key: "command-s"},
+		{Key: "command-m", Taken: true},
+		{Key: "j", Taken: true, Fired: "down"},
+		{Key: "k", Taken: true},
+		{Key: "command-s", Taken: true},
+		{Key: "settle"},
+		{Key: "escape", Taken: true},
+		{Key: "k"},
+	})
+
 	if waits := r.Table.Waiting(); len(waits) != 0 {
-		t.Errorf("any reads the delays %v; it reads keys", waits)
+		t.Errorf("any reads the delays %q; it reads keys", waits)
 	}
 }
 
@@ -267,28 +485,20 @@ func TestPeekReadsTheNextKeyAgain(t *testing.T) {
 	control-x peek any	{ show }
 	command-s		{ save }
 `)
-	m, err := seq.NewMachine(r.Table, "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, c := range []struct {
-		key   string
-		taken bool
-		fired string
-	}{
-		{"control-x", true, ""},
-		{"control-s", true, "put"},
-		{"control-x", true, ""},
-		{"command-s", true, "show,save"},
-		{"control-x", true, ""},
-		{"j", false, "show"},
-		{"j", false, ""},
-	} {
-		taken, fired := press(m, r.Table.Alpha, c.key, nil)
-		if taken != c.taken || actions(fired) != c.fired || m.Pending() != (c.key == "control-x") {
-			t.Errorf("%s: took %v and fired %q, pending %v; want %v and %q", c.key, taken, actions(fired), m.Pending(), c.taken, c.fired)
-		}
-	}
+	m := seqtest.Machine(t, r.Table, "")
+
+	seqtest.Run(t, m, r.Table.Alpha, nil, []seqtest.Step{
+		{Key: "control-x", Taken: true, Pending: true},
+		{Key: "control-s", Taken: true, Fired: "put"},
+		{Key: "control-x", Taken: true, Pending: true},
+		{Key: "command-s", Taken: true, Fired: "show,save"},
+		{Key: "control-x", Taken: true, Pending: true},
+		{Key: "j", Fired: "show"},
+		{Key: "j"},
+		{Key: "control-x", Taken: true, Pending: true},
+		{Key: "control-x", Taken: true, Fired: "show", Pending: true},
+	})
+
 	if got := r.Grammar.Rules[1].Pattern; got != "control-x peek any" {
 		t.Errorf("the pattern reads %q", got)
 	}
