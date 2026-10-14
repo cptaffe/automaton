@@ -114,7 +114,7 @@ func (p *parser) lex(v *yySymType) (int, string) {
 	case scan.TokAnycase:
 		v.str = literalOf(strings.TrimSuffix(tok.Text, "i"))
 	case scan.TokUnterminated:
-		if strings.HasSuffix(tok.Text, `\\`) {
+		if trailing := len(tok.Text) - len(strings.TrimRight(tok.Text, `\`)); trailing%2 == 1 {
 			p.Fail("a backslash with nothing after it")
 		} else {
 			p.Fail("a literal runs off the end of its line")

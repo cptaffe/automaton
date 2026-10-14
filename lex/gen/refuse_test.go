@@ -26,6 +26,8 @@ func TestASourceIsRefusedWithItsFileLineAndReason(t *testing.T) {
 		{"an empty literal", "start {\n  \"\" emit a\n}\n", "rules.lex:2: an empty literal matches nothing, so it would never advance"},
 		{"an empty literal in any case", "start {\n  \"\"i emit a\n}\n", "rules.lex:2: an empty literal matches nothing, so it would never advance"},
 		{"a literal that runs off its line", "start {\n  \"a emit a\n}\n", "rules.lex:2: a literal runs off the end of its line"},
+		{"a backslash at the end of a literal", "start {\n  \"a\\\n  \"b\" emit b\n}\n", "rules.lex:2: a backslash with nothing after it"},
+		{"an escaped backslash at the end of a line", "start {\n  \"a\\\\\n}\n", "rules.lex:2: a literal runs off the end of its line"},
 		{"a range that runs backwards", "start {\n  [z-a] emit a\n}\n", `rules.lex:2: the range "z" to "a" runs backwards`},
 		{"a token out of place", "start {\n  \"a\" emit a\n  emit b\n}\n", "rules.lex:3: emit cannot stand here"},
 		{"a file that ends inside a rule", "start {\n  \"a\" emit a\n", "rules.lex:3: the file ends in the middle of a rule"},

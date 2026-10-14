@@ -1,5 +1,5 @@
 ident  = alpha alnum* (("-" | ".") alnum+)*
-quoted = "\"" ([^"\n] - [\\] | "\\" any)* "\""
+quoted = "\"" ([^"\n] - [\\] | "\\" [^\n])* "\""
 inner  = any - [\]\^\-\n]
 
 start {
@@ -22,7 +22,7 @@ start {
   quoted "i"  emit anycase
   quoted      emit text
 
-  "\"" ([^"\n] - [\\] | "\\" any)*  emit unterminated
+  "\"" ([^"\n] - [\\] | "\\" [^\n])* "\\"?  emit unterminated
 
   "emit"      emit emit      -> name
   "ignore"    emit ignore
