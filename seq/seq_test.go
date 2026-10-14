@@ -473,6 +473,13 @@ func TestABadGrammarDoesNotCompile(t *testing.T) {
 				Rules: []seq.Rule{goes(x(1, "start", "a"), "t", "start"), goes(x(2, "t", "a"), "t", "this"), goes(x(3, "t", "b"), "then", "")}},
 			then: "g: t(t(start)) holds t inside itself, and a scope has no stack to come back by",
 		},
+		{
+			name: "a template that holds itself by a wildcard",
+			given: &seq.Grammar{Name: "g", Scopes: []string{"start", "t"}, Params: map[string]string{"t": "then"},
+				Rules: []seq.Rule{goes(x(1, "start", "a"), "t", "start"), goes(x(2, "t", "b"), "then", "")},
+				Any:   []seq.Any{{Scope: "t", Pattern: "a", Elem: elems(a, "a")[0], Goto: "t", Arg: "this", Line: 3}}},
+			then: "g: t(t(start)) holds t inside itself, and a scope has no stack to come back by",
+		},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			_, err := seq.Compile(c.given, a)
@@ -670,4 +677,17 @@ func TestAMachineNeedsATableWithAScope(t *testing.T) {
 	if want := `empty has no scope ""`; err == nil || err.Error() != want {
 		t.Errorf("NewMachine = %v; want %s", err, want)
 	}
+}
+
+func TestAnyReadsKeysAndNotDelays(t *testing.T) {
+	a := alphabet()
+	tab := compile(t, &seq.Grammar{Name: "g", Scopes: []string{"s"}, Delays: map[string]time.Duration{"T": time.Second},
+		Rules: []seq.Rule{rule(a, 1, "s", "x any", "other")}}, a)
+	m := seqtest.Machine(t, tab, "")
+
+	seqtest.Run(t, m, a, nil, []seqtest.Step{
+		{Key: "x", Taken: true, Pending: true},
+		{Key: "T", Pending: true},
+		{Key: "a", Taken: true, Fired: "other"},
+	})
 }

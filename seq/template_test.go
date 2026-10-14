@@ -102,3 +102,14 @@ func TestATemplateMayGoBackToItselfByItsParameter(t *testing.T) {
 		t.Errorf("the scopes are %q; want start t(start)", names)
 	}
 }
+
+func TestAWildcardOfEveryScopeHoldsWhereNoTemplateIsUsed(t *testing.T) {
+	a := seq.NewAlphabet([]string{"a", "b"})
+	g := &seq.Grammar{Name: "g", Scopes: []string{"start", "t"}, Params: map[string]string{"t": "then"},
+		Rules: []seq.Rule{goes(rule(a, 1, "t", "a", "x"), "then", "")},
+		Any:   []seq.Any{{Pattern: "b", Elem: elems(a, "b")[0], Action: "hush", Line: 2}}}
+	tab := compile(t, g, a)
+	m := seqtest.Machine(t, tab, "")
+
+	seqtest.Run(t, m, a, nil, []seqtest.Step{{Key: "b", Taken: true, Fired: "hush"}})
+}

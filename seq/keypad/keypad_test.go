@@ -261,6 +261,18 @@ func TestLinkNamesEachScopeByItsTree(t *testing.T) {
 	}
 }
 
+func TestLinkRefusesAnIncludeOfNoScopeOrTree(t *testing.T) {
+	dial := parse(t, "start:\n  1  do one\n", "dial.tree")
+	dial.Rules = append(dial.Rules, seq.Rule{Scope: "start", Include: "nowhere", Line: 3})
+	menu := parse(t, "start:\n  1  do one\n", "menu.tree")
+
+	_, err := Link(dial, menu)
+
+	if want := "dial:3: -> nowhere, and there is no such scope or tree"; err == nil || err.Error() != want {
+		t.Errorf("Link = %v; want %s", err, want)
+	}
+}
+
 func TestLinkSharesADelayTreesAgreeOn(t *testing.T) {
 	a := parse(t, "%delay T 1s\nstart:\n  1 T  do one\n", "a.tree")
 	b := parse(t, "%delay T 1s\nstart:\n  2 T  do two\n", "b.tree")
