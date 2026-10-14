@@ -17,7 +17,7 @@ start {
   "?"         emit opt
   ")"         emit rparen
   "-"         emit minus
-  "("         emit lparen    -> name
+  "("         emit lparen
   "["         emit lbrack    -> klass(start)
   quoted "i"  emit anycase
   quoted      emit text
