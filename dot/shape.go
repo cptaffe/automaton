@@ -25,9 +25,7 @@ func Shape(rs []Rule, name string) Graph {
 
 	for _, r := range rs {
 		for _, w := range gr.refs[r.Name] {
-			if e, ok := loop.edge(r.Name, w); ok {
-				g.Edges = append(g.Edges, e)
-			}
+			g.Edges = append(g.Edges, loop.edge(r.Name, w))
 		}
 	}
 
@@ -50,20 +48,17 @@ func (r Rule) node() Node {
 	return n
 }
 
-func (l loops) edge(from, to string) (Edge, bool) {
+func (l loops) edge(from, to string) Edge {
 	at := l.group[from]
 	e := Edge{From: quote(from, "n"), To: quote(to, "n")}
 
-	switch {
-	case at != 0 && l.group[to] == at:
+	if at != 0 && l.group[to] == at {
 		e.Class = "cycle"
 
 		if l.embeds[at] {
 			e.Class, e.Dashed = "cycle nest", true
 		}
-	case from == to:
-		return e, false
 	}
 
-	return e, true
+	return e
 }

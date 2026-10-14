@@ -55,13 +55,7 @@ func BuildWith[S Symbol](rules []Rule[S], classes *Classes[S]) (*DFA[S], error) 
 			return nil, fmt.Errorf("%s matches nothing at all, so it would never advance", r.Name)
 		}
 
-		if n.accept[end] == NoMatch {
-			n.accept[end] = Match(i + 1)
-		} else {
-			done := n.state()
-			n.eps(end, done)
-			n.accept[done] = Match(i + 1)
-		}
+		n.accept[end] = Match(i + 1)
 	}
 
 	return n.determinise(start, classes), nil

@@ -32,16 +32,9 @@ type Graph struct {
 
 	Compound bool
 
-	Ranks []Rank
-
 	Groups []Group
 	Nodes  []Node
 	Edges  []Edge
-}
-
-type Rank struct {
-	Kind string
-	IDs  []string
 }
 
 type Node struct {
@@ -55,10 +48,6 @@ type Node struct {
 
 	Twice bool
 
-	Size string
-
-	Bold bool
-
 	Flush bool
 }
 
@@ -68,13 +57,7 @@ type Edge struct {
 	Label  string
 	Class  string
 	Dashed bool
-	Dotted bool
-
-	Invis bool
-
-	Bold  bool
-	Width string
-	Loose bool
+	Loose  bool
 }
 
 type Group struct {

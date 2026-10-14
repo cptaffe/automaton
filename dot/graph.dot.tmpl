@@ -8,14 +8,6 @@ digraph {{ q .Name }} {
   labeljust=l
   label={{ flush . }}
 {{- end }}
-{{- range .Ranks }}
-
-  { rank={{ .Kind }}
-{{- range .IDs }}
-    {{ . }}
-{{- end }}
-  }
-{{- end }}
 {{- range .Groups }}
 
   subgraph cluster_{{ .ID }} {
@@ -36,12 +28,12 @@ digraph {{ q .Name }} {
   {{ template "node" . }}
 {{- end }}
 {{ range .Edges }}
-  {{ .From }} -> {{ .To }} [label={{ brk .Label }}, {{ .Paint }}{{ with .Class }}, class={{ printf "%q" . }}{{ end }}{{ if .Invis }}, style=invis{{ else if .Dashed }}, style=dashed{{ else if .Dotted }}, style=dotted{{ end }}{{ if .Bold }}, fontname="Helvetica-Bold"{{ end }}{{ with .Width }}, penwidth={{ . }}{{ end }}{{ if .Loose }}, constraint=false{{ end }}]
+  {{ .From }} -> {{ .To }} [label={{ brk .Label }}, {{ .Paint }}{{ with .Class }}, class={{ printf "%q" . }}{{ end }}{{ if .Dashed }}, style=dashed{{ end }}{{ if .Loose }}, constraint=false{{ end }}]
 {{- end }}
 }
 
 {{- define "node" -}}
-{{ .ID }} [label={{ if .Caption }}<<font point-size="7" color="#868e96">{{ html .Caption }}</font><br/>{{ html .Label }}>{{ else if .Flush }}{{ flush .Label }}{{ else }}{{ q .Label }}{{ end }}{{ with .Shape }}, shape={{ . }}{{ end }}, style="{{ with .Style }}{{ . }},{{ end }}filled", {{ .Paint }}{{ with .Class }}, class={{ printf "%q" . }}{{ end }}{{ with .Size }}, width={{ . }}{{ end }}{{ if .Bold }}, fontname="Helvetica-Bold"{{ end }}{{ if .Twice }}, peripheries=2{{ end }}]
+{{ .ID }} [label={{ if .Caption }}<<font point-size="7" color="#868e96">{{ html .Caption }}</font><br/>{{ html .Label }}>{{ else if .Flush }}{{ flush .Label }}{{ else }}{{ q .Label }}{{ end }}{{ with .Shape }}, shape={{ . }}{{ end }}, style="{{ with .Style }}{{ . }},{{ end }}filled", {{ .Paint }}{{ with .Class }}, class={{ printf "%q" . }}{{ end }}{{ if .Twice }}, peripheries=2{{ end }}]
 {{- end -}}
 
 {{- define "look" -}}
