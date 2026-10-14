@@ -13,18 +13,6 @@ import (
 	"github.com/cptaffe/automaton/lex"
 )
 
-func table(name string) (*unicode.RangeTable, bool) {
-	for _, from := range []map[string]*unicode.RangeTable{
-		unicode.Categories, unicode.Scripts, unicode.Properties,
-	} {
-		if t, ok := from[name]; ok {
-			return t, true
-		}
-	}
-
-	return nil, false
-}
-
 func predefined(bare bool) map[string]fa.Expr[rune] {
 	out := map[string]fa.Expr[rune]{"any": fa.Lit(fa.Span(0, utf8.MaxRune))}
 
@@ -237,15 +225,15 @@ func (p *parser) span(lo, hi string) fa.Set[rune] {
 }
 
 func (p *parser) category(name string) fa.Set[rune] {
-	t, ok := table(name)
+	s, ok := p.use(word{name, p.Line()}).Single()
 
 	if !ok {
-		p.FailAt(p.Line(), "%s is not a unicode category, script or property", name)
+		p.FailAt(p.Line(), "[:%s:] is not a set of runes", name)
 
 		return fa.Set[rune]{}
 	}
 
-	return fa.Category(t)
+	return s
 }
 
 func builtinNames(bare bool) []string {
