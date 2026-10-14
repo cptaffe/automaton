@@ -2,26 +2,86 @@ package fa_test
 
 import (
 	"math"
+	"reflect"
 	"testing"
 	"unicode"
 
 	"github.com/cptaffe/automaton/fa"
 )
 
-func TestASetNormalises(t *testing.T) {
+type ranges = []fa.Range[int]
+
+func TestUnionMergesRangesThatOverlapOrTouch(t *testing.T) {
 	for _, c := range []struct {
-		of   fa.Set[rune]
-		want string
+		name  string
+		given fa.Set[int]
+		when  fa.Set[int]
+		then  ranges
 	}{
-		{fa.Of(fa.Range[rune]{'a', 'c'}, fa.Range[rune]{'b', 'e'}), "a-e"},
-		{fa.Of(fa.Range[rune]{'a', 'b'}, fa.Range[rune]{'c', 'd'}), "a-d"},
-		{fa.Of(fa.Range[rune]{'c', 'd'}, fa.Range[rune]{'a', 'a'}), "acd"},
-		{fa.Text("*#0123456789"), "#*0-9"},
-		{fa.Of(fa.Range[rune]{'z', 'a'}), "nothing"},
+		{"overlapping", fa.Span(1, 5), fa.Span(3, 9), ranges{{1, 9}}},
+		{"sharing an endpoint", fa.Span(1, 5), fa.Span(5, 9), ranges{{1, 9}}},
+		{"adjacent", fa.Span(1, 4), fa.Span(5, 9), ranges{{1, 9}}},
+		{"apart", fa.Span(1, 3), fa.Span(5, 9), ranges{{1, 3}, {5, 9}}},
+		{"the later one first", fa.Span(5, 9), fa.Span(1, 5), ranges{{1, 9}}},
+		{"one inside the other", fa.Span(1, 9), fa.Span(3, 4), ranges{{1, 9}}},
+		{"filling a gap", fa.Of(fa.Range[int]{1, 2}, fa.Range[int]{6, 7}), fa.Span(3, 5), ranges{{1, 7}}},
+		{"a backward range", fa.Span(1, 5), fa.Span(9, 1), ranges{{1, 5}}},
+		{"onto nothing", fa.Set[int]{}, fa.One(3), ranges{{3, 3}}},
 	} {
-		if got := c.of.String(); got != c.want {
-			t.Errorf("%v is %q; want %q", c.of.Ranges(), got, c.want)
-		}
+		t.Run(c.name, func(t *testing.T) {
+			got := c.given.Union(c.when).Ranges()
+
+			if !reflect.DeepEqual(got, c.then) {
+				t.Errorf("%v with %v is %v; want %v", c.given.Ranges(), c.when.Ranges(), got, c.then)
+			}
+		})
+	}
+}
+
+func TestIntersectKeepsWhatBothSetsHold(t *testing.T) {
+	several := fa.Of(fa.Range[int]{1, 2}, fa.Range[int]{4, 5}, fa.Range[int]{7, 8})
+
+	for _, c := range []struct {
+		name  string
+		given fa.Set[int]
+		when  fa.Set[int]
+		then  ranges
+	}{
+		{"overlapping", fa.Span(1, 13), fa.Span(8, 26), ranges{{8, 13}}},
+		{"apart", fa.Span(1, 5), fa.Span(7, 9), nil},
+		{"several ranges inside a wider one", several, fa.Span(0, 10), ranges{{1, 2}, {4, 5}, {7, 8}}},
+		{"a wider range around several", fa.Span(0, 10), several, ranges{{1, 2}, {4, 5}, {7, 8}}},
+		{"interleaved", fa.Of(fa.Range[int]{1, 4}, fa.Range[int]{8, 12}), fa.Of(fa.Range[int]{3, 9}, fa.Range[int]{11, 20}), ranges{{3, 4}, {8, 9}, {11, 12}}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			got := c.given.Intersect(c.when).Ranges()
+
+			if !reflect.DeepEqual(got, c.then) {
+				t.Errorf("%v and %v share %v; want %v", c.given.Ranges(), c.when.Ranges(), got, c.then)
+			}
+		})
+	}
+}
+
+func TestWithoutRemovesWhatTheOtherSetHolds(t *testing.T) {
+	for _, c := range []struct {
+		name  string
+		given fa.Set[int]
+		when  fa.Set[int]
+		then  ranges
+	}{
+		{"overlapping", fa.Span(1, 13), fa.Span(8, 26), ranges{{1, 7}}},
+		{"holes", fa.Span(0, 10), fa.Of(fa.Range[int]{2, 3}, fa.Range[int]{6, 6}), ranges{{0, 1}, {4, 5}, {7, 10}}},
+		{"all of it", fa.Span(1, 5), fa.Span(0, 9), nil},
+		{"apart", fa.Span(1, 5), fa.Span(7, 9), ranges{{1, 5}}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			got := c.given.Without(c.when).Ranges()
+
+			if !reflect.DeepEqual(got, c.then) {
+				t.Errorf("%v without %v is %v; want %v", c.given.Ranges(), c.when.Ranges(), got, c.then)
+			}
+		})
 	}
 }
 
@@ -39,19 +99,40 @@ func TestNegateIsAnInverse(t *testing.T) {
 	}
 }
 
-func TestIntersectAndWithout(t *testing.T) {
-	a, b := fa.Span('a', 'm'), fa.Span('h', 'z')
-
-	if got := a.Intersect(b).String(); got != "h-m" {
-		t.Errorf("the overlap is %q", got)
+func TestCategoryKeepsEveryRuneOfAStride(t *testing.T) {
+	given := &unicode.RangeTable{
+		R16: []unicode.Range16{{Lo: 'a', Hi: 'g', Stride: 3}},
+		R32: []unicode.Range32{{Lo: 0x10000, Hi: 0x10008, Stride: 4}, {Lo: 0x20000, Hi: 0x20002, Stride: 1}},
 	}
 
-	if got := a.Without(b).String(); got != "a-g" {
-		t.Errorf("what is left is %q", got)
-	}
+	got := fa.Category(given).Ranges()
 
-	if got := a.Intersect(fa.Span('0', '9')); !got.Empty() {
-		t.Errorf("letters and digits share %s", got)
+	then := []fa.Range[rune]{{'a', 'a'}, {'d', 'd'}, {'g', 'g'}, {0x10000, 0x10000}, {0x10004, 0x10004}, {0x10008, 0x10008}, {0x20000, 0x20002}}
+
+	if !reflect.DeepEqual(got, then) {
+		t.Errorf("the category is %v; want %v", got, then)
+	}
+}
+
+func TestCategoryHoldsTheEndsOfUnicodeStrides(t *testing.T) {
+	for _, c := range []struct {
+		name  string
+		given *unicode.RangeTable
+		when  rune
+		then  bool
+	}{
+		{"the first upper case letter of a stride", unicode.Upper, 'Ā', true},
+		{"the last upper case letter of a stride", unicode.Upper, 'Ķ', true},
+		{"a lower case letter between upper ones", unicode.Upper, 'ķ', false},
+		{"the last lower case letter of a stride", unicode.Lower, 'ķ', true},
+		{"the end of a stride of 42", unicode.Lower, 'ß', true},
+		{"a rune inside a stride of 42", unicode.Lower, 'Ê', false},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			if got := fa.Category(c.given).Has(c.when); got != c.then {
+				t.Errorf("%U is in the category: %t; want %t", c.when, got, c.then)
+			}
+		})
 	}
 }
 
@@ -76,19 +157,29 @@ func TestThePartitionIsCoarsest(t *testing.T) {
 	}
 }
 
-func TestAnOverlapSplits(t *testing.T) {
-	c := fa.Partition([]fa.Set[rune]{fa.Span('a', 'm'), fa.Span('h', 'z')})
+func TestPartitionCutsSetsWhereTheyOverlap(t *testing.T) {
+	for _, c := range []struct {
+		name  string
+		given []fa.Set[rune]
+		then  []string
+	}{
+		{"apart", []fa.Set[rune]{fa.Span('a', 'z'), fa.Span('0', '9')}, []string{"0-9", "a-z"}},
+		{"overlapping", []fa.Set[rune]{fa.Span('a', 'm'), fa.Span('h', 'z')}, []string{"a-g", "h-m", "n-z"}},
+		{"one inside another", []fa.Set[rune]{fa.Span('a', 'z'), fa.One('q')}, []string{"a-pr-z", "q"}},
+		{"two ranges that nothing splits", []fa.Set[rune]{fa.Of(fa.Range[rune]{'a', 'c'}, fa.Range[rune]{'x', 'z'}), fa.Span('0', '9')}, []string{"0-9", "a-cx-z"}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			p := fa.Partition(c.given)
+			got := make([]string, 0, p.Len())
 
-	if c.Len() != 3 {
-		t.Fatalf("a-m and h-z make %d parts; want 3 (a-g, h-m, n-z)", c.Len())
-	}
+			for at := fa.Class(1); int(at) <= p.Len(); at++ {
+				got = append(got, p.Part(at).String())
+			}
 
-	if c.Of('a') == c.Of('h') || c.Of('h') == c.Of('n') || c.Of('a') == c.Of('n') {
-		t.Error("the three parts are not distinct")
-	}
-
-	if c.Of('a') != c.Of('g') || c.Of('h') != c.Of('m') || c.Of('n') != c.Of('z') {
-		t.Error("a part is split where nothing tells it apart")
+			if !reflect.DeepEqual(got, c.then) {
+				t.Errorf("the parts are %q; want %q", got, c.then)
+			}
+		})
 	}
 }
 
@@ -142,23 +233,59 @@ func TestUnicodeStaysTwoColumns(t *testing.T) {
 	}
 }
 
+func TestARuneSetPrintsAsALabel(t *testing.T) {
+	for _, c := range []struct {
+		name  string
+		given fa.Set[rune]
+		then  string
+	}{
+		{"a range", fa.Span('a', 'e'), "a-e"},
+		{"two runes side by side", fa.Span('a', 'b'), "ab"},
+		{"runes and ranges run together", fa.Text("*#0123456789"), "#*0-9"},
+		{"a lone rune before a pair", fa.Text("acd"), "acd"},
+		{"nothing", fa.Set[rune]{}, "nothing"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			if got := c.given.String(); got != c.then {
+				t.Errorf("%v prints as %q; want %q", c.given.Ranges(), got, c.then)
+			}
+		})
+	}
+}
+
 func TestALabelShowsWhatStandsAlone(t *testing.T) {
 	for _, c := range []struct {
-		in   rune
-		want string
+		name  string
+		given rune
+		then  string
 	}{
-		{'a', "a"},
-		{'\u6f22', "\u6f22"},
-		{'\u03b1', "\u03b1"},
-		{'\u00df', "\u00df"},
-		{'\u0301', "\\u0301"},
-		{'\u200d', "\\u200d"},
-		{'\n', "\\n"},
-		{' ', "\u2420"},
+		{"a latin letter", 'a', "a"},
+		{"a han character", '漢', "漢"},
+		{"a greek letter", 'α', "α"},
+		{"an eszett", 'ß', "ß"},
+		{"a combining accent", '́', "\\u0301"},
+		{"a zero width joiner", '‍', "\\u200d"},
+		{"the last rune of the basic plane", '￿', "\\uffff"},
+		{"a format rune past the basic plane", '\U000e0001', "\\u0e0001"},
+		{"a newline", '\n', "\\n"},
+		{"a tab", '\t', "\\t"},
+		{"a space", ' ', "␠"},
 	} {
-		if got := fa.One(c.in).String(); got != c.want {
-			t.Errorf("%U shows as %q; want %q", c.in, got, c.want)
-		}
+		t.Run(c.name, func(t *testing.T) {
+			if got := fa.One(c.given).String(); got != c.then {
+				t.Errorf("%U shows as %q; want %q", c.given, got, c.then)
+			}
+		})
+	}
+}
+
+func TestANumberSetPrintsItsRanges(t *testing.T) {
+	given := fa.Of(fa.Range[int]{1, 1}, fa.Range[int]{3, 4}, fa.Range[int]{6, 9})
+
+	got := given.String()
+
+	if then := "1 3..4 6..9"; got != then {
+		t.Errorf("the set prints as %q; want %q", got, then)
 	}
 }
 
