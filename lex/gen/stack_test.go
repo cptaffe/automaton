@@ -1,33 +1,13 @@
 package gen_test
 
 import (
-	"context"
 	"reflect"
-	"strings"
 	"testing"
 
-	"github.com/cptaffe/automaton/lex"
-	"github.com/cptaffe/automaton/lex/gen"
+	"github.com/cptaffe/automaton/lex/lextest"
 )
 
-func run(t *testing.T, spec *lex.Spec, src string) ([]string, error) {
-	t.Helper()
-	toks, err := lex.Lex(context.Background(), spec, strings.NewReader(src), spec.Scopes[0].Name)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var out []string
-	for tok := range toks {
-		if tok.Err != nil {
-			return out, tok.Err
-		}
-		out = append(out, spec.Token(tok.Kind)+"("+tok.Text+")")
-	}
-	return out, nil
-}
-
-func TestCommentsNest(t *testing.T) {
-	spec := build(t, `
+const comments = `
 start {
   "/*"    emit open -> comment(this)
   [a-z]+  emit word
@@ -39,19 +19,7 @@ comment(then) {
   "*/"     emit close -> then
   [a-z ]+  emit text
 }
-`)
-	got, err := run(t, spec, "a /* b /* c */ d */ e")
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := []string{"word(a)", "open(/*)", "text( b )", "open(/*)", "text( c )", "close(*/)", "text( d )", "close(*/)", "word(e)"}
-	if !reflect.DeepEqual(got, want) {
-		t.Errorf("got %v, want %v", got, want)
-	}
-	if _, err := run(t, spec, "a /* b /* c"); err == nil || !strings.Contains(err.Error(), "ends inside comment") {
-		t.Errorf("an unclosed comment ends with %v", err)
-	}
-}
+`
 
 const brackets = `
 start {
@@ -74,19 +42,7 @@ brack(then) {
 }
 `
 
-func TestMutualRecursion(t *testing.T) {
-	spec := build(t, brackets)
-	got, err := run(t, spec, "(x[x(x)x]x)x")
-	if err != nil || len(got) != 12 {
-		t.Errorf("got %v: %v", got, err)
-	}
-	if _, err := run(t, spec, "(]"); err == nil {
-		t.Error("a bracket closing a parenthesis was read")
-	}
-}
-
-func TestAParameterPassesThrough(t *testing.T) {
-	spec := build(t, `
+const passing = `
 start {
   "<"  emit open -> outer(this)
   "x"  emit x
@@ -102,16 +58,55 @@ inner(then) {
   "y"  emit y
   ">"  emit close -> then
 }
-`)
-	got, err := run(t, spec, "<<!y>>x")
-	want := []string{"open(<)", "open(<)", "bang(!)", "y(y)", "close(>)", "close(>)", "x(x)"}
-	if err != nil || !reflect.DeepEqual(got, want) {
-		t.Errorf("got %v: %v, want %v", got, err, want)
+`
+
+func TestAStackReturnsToWhereItWasPushed(t *testing.T) {
+	for _, c := range []struct {
+		name  string
+		given string
+		when  string
+		then  []string
+	}{
+		{"comments nest", comments, "a /* b /* c */ d */ e", []string{"word(a)", "open(/*)", "text( b )", "open(/*)", "text( c )", "close(*/)", "text( d )", "close(*/)", "word(e)"}},
+		{"two scopes recur through each other", brackets, "(x[x(x)x]x)x", []string{"lp(()", "x(x)", "lb([)", "x(x)", "lp(()", "x(x)", "rp())", "x(x)", "rb(])", "x(x)", "rp())", "x(x)"}},
+		{"a parameter passes through", passing, "<<!y>>x", []string{"open(<)", "open(<)", "bang(!)", "y(y)", "close(>)", "close(>)", "x(x)"}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			spec := lextest.Compile(t, c.given)
+
+			got, err := lextest.Read(t, spec, c.when)
+
+			if err != nil || !reflect.DeepEqual(got, c.then) {
+				t.Errorf("read %q, %v; want %q", got, err, c.then)
+			}
+		})
 	}
 }
 
-func TestATemplateThatDoesNotRecurIsStillCopied(t *testing.T) {
-	f, err := gen.Parse(strings.NewReader(`
+func TestAStackRefusesWhatTheScopeOnTopCannotRead(t *testing.T) {
+	for _, c := range []struct {
+		name  string
+		given string
+		when  string
+		then  string
+	}{
+		{"an unclosed comment", comments, "a /* b /* c", "the input ends inside comment"},
+		{"a bracket closing a parenthesis", brackets, "(]", "paren: no rule reads ']'"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			spec := lextest.Compile(t, c.given)
+
+			_, err := lextest.Read(t, spec, c.when)
+
+			if err == nil || err.Error() != c.then {
+				t.Errorf("the error is %v; want %q", err, c.then)
+			}
+		})
+	}
+}
+
+func TestATemplateThatDoesNotRecurIsCopiedWithoutAStack(t *testing.T) {
+	flat, _ := lextest.Build(t, `
 start {
   "a"  -> klass(this)
   "b"  -> other
@@ -124,20 +119,25 @@ other {
 klass(then) {
   "d"  -> then
 }
-`), "t.lex")
-	if err != nil {
-		t.Fatal(err)
-	}
-	flat, err := gen.Expand(f)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := flat.Instantiations(); len(got) != 2 {
-		t.Errorf("instantiations %v, want two copies", got)
-	}
+`)
+
+	moves := make([]string, 0, len(flat.Rules))
+
 	for _, r := range flat.Rules {
-		if r.Acts.Push != "" || r.Acts.Pop {
-			t.Errorf("%s:%d uses the stack", r.Scope, r.Line)
-		}
+		moves = append(moves, r.Scope+" "+r.Text+" => "+r.Acts.Goto+" "+r.Acts.Push)
+	}
+
+	if got, want := flat.Instantiations(), []string{"klass(start)", "klass(other)"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("instantiations %q; want %q", got, want)
+	}
+
+	if want := []string{
+		`klass(start) "d" -> then => start `,
+		`start "a" -> klass(this) => klass(start) `,
+		`klass(other) "d" -> then => other `,
+		`other "c" -> klass(this) => klass(other) `,
+		`start "b" -> other => other `,
+	}; !reflect.DeepEqual(moves, want) {
+		t.Errorf("the rules are\n%q\nwant\n%q", moves, want)
 	}
 }

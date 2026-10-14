@@ -1,31 +1,14 @@
 package gen_test
 
 import (
-	"strings"
+	"reflect"
 	"testing"
 
-	"github.com/cptaffe/automaton/lex/gen"
+	"github.com/cptaffe/automaton/lex/lextest"
 )
 
-func expand(t *testing.T, src string) *gen.Flat {
-	t.Helper()
-	f, err := gen.Parse(strings.NewReader(src), "x.lex")
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	got, err := gen.Expand(f)
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	return got
-}
-
-func TestAParameterisedScopeIsSpecialisedPerUse(t *testing.T) {
-	got := expand(t, `
+func TestAParameterisedScopeIsCopiedForEachArgument(t *testing.T) {
+	flat, _ := lextest.Build(t, `
 pattern {
   "["  -> klass(this)
   "a"  emit a  -> clause
@@ -41,64 +24,31 @@ clause {
 }
 `)
 
-	names := make([]string, 0, len(got.Scopes))
+	scopes := make([]string, 0, len(flat.Scopes))
 
-	for _, s := range got.Scopes {
-		names = append(names, s.Name)
+	for _, s := range flat.Scopes {
+		scopes = append(scopes, s.Name)
 	}
 
-	want := "pattern klass(pattern) klass(clause) clause"
+	moves := make([]string, 0, len(flat.Rules))
 
-	if joined := strings.Join(names, " "); joined != want {
-		t.Errorf("the scopes are %q; want %q", joined, want)
+	for _, r := range flat.Rules {
+		moves = append(moves, r.Scope+" "+r.Text+" => "+r.Acts.Goto)
 	}
 
-	for _, c := range []struct{ in, to string }{
-		{"klass(pattern)", "pattern"},
-		{"klass(clause)", "clause"},
-	} {
-		found := false
-
-		for _, r := range got.Rules {
-			if r.Scope == c.in && r.Acts.Emit == "rbrack" {
-				found = true
-
-				if r.Acts.Goto != c.to {
-					t.Errorf("%s comes out to %s; want %s", c.in, r.Acts.Goto, c.to)
-				}
-			}
-		}
-
-		if !found {
-			t.Errorf("%s has no rbrack rule", c.in)
-		}
-	}
-}
-
-func TestATemplateUsedWithNoArgumentIsRefused(t *testing.T) {
-	f, err := gen.Parse(strings.NewReader("start {\n  \"a\" -> klass\n}\n\nklass(then) {\n  \"b\" -> then\n}\n"), "x.lex")
-
-	if err != nil {
-		t.Fatal(err)
+	if want := []string{"pattern", "klass(pattern)", "klass(clause)", "clause"}; !reflect.DeepEqual(scopes, want) {
+		t.Errorf("the scopes are %q; want %q", scopes, want)
 	}
 
-	_, err = gen.Expand(f)
-
-	if err == nil || !strings.Contains(err.Error(), "used without one") {
-		t.Errorf("the refusal is %v", err)
-	}
-}
-
-func TestAPlainScopeGivenAnArgumentIsRefused(t *testing.T) {
-	f, err := gen.Parse(strings.NewReader("start {\n  \"a\" -> other(start)\n}\n\nother {\n  \"b\" emit b\n}\n"), "x.lex")
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	_, err = gen.Expand(f)
-
-	if err == nil || !strings.Contains(err.Error(), "takes no parameter") {
-		t.Errorf("the refusal is %v", err)
+	if want := []string{
+		`klass(pattern) "]" emit rbrack -> then => pattern`,
+		"klass(pattern) any ignore => ",
+		`pattern "[" -> klass(this) => klass(pattern)`,
+		`klass(clause) "]" emit rbrack -> then => clause`,
+		"klass(clause) any ignore => ",
+		`clause "b" emit b -> klass(clause) => klass(clause)`,
+		`pattern "a" emit a -> clause => clause`,
+	}; !reflect.DeepEqual(moves, want) {
+		t.Errorf("the rules are\n%q\nwant\n%q", moves, want)
 	}
 }

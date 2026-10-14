@@ -19,9 +19,12 @@ func TestABracketClassNamesSetsAsABareWordDoes(t *testing.T) {
 		{"a prelude name", "[[:alpha:]]+", "ab", []string{"x(ab)"}},
 		{"two names", "[[:alpha:][:digit:]]+", "a1", []string{"x(a1)"}},
 		{"a name beside runes", "[[:digit:]_]+", "1_2", []string{"x(1_2)"}},
+		{"a name beside a range", "[[:digit:]a-f]+", "9fa0", []string{"x(9fa0)"}},
+		{"a name in a negated class", "[^[:digit:]]+", "ab", []string{"x(ab)"}},
+		{"a name defined in the file", "[[:vowel:]]+", "ea", []string{"x(ea)"}},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			spec := lextest.Compile(t, "start {\n  "+c.given+"  emit x\n}\n")
+			spec := lextest.Compile(t, "vowel = [aeiou]\nstart {\n  "+c.given+"  emit x\n}\n")
 
 			got, err := lextest.Read(t, spec, c.when)
 
@@ -29,6 +32,16 @@ func TestABracketClassNamesSetsAsABareWordDoes(t *testing.T) {
 				t.Errorf("read %v, %v; want %v", got, err, c.then)
 			}
 		})
+	}
+}
+
+func TestANegatedBracketClassLeavesOutTheNamedSet(t *testing.T) {
+	spec := lextest.Compile(t, "start {\n  [^[:digit:]]+  emit x\n}\n")
+
+	got, err := lextest.Read(t, spec, "a1")
+
+	if want := []string{"x(a)"}; err == nil || err.Error() != "start: no rule reads '1'" || !reflect.DeepEqual(got, want) {
+		t.Errorf("read %q, %v; want %q and no rule reading '1'", got, err, want)
 	}
 }
 
