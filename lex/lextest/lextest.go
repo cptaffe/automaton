@@ -3,6 +3,7 @@ package lextest
 import (
 	"context"
 	"fmt"
+	"io"
 	"strings"
 	"testing"
 
@@ -10,38 +11,74 @@ import (
 	"github.com/cptaffe/automaton/lex/gen"
 )
 
+type File string
+
+const Default File = "t.lex"
+
 func Compile(t testing.TB, src string) *lex.Spec {
 	t.Helper()
 
-	spec, err := compile(src)
+	return Default.Compile(t, src)
+}
+
+func Error(src string) error { return Default.Error(src) }
+
+func Build(t testing.TB, src string) (*gen.Flat, []gen.Machine) {
+	t.Helper()
+
+	return Default.Build(t, src)
+}
+
+func (f File) Compile(t testing.TB, src string) *lex.Spec {
+	t.Helper()
+
+	spec, err := f.compile(src)
 
 	if err != nil {
-		t.Fatalf("compiling\n%s\n%v", src, err)
+		t.Fatalf("compiling %s\n%s\n%v", f, src, err)
 	}
 
 	return spec
 }
 
-func Error(src string) error {
-	_, err := compile(src)
+func (f File) Error(src string) error {
+	_, err := f.compile(src)
 
 	return err
 }
 
-func compile(src string) (*lex.Spec, error) {
-	f, err := gen.Parse(strings.NewReader(src), "t.lex")
+func (f File) Build(t testing.TB, src string) (*gen.Flat, []gen.Machine) {
+	t.Helper()
+
+	flat, ms, _, err := f.build(src)
 
 	if err != nil {
-		return nil, err
+		t.Fatalf("building %s\n%s\n%v", f, src, err)
 	}
 
-	flat, err := gen.Expand(f)
+	return flat, ms
+}
+
+func (f File) build(src string) (*gen.Flat, []gen.Machine, []string, error) {
+	parsed, err := gen.Parse(strings.NewReader(src), string(f))
 
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
+	}
+
+	flat, err := gen.Expand(parsed)
+
+	if err != nil {
+		return nil, nil, nil, err
 	}
 
 	ms, dead, err := gen.Build(flat)
+
+	return flat, ms, dead, err
+}
+
+func (f File) compile(src string) (*lex.Spec, error) {
+	flat, ms, dead, err := f.build(src)
 
 	if err != nil {
 		return nil, err
@@ -57,15 +94,16 @@ func compile(src string) (*lex.Spec, error) {
 func Read(t testing.TB, spec *lex.Spec, input string) ([]string, error) {
 	t.Helper()
 
-	toks, err := lex.Lex(context.Background(), spec, strings.NewReader(input), spec.Scopes[0].Name)
+	return ReadFrom(t, spec, spec.Scopes[0].Name, input)
+}
 
-	if err != nil {
-		t.Fatal(err)
-	}
+func ReadFrom(t testing.TB, spec *lex.Spec, scope, input string) ([]string, error) {
+	t.Helper()
 
-	var out []string
+	toks := TokensFrom(t, spec, scope, strings.NewReader(input))
+	out := make([]string, 0, len(toks))
 
-	for tok := range toks {
+	for _, tok := range toks {
 		if tok.Err != nil {
 			return out, tok.Err
 		}
@@ -74,4 +112,32 @@ func Read(t testing.TB, spec *lex.Spec, input string) ([]string, error) {
 	}
 
 	return out, nil
+}
+
+func Tokens(t testing.TB, spec *lex.Spec, in io.Reader) []lex.Token {
+	t.Helper()
+
+	return TokensFrom(t, spec, spec.Scopes[0].Name, in)
+}
+
+func TokensFrom(t testing.TB, spec *lex.Spec, scope string, in io.Reader) []lex.Token {
+	t.Helper()
+
+	ch, err := lex.Lex(context.Background(), spec, in, scope)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var out []lex.Token
+
+	for tok := range ch {
+		out = append(out, tok)
+
+		if tok.Err != nil {
+			break
+		}
+	}
+
+	return out
 }
