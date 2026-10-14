@@ -1,63 +1,6 @@
 package fa
 
-import (
-	"fmt"
-	"strconv"
-	"strings"
-)
-
-func Equivalent(next [][]int, sig []string) []int {
-	group := make([]int, len(next))
-	by := map[string]int{}
-	for s := range next {
-		group[s] = number(by, sig[s])
-	}
-	for {
-		by = map[string]int{}
-		again := make([]int, len(next))
-		var key strings.Builder
-		for s, row := range next {
-			key.Reset()
-			key.WriteString(strconv.Itoa(group[s]))
-			for _, to := range row {
-				key.WriteByte(' ')
-				key.WriteString(strconv.Itoa(group[to]))
-			}
-			again[s] = number(by, key.String())
-		}
-		if len(by) == count(group) {
-			break
-		}
-		group = again
-	}
-
-	out := make([]int, len(next))
-	at := map[int]int{group[0]: 0}
-	for s := range next {
-		if _, ok := at[group[s]]; !ok {
-			at[group[s]] = len(at)
-		}
-		out[s] = at[group[s]]
-	}
-	return out
-}
-
-func number(by map[string]int, key string) int {
-	n, ok := by[key]
-	if !ok {
-		n = len(by)
-		by[key] = n
-	}
-	return n
-}
-
-func count(group []int) int {
-	seen := map[int]bool{}
-	for _, g := range group {
-		seen[g] = true
-	}
-	return len(seen)
-}
+import "fmt"
 
 func Reachable(next [][]int, eq []int, starts ...int) []int {
 	out := make([]int, len(next))
