@@ -33,3 +33,26 @@ func TestAGraphIsWrittenAsLines(t *testing.T) {
 		t.Errorf("groups %q; want %q", groups, want)
 	}
 }
+
+func TestParseReadsADrawingAsGraphvizDoes(t *testing.T) {
+	given := []byte(`digraph "g" {
+  label="note \"q\"\l"
+  subgraph cluster_0 { label="box"; c [label="c"] }
+  a [label="say \"hi\"\nC:\\d"]
+  a -> c [label=" a-z "]
+}
+`)
+
+	got := dottest.Parse(t, given)
+
+	want := dottest.Drawing{
+		Name:  "g",
+		Note:  `note "q"\l`,
+		Boxes: []string{"box: c"},
+		Nodes: []string{"c c", `a say "hi"\nC:\\d`},
+		Edges: []string{"a - a-z -> c"},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("got %q; want %q", got, want)
+	}
+}
