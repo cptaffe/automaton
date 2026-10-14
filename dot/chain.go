@@ -3,9 +3,9 @@ package dot
 import "fmt"
 
 type run struct {
-	to    int
-	label string
-	n     int
+	move Move
+	to   int
+	n    int
 }
 
 func through(m Machine) map[int]bool {
@@ -35,14 +35,14 @@ func through(m Machine) map[int]bool {
 }
 
 func follow(m Machine, skip map[int]bool, mv Move) run {
-	got := run{to: mv.To, label: mv.Label, n: 1}
+	got := run{move: mv, to: mv.To, n: 1}
 	seen := map[int]bool{}
 
 	for skip[got.to] && !seen[got.to] {
 		seen[got.to] = true
 		next := m.Moves(got.to)
 
-		if len(next) != 1 || next[0].Label != got.label {
+		if len(next) != 1 || !next[0].like(mv) {
 			return got
 		}
 
@@ -85,4 +85,8 @@ func times(label string, n int) string {
 	}
 
 	return fmt.Sprintf("%s ×%d", label, n)
+}
+
+func (mv Move) like(o Move) bool {
+	return mv.Label == o.Label && mv.Class == o.Class && mv.Dashed == o.Dashed
 }

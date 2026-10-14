@@ -63,9 +63,11 @@ func (b box) edges() []Edge {
 	for _, s := range b.states() {
 		for _, r := range runs(b.m, b.skip, s) {
 			out = append(out, Edge{
-				From:  b.id(s),
-				To:    b.id(r.to),
-				Label: " " + times(r.label, r.n) + " ",
+				From:   b.id(s),
+				To:     b.id(r.to),
+				Label:  " " + times(r.move.Label, r.n) + " ",
+				Class:  r.move.Class,
+				Dashed: r.move.Dashed,
 			})
 		}
 	}

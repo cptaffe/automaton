@@ -101,6 +101,18 @@ func TestADrawingHasANodePerStateAndAnEdgePerMove(t *testing.T) {
 		accept: map[int]string{2: "end"},
 	}
 
+	styled := toy{
+		name:   "styled",
+		states: 4,
+		starts: []dot.Start{{Name: "s", State: 1}},
+		moves: map[int][]dot.Move{
+			1: {{To: 2, Label: "x", Class: "goto", Dashed: true}},
+			2: {{To: 3, Label: "x"}},
+			3: {{To: 4, Label: "x"}},
+		},
+		accept: map[int]string{4: "end"},
+	}
+
 	back := toy{
 		name:   "back",
 		states: 3,
@@ -186,6 +198,16 @@ func TestADrawingHasANodePerStateAndAnEdgePerMove(t *testing.T) {
 				groups: []string{"back: back (start), 2, 3 end (accept)"},
 				nodes:  []string{"back (start)", "2", "3 end (accept)"},
 				edges:  []string{"back -a-> 3 end", "2 -c-> back", "3 end -b-> 2"},
+			},
+		},
+		{
+			name:  "Whole keeps a move's class and folds only moves drawn alike",
+			given: []dot.Machine{styled},
+			when:  whole,
+			then: picture{
+				groups: []string{"styled: styled (start), 2, 4 end (accept)"},
+				nodes:  []string{"styled (start)", "2", "4 end (accept)"},
+				edges:  []string{"styled -x-> 2 (goto)", "2 -x ×2-> 4 end"},
 			},
 		},
 		{
