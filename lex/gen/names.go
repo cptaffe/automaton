@@ -1,7 +1,6 @@
 package gen
 
 import (
-	"sort"
 	"strings"
 	"unicode"
 
@@ -69,20 +68,4 @@ func spelling(name string) string {
 	}
 
 	return ""
-}
-
-func unicodeNames() []string {
-	out := make([]string, 0, len(unicode.Categories)+len(unicode.Properties))
-
-	for n := range unicode.Categories {
-		out = append(out, namespace+kebab(n))
-	}
-
-	for n := range unicode.Properties {
-		out = append(out, namespace+kebab(n))
-	}
-
-	sort.Strings(out)
-
-	return out
 }

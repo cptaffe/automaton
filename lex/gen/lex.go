@@ -32,6 +32,7 @@ type parser struct {
 
 	tok     int
 	tokText string
+	tokLine int
 
 	began, end int
 	reading    []byte
@@ -100,6 +101,7 @@ func (p *parser) lex(v *yySymType) (int, string) {
 		return 0, ""
 	}
 
+	p.tokLine = tok.At.Line
 	p.statement(tok)
 
 	switch tok.Kind {
@@ -193,4 +195,12 @@ func (p *parser) unexpected() string {
 	}
 
 	return fmt.Sprintf("%s cannot stand here", p.tokText)
+}
+
+func (p *parser) blame() int {
+	if p.tok == 0 {
+		return p.Line()
+	}
+
+	return p.tokLine
 }

@@ -92,7 +92,7 @@ func (p *parser) use(w word) fa.Expr[rune] {
 	if also := spelling(name); also != "" {
 		p.FailAt(w.line, "%s is written %s here", name, also)
 	} else {
-		p.FailAt(w.line, "%s is not defined yet; there is %s", name, known(p.bare))
+		p.FailAt(w.line, "%s is not defined yet; there is %s", name, p.known())
 	}
 
 	return fa.Empty[rune]()
@@ -250,8 +250,18 @@ func builtinNames(bare bool) []string {
 	return out
 }
 
-func known(bare bool) string {
-	return strings.Join(append(builtinNames(bare), unicodeNames()...), ", ")
+func (p *parser) known() string {
+	names := make([]string, 0, len(p.file.Defs))
+	seen := map[string]bool{}
+
+	for _, d := range p.file.Defs {
+		if !seen[d.Name] {
+			seen[d.Name] = true
+			names = append(names, d.Name)
+		}
+	}
+
+	return strings.Join(append(names, "or a unicode.* class"), ", ")
 }
 
 func Parse(r io.Reader, from string) (*File, error) { return parse(r, from, false) }
@@ -266,7 +276,7 @@ func parse(r io.Reader, from string, bare bool) (*File, error) {
 	}
 
 	if yyParse(p) != 0 && p.Err() == nil {
-		p.FailAt(p.Line(), "%s", p.unexpected())
+		p.FailAt(p.blame(), "%s", p.unexpected())
 	}
 
 	if err := p.Err(); err != nil {
