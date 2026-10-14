@@ -1,5 +1,5 @@
 part   = (alphabetic | digit | [_.])+
-mark   = any - alphabetic - digit - blank - [\n"{}#:]
+mark   = any \ alphabetic \ digit \ blank \ [\n"{}#:]
 chord  = part ("-" (part | mark))*
 ident  = (alphabetic | "_") (alphabetic | digit | "_")*
 quoted = "\"" [^"\n]* "\"" | "'" [^'\n]* "'"

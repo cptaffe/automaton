@@ -136,7 +136,7 @@ func (d machine) named(s fa.Set[rune]) (string, bool) {
 		if !s.Without(got).Empty() {
 			continue
 		}
-		say := def.Name + " - " + d.name(got.Without(s))
+		say := def.Name + " \\ " + d.name(got.Without(s))
 		if best == "" || len(say) < len(best) {
 			best = say
 		}

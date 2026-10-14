@@ -19,7 +19,7 @@ func label(s fa.Set[rune]) string {
 		return direct
 	}
 	left, all := spell(not)
-	away := "any - [" + left + "]"
+	away := "any \\ [" + left + "]"
 	switch {
 	case whole && !all:
 		return direct

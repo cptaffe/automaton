@@ -75,10 +75,10 @@ func TestADifferenceReadsWhatIsLeftHoweverItIsSpaced(t *testing.T) {
 		when  string
 		then  []string
 	}{
-		{"spaces on both sides", "alpha - [NX]", "abcNXX", []string{"word(abc)", "class(NXX)"}},
-		{"no spaces", "alpha-[NX]", "abcNXX", []string{"word(abc)", "class(NXX)"}},
-		{"a space after", "alpha- [NX]", "abcNXX", []string{"word(abc)", "class(NXX)"}},
-		{"a space before", "alpha -[NX]", "abcNXX", []string{"word(abc)", "class(NXX)"}},
+		{"spaces on both sides", `alpha \ [NX]`, "abcNXX", []string{"word(abc)", "class(NXX)"}},
+		{"no spaces", `alpha\[NX]`, "abcNXX", []string{"word(abc)", "class(NXX)"}},
+		{"a space after", `alpha\ [NX]`, "abcNXX", []string{"word(abc)", "class(NXX)"}},
+		{"a space before", `alpha \[NX]`, "abcNXX", []string{"word(abc)", "class(NXX)"}},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			spec := lextest.Compile(t, "plain = "+c.given+"\n\nstart {\n  plain+ emit word\n  [NX]+ emit class\n}\n")

@@ -35,9 +35,9 @@ func TestTheScannerSplitsALexFileIntoTokens(t *testing.T) {
 			[]string{"lbrack([)", "class([:unicode.nd:])", "class([:alpha:])", "rbrack(])", "emit(emit)", "name(c)", "newline(\n)"},
 		},
 		{
-			"a hyphen inside a word is part of the name and beside one is a minus",
-			"a-b = alpha-[x]\n",
-			[]string{"name(a-b)", "define(=)", "name(alpha)", "minus(-)", "lbrack([)", "text(x)", "rbrack(])", "newline(\n)"},
+			"a hyphen joins a name and a backslash takes one set from another",
+			"a-b = alpha\\[x]\n",
+			[]string{"name(a-b)", "define(=)", "name(alpha)", `minus(\)`, "lbrack([)", "text(x)", "rbrack(])", "newline(\n)"},
 		},
 		{
 			"every action of a rule",

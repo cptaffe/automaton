@@ -1,7 +1,7 @@
 key    = [0-9*#]
 class  = [NX]
 inner  = alphabetic | digit | "-"
-plain  = alphabetic - [NX]
+plain  = alphabetic \ [NX]
 ident  = inner* plain inner*
 
 start {

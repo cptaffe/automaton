@@ -164,7 +164,7 @@ func (p *parser) without(a, b fa.Expr[rune]) fa.Expr[rune] {
 	x, ok := a.Single()
 
 	if !ok {
-		p.FailAt(p.Line(), "the left of a - reads more than one rune, and a difference takes one set of runes from another")
+		p.FailAt(p.Line(), "the left of a \\ reads more than one rune, and a difference takes one set of runes from another")
 
 		return a
 	}
@@ -172,7 +172,7 @@ func (p *parser) without(a, b fa.Expr[rune]) fa.Expr[rune] {
 	y, ok := b.Single()
 
 	if !ok {
-		p.FailAt(p.Line(), "the right of a - reads more than one rune, and a difference takes one set of runes from another")
+		p.FailAt(p.Line(), "the right of a \\ reads more than one rune, and a difference takes one set of runes from another")
 
 		return a
 	}

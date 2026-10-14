@@ -35,7 +35,7 @@ func TestAPatternReadsWhatItSays(t *testing.T) {
 		{"an escape in a class", `[\]\-\n]+  emit x`, "]-\n", []string{"x(]-\n)"}},
 		{"a prelude name", "digit+  emit x", "042", []string{"x(042)"}},
 		{"any rune", "any  emit x", "é", []string{"x(é)"}},
-		{"what one set leaves of another", "(alpha - [aeiou])+  emit x\n  [aeiou]  emit v", "bcad", []string{"x(bc)", "v(a)", "x(d)"}},
+		{"what one set leaves of another", "(alpha \\ [aeiou])+  emit x\n  [aeiou]  emit v", "bcad", []string{"x(bc)", "v(a)", "x(d)"}},
 		{"the longest match", "\"if\"  emit kw\n  [a-z]+  emit word", "ifs", []string{"word(ifs)"}},
 		{"the first rule of two that read the same", "\"if\"  emit kw\n  [a-z]+  emit word", "if", []string{"kw(if)"}},
 		{"ignored text", "[a-z]+  emit word\n  \" \"  ignore", "a b", []string{"word(a)", "word(b)"}},
@@ -61,7 +61,7 @@ func TestAPatternRefusesWhatItDoesNotSay(t *testing.T) {
 	}{
 		{"a literal in any case is still that literal", `"org"i  emit x`, "orq", "start: no rule reads 'o'"},
 		{"a negated class", "[^a]  emit x", "a", "start: no rule reads 'a'"},
-		{"what one set leaves of another", "(alpha - [aeiou])+  emit x", "a", "start: no rule reads 'a'"},
+		{"what one set leaves of another", "(alpha \\ [aeiou])+  emit x", "a", "start: no rule reads 'a'"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			spec := lextest.Compile(t, "start {\n  "+c.given+"\n}\n")

@@ -16,5 +16,5 @@ lowercase   = unicode.ll | unicode.other-lowercase
 uppercase   = unicode.lu | unicode.other-uppercase
 
 not-ident   = unicode.pattern-syntax | unicode.pattern-white-space
-id-start    = (unicode.l | unicode.nl | unicode.other-id-start) - not-ident
-id-continue = (id-start | unicode.mn | unicode.mc | unicode.nd | unicode.pc | unicode.other-id-continue) - not-ident
+id-start    = (unicode.l | unicode.nl | unicode.other-id-start) \ not-ident
+id-continue = (id-start | unicode.mn | unicode.mc | unicode.nd | unicode.pc | unicode.other-id-continue) \ not-ident

@@ -1,6 +1,6 @@
 ident  = alpha alnum* (("-" | ".") alnum+)*
-quoted = "\"" ([^"\n] - [\\] | "\\" [^\n])* "\""
-inner  = any - [\]\^\-\n]
+quoted = "\"" ([^"\n] \ [\\] | "\\" [^\n])* "\""
+inner  = any \ [\]\^\-\n]
 
 start {
   ";" [^\n]*  ignore
@@ -16,13 +16,13 @@ start {
   "+"         emit plus
   "?"         emit opt
   ")"         emit rparen
-  "-"         emit minus
+  "\\"        emit minus
   "("         emit lparen
   "["         emit lbrack    -> klass(start)
   quoted "i"  emit anycase
   quoted      emit text
 
-  "\"" ([^"\n] - [\\] | "\\" [^\n])* "\\"?  emit unterminated
+  "\"" ([^"\n] \ [\\] | "\\" [^\n])* "\\"?  emit unterminated
 
   "emit"      emit emit      -> name
   "ignore"    emit ignore
