@@ -2,6 +2,7 @@
 package hotkey
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/cptaffe/automaton/seq"
@@ -16,11 +17,11 @@ import (
 	rule rule
 }
 
-%token <word> WORD STRING IDENT DELAY DOTS
+%token <word> WORD KEY STRING IDENT DELAY DOTS
 %token <str> TEXT
-%token NEWLINE COLON ARROW WHEN PEEK EQ NE MATCH AND OR NOT LPAREN RPAREN LBRACE RBRACE OPEN CLOSE
+%token NEWLINE COLON ARROW WHEN BAR STAR PLUS OPT SLASH MINUS EQ NE MATCH AND OR NOT LPAREN RPAREN LBRACE RBRACE OPEN CLOSE
 
-%type <pat> keys pattern
+%type <pat> pattern alt cat piece diff atom
 %type <str> goto_ block body text
 %type <cond> when_ expr term factor
 %type <rule> rule
@@ -56,7 +57,8 @@ when_:
 	;
 
 decl:
-	  DELAY WORD WORD NEWLINE   { yylex.(*lexer).delay($1.line, $2.text, $3.text) }
+	  DELAY WORD WORD NEWLINE         { yylex.(*lexer).delay($1.line, $2.text, $3.text) }
+	| DELAY WORD MINUS WORD NEWLINE   { yylex.(*lexer).delay($1.line, $2.text, "-"+$4.text) }
 	;
 
 rule:
@@ -65,13 +67,36 @@ rule:
 	;
 
 pattern:
-	  keys
-	| keys PEEK WORD   { $$ = pat{words: append($1.words, $3), line: $1.line, ahead: 1} }
+	  alt
+	| alt SLASH diff   { $$ = peek($1, $3) }
 	;
 
-keys:
-	  WORD        { $$ = pat{words: []word{$1}, line: $1.line} }
-	| keys WORD   { $$ = pat{words: append($1.words, $2), line: $1.line} }
+alt:
+	  cat
+	| alt BAR cat      { $$ = join('|', " | ", $1, $3) }
+	;
+
+cat:
+	  piece
+	| cat piece        { $$ = join('.', " ", $1, $2) }
+	;
+
+piece:
+	  diff
+	| diff STAR        { $$ = after('*', $1) }
+	| diff PLUS        { $$ = after('+', $1) }
+	| diff OPT         { $$ = after('?', $1) }
+	;
+
+diff:
+	  atom
+	| diff MINUS atom  { $$ = join('-', " - ", $1, $3) }
+	;
+
+atom:
+	  WORD                { $$ = leaf($1, $1.text) }
+	| KEY                 { $$ = leaf($1, fmt.Sprintf("%q", $1.text)) }
+	| LPAREN alt RPAREN   { $$ = group($2) }
 	;
 
 block:

@@ -307,23 +307,23 @@ func TestAnAmbiguousGrammarHasConflicts(t *testing.T) {
 		{
 			name:  "a key that another rule goes on from",
 			given: []seq.Rule{rule(a, 1, "s", "b", "x"), rule(a, 2, "s", "b c", "y")},
-			then:  []string{`g:1: "b" is complete, and b c can still follow -- end it with a delay, or peek at the key after it`},
+			then:  []string{`g:1: "b" is complete, and b c can still follow -- end it with a delay, or with / and the key after it`},
 		},
 		{
 			name:  "a key that a delay can follow",
 			given: []seq.Rule{rule(a, 1, "s", "a", "x"), rule(a, 2, "s", "a T", "y")},
-			then:  []string{`g:1: "a" is complete, and a T can still follow -- end it with a delay, or peek at the key after it`},
+			then:  []string{`g:1: "a" is complete, and a T can still follow -- end it with a delay, or with / and the key after it`},
 		},
 		{
 			name:  "a repeat at the end",
 			given: []seq.Rule{rule(a, 1, "s", "a+", "x")},
-			then:  []string{`g:1: "a+" is complete, and a+ can still follow -- end it with a delay, or peek at the key after it`},
+			then:  []string{`g:1: "a+" is complete, and a+ can still follow -- end it with a delay, or with / and the key after it`},
 		},
 		{
 			name:  "both kinds at once",
 			given: []seq.Rule{rule(a, 1, "s", "a", "x"), rule(a, 2, "s", "a", "y"), rule(a, 3, "s", "a b", "z")},
 			then: []string{
-				`g:1: "a" is complete, and a b can still follow -- end it with a delay, or peek at the key after it`,
+				`g:1: "a" is complete, and a b can still follow -- end it with a delay, or with / and the key after it`,
 				`g:2: "a" and "a" both finish here -- two rules, one key sequence`,
 			},
 		},

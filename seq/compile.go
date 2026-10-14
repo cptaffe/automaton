@@ -303,7 +303,7 @@ func (c *compiler) finish(s int, done, going []int) {
 		finished[e.origin] = acc
 		st.Accept = append(st.Accept, acc)
 		if len(live[e.origin]) > 0 {
-			c.conflict(acc.Line, "%q is complete, and %s can still follow -- end it with a delay, or peek at the key after it",
+			c.conflict(acc.Line, "%q is complete, and %s can still follow -- end it with a delay, or with / and the key after it",
 				acc.Pattern, strings.Join(live[e.origin], ", "))
 		}
 	}

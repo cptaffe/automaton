@@ -168,7 +168,7 @@ acme:
 
 A key no rule takes passes through, and an empty block takes a key and does
 nothing. Vim instead runs a binding that is complete and lets the next key go
-on: `control-x peek any { ... }` reads that key again after the rule fires.
+on: `control-x / any { ... }` reads that key again after the rule fires.
 `... any { }` in a scope keeps every key from the application while the scope
 is current.
 

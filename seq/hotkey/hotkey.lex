@@ -1,4 +1,6 @@
-key    = (any - blank - [\n{}#:])+
+part   = (alphabetic | digit | [_.])+
+mark   = any - alphabetic - digit - blank - [\n"{}#:]
+chord  = part ("-" (part | mark))*
 ident  = (alphabetic | "_") (alphabetic | digit | "_")*
 quoted = "\"" [^"\n]* "\"" | "'" [^'\n]* "'"
 
@@ -13,8 +15,16 @@ start {
   ":"                 emit colon
   "{"                 emit lbrace  -> block(this)
   "when"              emit when    -> cond
-  "peek"              emit peek
-  key                 emit word
+  "|"                 emit bar
+  "("                 emit lparen
+  ")"                 emit rparen
+  "*"                 emit star
+  "+"                 emit plus
+  "?"                 emit opt
+  "/"                 emit slash
+  "-"                 emit minus
+  "\"" [^"\n]+ "\""    emit key
+  chord               emit word
 }
 
 cond {

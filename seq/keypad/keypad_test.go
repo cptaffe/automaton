@@ -366,8 +366,8 @@ func TestAnAmbiguousPlanHasConflicts(t *testing.T) {
 		then  []string
 	}{
 		{name: "two rules of one key", given: "s:\n  1 do a\n  1 do b\n", then: []string{`t:3: "1" and "1" both finish here -- two rules, one key sequence`}},
-		{name: "a key another rule goes on from", given: "s:\n  1 do a\n  12 do b\n", then: []string{`t:2: "1" is complete, and 12 can still follow -- end it with a delay, or peek at the key after it`}},
-		{name: "a repeat at the end", given: "s:\n  1X+ do a\n", then: []string{`t:2: "1X+" is complete, and 1X+ can still follow -- end it with a delay, or peek at the key after it`}},
+		{name: "a key another rule goes on from", given: "s:\n  1 do a\n  12 do b\n", then: []string{`t:2: "1" is complete, and 12 can still follow -- end it with a delay, or with / and the key after it`}},
+		{name: "a repeat at the end", given: "s:\n  1X+ do a\n", then: []string{`t:2: "1X+" is complete, and 1X+ can still follow -- end it with a delay, or with / and the key after it`}},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			tab, err := Compile(parse(t, c.given, "t.tree"))

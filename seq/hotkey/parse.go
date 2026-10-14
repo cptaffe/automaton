@@ -30,10 +30,59 @@ type word struct {
 	line int
 }
 
+type node struct {
+	op   byte
+	w    word
+	kids []node
+}
+
 type pat struct {
-	words []word
-	line  int
-	ahead int
+	n    node
+	peek *node
+	line int
+	text string
+}
+
+func leaf(w word, text string) pat { return pat{n: node{w: w}, line: w.line, text: text} }
+
+func join(op byte, sep string, a, b pat) pat {
+	return pat{n: node{op: op, kids: []node{a.n, b.n}}, line: a.line, text: a.text + sep + b.text}
+}
+
+func after(op byte, a pat) pat {
+	return pat{n: node{op: op, kids: []node{a.n}}, line: a.line, text: a.text + string(op)}
+}
+
+func group(a pat) pat { a.text = "(" + a.text + ")"; return a }
+
+func peek(a, b pat) pat {
+	a.peek, a.text = &b.n, a.text+" / "+b.text
+	return a
+}
+
+func (n node) set() bool {
+	switch n.op {
+	case 0:
+		return true
+	case '|', '-':
+		for _, k := range n.kids {
+			if !k.set() {
+				return false
+			}
+		}
+		return true
+	}
+	return false
+}
+
+func (n node) words(out []word) []word {
+	if n.op == 0 {
+		return append(out, n.w)
+	}
+	for _, k := range n.kids {
+		out = k.words(out)
+	}
+	return out
 }
 
 type rule struct {
@@ -64,7 +113,13 @@ var kinds = map[int]int{
 	scan.TokColon:   COLON,
 	scan.TokArrow:   ARROW,
 	scan.TokWhen:    WHEN,
-	scan.TokPeek:    PEEK,
+	scan.TokBar:     BAR,
+	scan.TokStar:    STAR,
+	scan.TokPlus:    PLUS,
+	scan.TokOpt:     OPT,
+	scan.TokSlash:   SLASH,
+	scan.TokMinus:   MINUS,
+	scan.TokKey:     KEY,
 	scan.TokEq:      EQ,
 	scan.TokNe:      NE,
 	scan.TokMatch:   MATCH,
@@ -144,7 +199,7 @@ func (l *lexer) Lex(v *yySymType) int {
 			l.bare = false
 		}
 		text := tok.Text
-		if tok.Kind == scan.TokString {
+		if tok.Kind == scan.TokString || tok.Kind == scan.TokKey {
 			text = text[1 : len(text)-1]
 		}
 		v.word, v.str = word{text, tok.At.Line}, text
@@ -219,7 +274,7 @@ func (l *lexer) rule(r rule) {
 }
 
 func (l *lexer) anyRule(r rule) {
-	if len(r.keys.words) != 1 || r.keys.ahead > 0 {
+	if r.keys.peek != nil || !r.keys.n.set() {
 		l.FailAt(r.keys.line, "... takes one key")
 		return
 	}
@@ -246,7 +301,7 @@ type resolver struct {
 func (l *lexer) resolve(kb Keyboard) (*seq.Alphabet, error) {
 	r := &resolver{g: l.g, kb: kb}
 	for _, x := range append(append([]rule(nil), l.rules...), l.anys...) {
-		for _, w := range x.keys.words {
+		for _, w := range x.keys.words() {
 			r.key(w)
 		}
 	}
@@ -256,17 +311,15 @@ func (l *lexer) resolve(kb Keyboard) (*seq.Alphabet, error) {
 	r.alphabet()
 	for _, x := range l.rules {
 		g := &l.g.Rules[x.at]
-		cs := r.classes(x.keys)
-		n := len(cs) - x.keys.ahead
-		g.Expr = seq.Cat(cs[:n])
-		if x.keys.ahead > 0 {
-			g.Peek = cs[n]
+		g.Expr = r.expr(x.keys.n)
+		if x.keys.peek != nil {
+			g.Peek = r.expr(*x.keys.peek)
 		}
-		g.Pattern = x.keys.pattern()
+		g.Pattern = x.keys.text
 	}
 	for i, x := range l.anys {
-		l.g.Any[i].Elem = r.class(x.keys.words[0])
-		l.g.Any[i].Pattern = x.keys.words[0].text
+		l.g.Any[i].Elem = r.expr(x.keys.n)
+		l.g.Any[i].Pattern = x.keys.text
 	}
 	return r.a, nil
 }
@@ -315,23 +368,34 @@ func (r *resolver) class(w word) seq.Class {
 	return seq.Class{Syms: []seq.Sym{s}, Text: w.text}
 }
 
-func (r *resolver) classes(p pat) []seq.Expr {
-	out := make([]seq.Expr, 0, len(p.words))
-	for _, w := range p.words {
-		out = append(out, r.class(w))
+func (r *resolver) expr(n node) seq.Expr {
+	kids := make([]seq.Expr, 0, len(n.kids))
+	for _, k := range n.kids {
+		kids = append(kids, r.expr(k))
 	}
-	return out
+	switch n.op {
+	case '.':
+		return seq.Cat(kids)
+	case '|':
+		return seq.Alt(kids)
+	case '*':
+		return seq.Star{Of: kids[0]}
+	case '+':
+		return seq.Plus{Of: kids[0]}
+	case '?':
+		return seq.Opt{Of: kids[0]}
+	case '-':
+		return seq.Minus{From: kids[0], Take: kids[1]}
+	}
+	return r.class(n.w)
 }
 
-func (p pat) pattern() string {
-	var texts []string
-	for i, w := range p.words {
-		if i == len(p.words)-p.ahead {
-			texts = append(texts, "peek")
-		}
-		texts = append(texts, w.text)
+func (p pat) words() []word {
+	out := p.n.words(nil)
+	if p.peek != nil {
+		out = p.peek.words(out)
 	}
-	return strings.Join(texts, " ")
+	return out
 }
 
 func Canon(s string) (string, error) {

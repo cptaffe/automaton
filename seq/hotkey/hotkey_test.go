@@ -26,7 +26,7 @@ acme:
 	shift-command-b      { Lrefs }               # references
 	control-x control-s  { put }
 	control-x settle     { echo '}' {nested} }   # look
-	control-x peek any   { echo '}' {nested} }   # look
+	control-x / any   { echo '}' {nested} }   # look
 	command--            { Shrink }
 	command-m            -> mode
 
@@ -63,7 +63,7 @@ func TestParseReadsEachRule(t *testing.T) {
 		{"acme", "shift-command-b", "", "Lrefs", "", "references"},
 		{"acme", "control-x control-s", "", "put", "", ""},
 		{"acme", "control-x settle", "", "echo '}' {nested}", "", "look"},
-		{"acme", "control-x peek any", "", "echo '}' {nested}", "", "look"},
+		{"acme", "control-x / any", "", "echo '}' {nested}", "", "look"},
 		{"acme", "command--", "", "Shrink", "", ""},
 		{"acme", "command-m", "", "", "mode", ""},
 		{"mode", "j", "", "down", "", ""},
@@ -159,7 +159,7 @@ func TestABadFileDoesNotParse(t *testing.T) {
 		{
 			name:  "a key that another rule goes on from",
 			given: "a:\n\tcontrol-x { x }\n\tcontrol-x control-s { y }\n",
-			then:  `hotkeys:2: "control-x" is complete, and control-x control-s can still follow -- end it with a delay, or peek at the key after it`,
+			then:  `hotkeys:2: "control-x" is complete, and control-x control-s can still follow -- end it with a delay, or with / and the key after it`,
 		},
 		{
 			name:  "a key not on the keyboard",
@@ -494,10 +494,10 @@ mode:
 	}
 }
 
-func TestPeekReadsTheNextKeyAgain(t *testing.T) {
+func TestASlashReadsTheKeyAfterARuleAgain(t *testing.T) {
 	r := parse(t, `main:
 	control-x control-s	{ put }
-	control-x peek any	{ show }
+	control-x / any	{ show }
 	command-s		{ save }
 `)
 	m := seqtest.Machine(t, r.Table, "")
@@ -514,7 +514,108 @@ func TestPeekReadsTheNextKeyAgain(t *testing.T) {
 		{Key: "control-x", Taken: true, Fired: "show", Pending: true},
 	})
 
-	if got := r.Grammar.Rules[1].Pattern; got != "control-x peek any" {
+	if got := r.Grammar.Rules[1].Pattern; got != "control-x / any" {
 		t.Errorf("the pattern reads %q", got)
+	}
+}
+
+func TestAPatternIsAnExpressionOverKeys(t *testing.T) {
+	for _, c := range []struct {
+		name  string
+		given string
+		when  []seqtest.Step
+	}{
+		{
+			name:  "alternatives",
+			given: "main:\n\t(j | k) return { jump }\n",
+			when: []seqtest.Step{
+				{Key: "j", Taken: true, Pending: true},
+				{Key: "return", Taken: true, Fired: "jump"},
+				{Key: "k", Taken: true, Pending: true},
+				{Key: "return", Taken: true, Fired: "jump"},
+				{Key: "x"},
+			},
+		},
+		{
+			name:  "a repeated group",
+			given: "main:\n\t(j | k)+ return { jump }\n",
+			when: []seqtest.Step{
+				{Key: "j", Taken: true, Pending: true},
+				{Key: "k", Taken: true, Pending: true},
+				{Key: "j", Taken: true, Pending: true},
+				{Key: "return", Taken: true, Fired: "jump"},
+			},
+		},
+		{
+			name:  "an optional key",
+			given: "main:\n\tg g? return { top }\n",
+			when: []seqtest.Step{
+				{Key: "g", Taken: true, Pending: true},
+				{Key: "return", Taken: true, Fired: "top"},
+				{Key: "g", Taken: true, Pending: true},
+				{Key: "g", Taken: true, Pending: true},
+				{Key: "return", Taken: true, Fired: "top"},
+			},
+		},
+		{
+			name:  "every key but one",
+			given: "main:\n\tcontrol-x control-s { put }\n\tcontrol-x (any - escape) { }\n",
+			when: []seqtest.Step{
+				{Key: "control-x", Taken: true, Pending: true},
+				{Key: "j", Taken: true},
+				{Key: "control-x", Taken: true, Pending: true},
+				{Key: "control-s", Taken: true, Fired: "put"},
+				{Key: "control-x", Taken: true, Pending: true},
+				{Key: "escape"},
+			},
+		},
+		{
+			name:  "a punctuation key standing alone, quoted",
+			given: "main:\n\t\"/\" \"/\" { search }\n\tcommand-/ { comment }\n\tcommand-- { shrink }\n",
+			when: []seqtest.Step{
+				{Key: "/", Taken: true, Pending: true},
+				{Key: "/", Taken: true, Fired: "search"},
+				{Key: "command-/", Taken: true, Fired: "comment"},
+				{Key: "command--", Taken: true, Fired: "shrink"},
+			},
+		},
+		{
+			name:  "a delay whose name has a hyphen",
+			given: "%delay long-wait 2s\nmain:\n\tcontrol-x long-wait { show }\n",
+			when: []seqtest.Step{
+				{Key: "control-x", Taken: true, Pending: true},
+				{Key: "long-wait", Taken: true, Fired: "show"},
+			},
+		},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			r := parse(t, c.given)
+
+			m := seqtest.Machine(t, r.Table, "")
+
+			seqtest.Run(t, m, r.Table.Alpha, nil, c.when)
+		})
+	}
+}
+
+func TestAPatternRefusesWhatIsNotAnExpressionOverKeys(t *testing.T) {
+	for _, c := range []struct {
+		name  string
+		given string
+		then  string
+	}{
+		{"a hyphen that joins two keys", "main:\n\tj-k { x }\n", "hotkeys:2: j-k: no such key"},
+		{"a difference of a sequence", "main:\n\t(j k) - x { x }\n", "hotkeys:2: a sequence or repeat is not a set of keys"},
+		{"a wildcard of a sequence", "... (j k) { x }\nmain:\n\tx { x }\n", "hotkeys:1: ... takes one key"},
+		{"a group left open", "main:\n\t(j | k return { x }\n", "hotkeys:2: { cannot stand here"},
+		{"an operator with nothing before it", "main:\n\t| j { x }\n", "hotkeys:2: | cannot stand here"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			_, err := Parse(strings.NewReader(c.given), "hotkeys", nil)
+
+			if err == nil || err.Error() != c.then {
+				t.Errorf("got %v; want %s", err, c.then)
+			}
+		})
 	}
 }
