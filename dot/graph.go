@@ -93,21 +93,6 @@ func (g Graph) Bytes() ([]byte, error) {
 	return b.Bytes(), nil
 }
 
-func Ident(s string) string {
-	var b strings.Builder
-
-	for _, r := range s {
-		switch {
-		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9':
-			b.WriteRune(r)
-		default:
-			b.WriteByte('_')
-		}
-	}
-
-	return b.String()
-}
-
 func (n Node) Paint() string {
 	switch {
 	case slices.Contains(strings.Fields(n.Class), "start"):
