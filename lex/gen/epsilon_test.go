@@ -6,8 +6,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/cptaffe/automaton/internal/lextest"
 	"github.com/cptaffe/automaton/lex/gen"
-	"github.com/cptaffe/automaton/lex/lextest"
 )
 
 func TestAnEpsilonReadsAnotherScopesRulesWhereItStands(t *testing.T) {

@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cptaffe/automaton/internal/seqtest"
 	"github.com/cptaffe/automaton/seq"
-	"github.com/cptaffe/automaton/seq/seqtest"
 )
 
 func app(name string) seq.Cond {

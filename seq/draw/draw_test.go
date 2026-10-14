@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cptaffe/automaton/dot/dottest"
 	"github.com/cptaffe/automaton/fa"
+	"github.com/cptaffe/automaton/internal/dottest"
 	"github.com/cptaffe/automaton/seq"
 	"github.com/cptaffe/automaton/seq/draw"
 	"github.com/cptaffe/automaton/seq/hotkey"

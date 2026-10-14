@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/cptaffe/automaton/dot"
-	"github.com/cptaffe/automaton/dot/dottest"
+	"github.com/cptaffe/automaton/internal/dottest"
 	"github.com/cptaffe/automaton/lr"
 	"github.com/cptaffe/automaton/lr/draw"
 )

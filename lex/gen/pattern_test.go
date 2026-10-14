@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cptaffe/automaton/lex/lextest"
+	"github.com/cptaffe/automaton/internal/lextest"
 )
 
 func TestAPatternReadsWhatItSays(t *testing.T) {

@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/cptaffe/automaton/internal/lextest"
 	"github.com/cptaffe/automaton/lex"
-	"github.com/cptaffe/automaton/lex/lextest"
 )
 
 var errBroken = errors.New("broken")

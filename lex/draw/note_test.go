@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/cptaffe/automaton/fa"
-	"github.com/cptaffe/automaton/lex/lextest"
+	"github.com/cptaffe/automaton/internal/lextest"
 )
 
 func TestANoteIsTheSummaryUnderTheScopesName(t *testing.T) {

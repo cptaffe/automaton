@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/cptaffe/automaton/seq/seqtest"
+	"github.com/cptaffe/automaton/internal/seqtest"
 )
 
 func TestTheExampleRuns(t *testing.T) {

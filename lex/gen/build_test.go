@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cptaffe/automaton/lex/lextest"
+	"github.com/cptaffe/automaton/internal/lextest"
 )
 
 func TestACoveredRuleNamesWhatCoversIt(t *testing.T) {

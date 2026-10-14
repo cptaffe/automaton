@@ -4,9 +4,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/cptaffe/automaton/dot/dottest"
+	"github.com/cptaffe/automaton/internal/dottest"
+	"github.com/cptaffe/automaton/internal/lextest"
 	"github.com/cptaffe/automaton/lex/draw"
-	"github.com/cptaffe/automaton/lex/lextest"
 )
 
 const comments = `

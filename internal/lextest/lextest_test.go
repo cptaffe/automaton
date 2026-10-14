@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cptaffe/automaton/lex/lextest"
+	"github.com/cptaffe/automaton/internal/lextest"
 )
 
 const scopes = "start {\n  \"a\"  emit a -> other\n}\n\nother {\n  \"b\"  emit b -> start\n}\n"

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cptaffe/automaton/lex/lextest"
+	"github.com/cptaffe/automaton/internal/lextest"
 )
 
 func TestASourceIsRefusedWithItsFileLineAndReason(t *testing.T) {

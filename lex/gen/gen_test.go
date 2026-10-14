@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/cptaffe/automaton/internal/lextest"
 	"github.com/cptaffe/automaton/lex/gen"
-	"github.com/cptaffe/automaton/lex/lextest"
 )
 
 func TestAScopeDecidesWhichRulesRead(t *testing.T) {

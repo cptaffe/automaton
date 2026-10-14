@@ -3,8 +3,8 @@ package seq_test
 import (
 	"testing"
 
+	"github.com/cptaffe/automaton/internal/seqtest"
 	"github.com/cptaffe/automaton/seq"
-	"github.com/cptaffe/automaton/seq/seqtest"
 )
 
 func calls(t *testing.T) (*seq.Table, *seq.Alphabet) {

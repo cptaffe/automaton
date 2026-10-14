@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cptaffe/automaton/internal/lextest"
 	"github.com/cptaffe/automaton/lex"
-	"github.com/cptaffe/automaton/lex/lextest"
 )
 
 type drip struct {

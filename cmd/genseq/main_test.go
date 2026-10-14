@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/cptaffe/automaton/dot/dottest"
+	"github.com/cptaffe/automaton/internal/dottest"
 )
 
 const usage = `usage: genseq [-v] [-d dialect] [-dot dir] file...

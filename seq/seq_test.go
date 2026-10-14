@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/cptaffe/automaton/fa"
+	"github.com/cptaffe/automaton/internal/seqtest"
 	"github.com/cptaffe/automaton/seq"
-	"github.com/cptaffe/automaton/seq/seqtest"
 )
 
 func elems(a *seq.Alphabet, pattern string) []seq.Class {

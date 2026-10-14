@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/cptaffe/automaton/internal/seqtest"
 	"github.com/cptaffe/automaton/seq"
-	"github.com/cptaffe/automaton/seq/seqtest"
 )
 
 const plan = `%delay T 5s

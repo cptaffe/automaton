@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cptaffe/automaton/dot/dottest"
+	"github.com/cptaffe/automaton/internal/dottest"
 )
 
 func report(t *testing.T) string {

@@ -4,8 +4,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/cptaffe/automaton/internal/lextest"
 	"github.com/cptaffe/automaton/lex/gen/internal/scan"
-	"github.com/cptaffe/automaton/lex/lextest"
 )
 
 func TestTheScannerSplitsALexFileIntoTokens(t *testing.T) {
