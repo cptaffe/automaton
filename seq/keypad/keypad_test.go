@@ -335,7 +335,7 @@ func TestABadPlanDoesNotCompile(t *testing.T) {
 		{name: "a parameter given to a scope without one", given: []tree{{"t.tree", "s:\n  1 do a -> s(s)\n"}}, then: "t:2: s takes no parameter and was given s"},
 		{name: "a first scope that takes a parameter", given: []tree{{"t.tree", "w(x):\n  1 -> x\ns:\n  2 -> w(s)\n"}}, then: "t: w takes a parameter, and the first scope is where a machine begins"},
 		{name: "a symbol nothing declares", given: []tree{{"t.tree", "s:\n  1 nope do a\n"}}, then: `t:2: "nope" is in a pattern and nothing declares it`},
-		{name: "a wildcard that repeats", given: []tree{{"t.tree", "s:\n  ... 1+ do a\n"}}, then: "t:2: `... 1+` repeats, and a wildcard reads one key"},
+		{name: "a wildcard that repeats", given: []tree{{"t.tree", "s:\n  ... 1+ do a\n"}}, then: "t:2: `... 1+` reads more than one key, and a wildcard reads one"},
 		{name: "a hand-off to a tree that is not there", given: []tree{{"t.tree", dialTree}}, then: "t:3: -> dialing(menu), and there is no scope menu"},
 		{name: "two trees of one name", given: []tree{{"t.tree", "s:\n  1 do a\n"}, {"t/t.tree", "s:\n  2 do b\n"}}, then: "two trees are called t"},
 		{name: "a goto to no scope or tree", given: []tree{{"t.tree", "s:\n  1 do a -> v\n"}, {"u.tree", "start:\n  1 do b\n"}}, then: "t:2: -> v, and there is no such scope or tree"},

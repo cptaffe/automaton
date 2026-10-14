@@ -507,7 +507,7 @@ yydefault:
 	case 12:
 		yyDollar = yyS[yypt-5 : yypt+1]
 		{
-			yyVAL.rule = seq.Rule{Pattern: yyDollar[1].pat.text, Elems: yyDollar[1].pat.elems, Line: yyDollar[1].pat.line, Action: yyDollar[2].str, Goto: yyDollar[3].move.to, Arg: yyDollar[3].move.arg, When: yyDollar[4].cond}
+			yyVAL.rule = seq.Rule{Pattern: yyDollar[1].pat.text, Expr: seq.Cat(yyDollar[1].pat.elems), Line: yyDollar[1].pat.line, Action: yyDollar[2].str, Goto: yyDollar[3].move.to, Arg: yyDollar[3].move.arg, When: yyDollar[4].cond}
 		}
 	case 13:
 		yyDollar = yyS[yypt-6 : yypt+1]

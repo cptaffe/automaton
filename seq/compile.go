@@ -21,7 +21,7 @@ type Accept struct {
 	When    Cond
 	Pattern string
 	Line    int
-	Ahead   int
+	Peeks   bool
 	Operand *Slice
 }
 
@@ -110,24 +110,26 @@ func (c *compiler) bind(a *Alphabet) error {
 	g := c.g
 	c.rules = make([]Rule, len(g.Rules))
 	for i, r := range g.Rules {
-		r.Elems = append([]Class(nil), r.Elems...)
-		for j, el := range r.Elems {
-			got, err := resolve(el, a)
-			if err != nil {
-				return fmt.Errorf("%s:%d: %w", g.Name, r.Line, err)
-			}
-			r.Elems[j] = got
+		var err error
+		if r.Expr, err = bindAll(r.Expr, a); err == nil {
+			r.Peek, err = bindAll(r.Peek, a)
+		}
+		if err == nil && r.Peek != nil {
+			_, _, err = setOf(r.Peek)
+		}
+		if err != nil {
+			return fmt.Errorf("%s:%d: %w", g.Name, r.Line, err)
 		}
 		c.rules[i] = r
 	}
 	c.anys = make([]Any, len(g.Any))
 	for i, x := range g.Any {
-		got, err := resolve(x.Elem, a)
+		got, err := bind(x.Elem, a)
 		if err != nil {
 			return fmt.Errorf("%s:%d: %w", g.Name, x.Line, err)
 		}
-		if got.Many {
-			return fmt.Errorf("%s:%d: `... %s` repeats, and a wildcard reads one key", g.Name, x.Line, x.Pattern)
+		if _, _, err := setOf(got); err != nil {
+			return fmt.Errorf("%s:%d: `... %s` reads more than one key, and a wildcard reads one", g.Name, x.Line, x.Pattern)
 		}
 		x.Elem = got
 		c.anys[i] = x
@@ -136,14 +138,13 @@ func (c *compiler) bind(a *Alphabet) error {
 }
 
 func (c *compiler) partition(a *Alphabet) *fa.Classes[Sym] {
-	sets := []fa.Set[Sym]{fa.Span(0, Sym(a.Size()-1))}
+	sets := make([]fa.Set[Sym], 0, 1+len(c.rules)+len(c.anys))
+	sets = append(sets, fa.Span(0, Sym(a.Size()-1)))
 	for _, r := range c.rules {
-		for _, el := range r.Elems {
-			sets = append(sets, el.set())
-		}
+		sets = append(sets, exprSets(r.Expr, r.Peek)...)
 	}
 	for _, x := range c.anys {
-		sets = append(sets, x.Elem.set())
+		sets = append(sets, exprSets(x.Elem)...)
 	}
 	return fa.Partition(sets)
 }
@@ -203,7 +204,8 @@ func (c *compiler) scope(i int) error {
 	first := len(c.entries)
 	var wilds []wild
 	wildcard := func(x Any, when Cond) {
-		wilds = append(wilds, wild{x.Elem.set(), &Accept{Action: x.Action, Goto: c.index[x.Goto], When: when, Pattern: "... " + x.Pattern, Line: x.Line}})
+		keys, _, _ := setOf(x.Elem)
+		wilds = append(wilds, wild{keys, &Accept{Action: x.Action, Goto: c.index[x.Goto], When: when, Pattern: "... " + x.Pattern, Line: x.Line}})
 	}
 	var lower func(at string, when Cond, origin string)
 	lower = func(at string, when Cond, origin string) {
@@ -238,18 +240,11 @@ func (c *compiler) build(scope string, entries []entry, first int, wilds []wild)
 	t := c.t
 	rules := make([]fa.Rule[Sym], len(entries))
 	for i, e := range entries {
-		var es []fa.Expr[Sym]
-		for _, el := range e.rule.Elems {
-			x := fa.Lit(el.set())
-			if el.Any {
-				x = fa.Fallback(el.set())
-			}
-			if el.Many {
-				x = fa.Plus(x)
-			}
-			es = append(es, x)
+		x, err := lower(e.rule.whole())
+		if err != nil {
+			return 0, fmt.Errorf("%s:%d: %w", c.g.Name, e.rule.Line, err)
 		}
-		rules[i] = fa.Rule[Sym]{Expr: fa.Cat(es...), Name: e.rule.Pattern}
+		rules[i] = fa.Rule[Sym]{Expr: x, Name: e.rule.Pattern}
 	}
 	d, err := fa.BuildWith(rules, t.Classes)
 	if err != nil {
@@ -300,7 +295,7 @@ func (c *compiler) finish(s int, done, going []int) {
 	for _, i := range done {
 		e := c.entries[i]
 		acc := &Accept{Action: e.rule.Action, Goto: c.index[e.rule.Goto], When: e.when,
-			Pattern: e.rule.Pattern, Line: e.rule.Line, Ahead: e.rule.Ahead, Operand: operand(e.rule)}
+			Pattern: e.rule.Pattern, Line: e.rule.Line, Peeks: e.rule.Peek != nil, Operand: operand(e.rule)}
 		if was, ok := finished[e.origin]; ok {
 			c.conflict(acc.Line, "%q and %q both finish here -- two rules, one key sequence", was.Pattern, acc.Pattern)
 			continue
@@ -335,19 +330,23 @@ func resolve(c Class, a *Alphabet) (Class, error) {
 }
 
 func operand(r Rule) *Slice {
+	items, ok := sequence(r.Expr)
+	if !ok {
+		return nil
+	}
 	keys := 0
-	for _, c := range r.Elems {
-		if !c.IsEvent() {
+	for _, x := range items {
+		if !event(x) {
 			keys++
 		}
 	}
 	var o *Slice
 	at := 0
-	for _, c := range r.Elems {
-		if c.IsEvent() {
+	for _, x := range items {
+		if event(x) {
 			continue
 		}
-		if c.wide() {
+		if wide(x) {
 			if o == nil {
 				o = &Slice{From: at}
 			}
@@ -356,6 +355,43 @@ func operand(r Rule) *Slice {
 		at++
 	}
 	return o
+}
+
+func event(x Expr) bool {
+	c, ok := x.(Class)
+	return ok && c.IsEvent()
+}
+
+func wide(x Expr) bool {
+	if p, ok := x.(Plus); ok {
+		x = p.Of
+	}
+	c, ok := x.(Class)
+	return ok && c.wide()
+}
+
+func (r Rule) whole() Expr {
+	if r.Peek == nil {
+		return r.Expr
+	}
+	return Cat{r.Expr, r.Peek}
+}
+
+func bindAll(e Expr, a *Alphabet) (Expr, error) {
+	if e == nil {
+		return nil, nil
+	}
+	return bind(e, a)
+}
+
+func exprSets(es ...Expr) []fa.Set[Sym] {
+	var out []fa.Set[Sym]
+	for _, e := range es {
+		if e != nil {
+			out = sets(e, out)
+		}
+	}
+	return out
 }
 
 func signature(done, going []int, wilds []wild) string {

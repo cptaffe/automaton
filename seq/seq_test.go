@@ -11,9 +11,9 @@ import (
 	"github.com/cptaffe/automaton/seq"
 )
 
-func elems(a *seq.Alphabet, pattern string) []seq.Class {
+func elems(a *seq.Alphabet, pattern string) []seq.Expr {
 	fields := strings.Fields(pattern)
-	out := make([]seq.Class, 0, len(fields))
+	out := make([]seq.Expr, 0, len(fields))
 	for _, f := range fields {
 		text := f
 		many := strings.HasSuffix(f, "+")
@@ -33,14 +33,18 @@ func elems(a *seq.Alphabet, pattern string) []seq.Class {
 				c.Syms = append(c.Syms, s)
 			}
 		}
-		c.Many, c.Text = many, text
+		c.Text = text
+		if many {
+			out = append(out, seq.Plus{Of: c})
+			continue
+		}
 		out = append(out, c)
 	}
 	return out
 }
 
 func rule(a *seq.Alphabet, line int, scope, pattern, action string) seq.Rule {
-	return seq.Rule{Scope: scope, Pattern: pattern, Elems: elems(a, pattern), Action: action, Line: line}
+	return seq.Rule{Scope: scope, Pattern: pattern, Expr: seq.Cat(elems(a, pattern)), Action: action, Line: line}
 }
 
 func alphabet() *seq.Alphabet {
@@ -217,8 +221,8 @@ func TestAFailedWhenLeavesTheKey(t *testing.T) {
 
 func TestAPeekFiresThoughNothingReadsTheKeyAgain(t *testing.T) {
 	a := alphabet()
-	show := rule(a, 1, "s", "x any", "show")
-	show.Ahead = 1
+	show := rule(a, 1, "s", "x", "show")
+	show.Peek = elems(a, "any")[0]
 	tab := compile(t, &seq.Grammar{Name: "g", Scopes: []string{"s"}, Rules: []seq.Rule{show, rule(a, 2, "s", "a", "put")}}, a)
 	m := seqtest.Machine(t, tab, "")
 
@@ -342,8 +346,8 @@ func TestAnAmbiguousGrammarHasConflicts(t *testing.T) {
 func TestABadGrammarDoesNotCompile(t *testing.T) {
 	a := alphabet()
 	x := func(line int, scope, pattern string) seq.Rule { return rule(a, line, scope, pattern, "x") }
-	ahead := func(n int) seq.Rule { r := x(1, "s", "a"); r.Ahead = n; return r }
-	nope := []seq.Class{{Event: "nope", Text: "nope"}}
+	peeking := seq.Rule{Scope: "s", Pattern: "a", Peek: elems(a, "a")[0], Action: "x", Line: 1}
+	nope := []seq.Expr{seq.Class{Event: "nope", Text: "nope"}}
 	for _, c := range []struct {
 		name  string
 		given *seq.Grammar
@@ -438,12 +442,7 @@ func TestABadGrammarDoesNotCompile(t *testing.T) {
 		},
 		{
 			name:  "a rule that peeks at all its keys",
-			given: &seq.Grammar{Name: "g", Scopes: []string{"s"}, Rules: []seq.Rule{ahead(1)}},
-			then:  `g:1: "a" reads ahead of every key it has, and would never consume one`,
-		},
-		{
-			name:  "a rule that peeks behind",
-			given: &seq.Grammar{Name: "g", Scopes: []string{"s"}, Rules: []seq.Rule{ahead(-1)}},
+			given: &seq.Grammar{Name: "g", Scopes: []string{"s"}, Rules: []seq.Rule{peeking}},
 			then:  `g:1: "a" reads ahead of every key it has, and would never consume one`,
 		},
 		{
@@ -454,7 +453,7 @@ func TestABadGrammarDoesNotCompile(t *testing.T) {
 		},
 		{
 			name:  "an event nothing declares",
-			given: &seq.Grammar{Name: "g", Scopes: []string{"s"}, Rules: []seq.Rule{{Scope: "s", Pattern: "nope", Elems: nope, Action: "x", Line: 1}}},
+			given: &seq.Grammar{Name: "g", Scopes: []string{"s"}, Rules: []seq.Rule{{Scope: "s", Pattern: "nope", Expr: seq.Cat(nope), Action: "x", Line: 1}}},
 			then:  `g:1: "nope" is in a pattern and nothing declares it`,
 		},
 		{
@@ -465,7 +464,7 @@ func TestABadGrammarDoesNotCompile(t *testing.T) {
 		{
 			name:  "a wildcard that repeats",
 			given: &seq.Grammar{Name: "g", Scopes: []string{"s"}, Any: []seq.Any{{Scope: "s", Pattern: "a+", Elem: elems(a, "a+")[0], Action: "x", Line: 1}}},
-			then:  "g:1: `... a+` repeats, and a wildcard reads one key",
+			then:  "g:1: `... a+` reads more than one key, and a wildcard reads one",
 		},
 		{
 			name: "a template that holds itself",

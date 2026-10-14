@@ -77,7 +77,7 @@ func (m *Machine) from(at int, s Sym, env Env) (outcome, []*Accept) {
 	if n := m.t.States[at].Next[k]; n != 0 {
 		ready, going := m.ready(n, env), m.going(n, env)
 		switch {
-		case ready != nil && ready.Ahead > 0:
+		case ready != nil && ready.Peeks:
 			return reread, m.fire(ready)
 		case ready != nil:
 			return taken, m.fire(ready)

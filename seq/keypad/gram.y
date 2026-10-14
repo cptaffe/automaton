@@ -56,7 +56,7 @@ decl:
 rule:
 	  syms action goto_ when_ NEWLINE
 		{
-			$$ = seq.Rule{Pattern: $1.text, Elems: $1.elems, Line: $1.line, Action: $2, Goto: $3.to, Arg: $3.arg, When: $4}
+			$$ = seq.Rule{Pattern: $1.text, Expr: seq.Cat($1.elems), Line: $1.line, Action: $2, Goto: $3.to, Arg: $3.arg, When: $4}
 		}
 	;
 

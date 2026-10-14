@@ -76,13 +76,14 @@ type word struct {
 }
 
 type symv struct {
-	c    seq.Class
+	e    seq.Expr
+	text string
 	line int
 	lead string
 }
 
 type pat struct {
-	elems []seq.Class
+	elems []seq.Expr
 	line  int
 	text  string
 }
@@ -161,7 +162,7 @@ func (l *lexer) lex(v *yySymType) (int, string) {
 		case scan.TokDelay:
 			v.word = word{tok.Text, tok.At.Line, lead}
 		case scan.TokSym:
-			v.sym = symv{symbolOf(tok.Text), tok.At.Line, lead}
+			v.sym = symv{symbolOf(tok.Text), tok.Text, tok.At.Line, lead}
 			return SYM, tok.Text
 		case scan.TokDeclaration:
 			l.Fail("%s is not a declaration", tok.Text)
@@ -174,24 +175,28 @@ func (l *lexer) lex(v *yySymType) (int, string) {
 	}
 }
 
-func symbolOf(text string) seq.Class {
+func symbolOf(text string) seq.Expr {
 	syms, _ := classOf(rune(text[0]))
-	return seq.Class{Syms: syms, Many: strings.HasSuffix(text, "+"), Text: text}
+	c := seq.Class{Syms: syms, Text: strings.TrimSuffix(text, "+")}
+	if strings.HasSuffix(text, "+") {
+		return seq.Plus{Of: c}
+	}
+	return c
 }
 
 func one(s symv) pat {
-	return pat{elems: []seq.Class{s.c}, line: s.line, text: s.c.Text}
+	return pat{elems: []seq.Expr{s.e}, line: s.line, text: s.text}
 }
 
 func add(p pat, s symv) pat {
-	return pat{elems: append(p.elems, s.c), line: p.line, text: p.text + s.lead + s.c.Text}
+	return pat{elems: append(p.elems, s.e), line: p.line, text: p.text + s.lead + s.text}
 }
 
 func event(t word) symv {
 	if t.text == "any" {
-		return symv{seq.Class{Any: true, Text: t.text}, t.line, t.lead}
+		return symv{seq.Class{Any: true, Text: t.text}, t.text, t.line, t.lead}
 	}
-	return symv{seq.Class{Event: t.text, Text: t.text}, t.line, t.lead}
+	return symv{seq.Class{Event: t.text, Text: t.text}, t.text, t.line, t.lead}
 }
 
 func (l *lexer) unexpected() string {

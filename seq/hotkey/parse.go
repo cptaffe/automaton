@@ -256,8 +256,12 @@ func (l *lexer) resolve(kb Keyboard) (*seq.Alphabet, error) {
 	r.alphabet()
 	for _, x := range l.rules {
 		g := &l.g.Rules[x.at]
-		g.Elems = r.classes(x.keys)
-		g.Ahead = x.keys.ahead
+		cs := r.classes(x.keys)
+		n := len(cs) - x.keys.ahead
+		g.Expr = seq.Cat(cs[:n])
+		if x.keys.ahead > 0 {
+			g.Peek = cs[n]
+		}
 		g.Pattern = x.keys.pattern()
 	}
 	for i, x := range l.anys {
@@ -311,8 +315,8 @@ func (r *resolver) class(w word) seq.Class {
 	return seq.Class{Syms: []seq.Sym{s}, Text: w.text}
 }
 
-func (r *resolver) classes(p pat) []seq.Class {
-	out := make([]seq.Class, 0, len(p.words))
+func (r *resolver) classes(p pat) []seq.Expr {
+	out := make([]seq.Expr, 0, len(p.words))
 	for _, w := range p.words {
 		out = append(out, r.class(w))
 	}

@@ -62,19 +62,16 @@ func (c *checker) rule(r Rule) error {
 	if err := c.move(r.move()); err != nil {
 		return err
 	}
-	if err := c.body(r); err != nil {
-		return err
-	}
-	if r.Ahead < 0 || r.Ahead >= len(r.Elems) && r.Include == "" {
+	if r.Peek != nil && r.Expr == nil && r.Include == "" {
 		return fmt.Errorf("%s:%d: %q reads ahead of every key it has, and would never consume one", c.g.Name, r.Line, r.Pattern)
 	}
-	return nil
+	return c.body(r)
 }
 
 func (c *checker) body(r Rule) error {
 	g := c.g
 	switch {
-	case r.Include == "" && len(r.Elems) == 0:
+	case r.Include == "" && r.Expr == nil:
 		return fmt.Errorf("%s:%d: a rule with no pattern", g.Name, r.Line)
 	case r.Include == "":
 		return nil
@@ -82,7 +79,7 @@ func (c *checker) body(r Rule) error {
 		return fmt.Errorf("%s:%d: -> %s, and there is no such scope", g.Name, r.Line, r.Include)
 	case g.Params[r.Include] != "":
 		return fmt.Errorf("%s:%d: -> %s reads %s's rules here, and %s takes a parameter", g.Name, r.Line, r.Include, r.Include, r.Include)
-	case len(r.Elems) > 0 || r.Action != "" || r.Goto != "":
+	case r.Expr != nil || r.Action != "" || r.Goto != "":
 		return fmt.Errorf("%s:%d: -> %s with no pattern reads %s's rules, and does nothing else", g.Name, r.Line, r.Include, r.Include)
 	}
 	return nil

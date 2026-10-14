@@ -53,7 +53,6 @@ type Class struct {
 	Syms  []Sym
 	Event string
 	Any   bool
-	Many  bool
 	Text  string
 
 	sym  Sym
@@ -83,8 +82,8 @@ func (c Class) wide() bool {
 type Rule struct {
 	Scope   string
 	Pattern string
-	Elems   []Class
-	Ahead   int
+	Expr    Expr
+	Peek    Expr
 	Action  string
 	Goto    string
 	Arg     string
@@ -97,7 +96,7 @@ type Rule struct {
 type Any struct {
 	Scope   string
 	Pattern string
-	Elem    Class
+	Elem    Expr
 	Action  string
 	Goto    string
 	Arg     string
