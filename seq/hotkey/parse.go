@@ -126,6 +126,7 @@ func (l *lexer) Lex(v *yySymType) int {
 	for {
 		tok, ok := l.Next()
 		if !ok {
+			l.tok = 0
 			return 0
 		}
 		l.text, l.line = tok.Text, tok.At.Line

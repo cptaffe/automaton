@@ -187,6 +187,11 @@ func TestABadFileDoesNotParse(t *testing.T) {
 			then:  "hotkeys:3: the input ends inside block",
 		},
 		{
+			name:  "a prelude left open",
+			given: "%{\nfn x\n",
+			then:  "hotkeys:2: the file ends in the middle of a rule",
+		},
+		{
 			name:  "a rule above every scope",
 			given: "command-s { x }\n",
 			then:  "hotkeys:1: a rule above every scope; only a ... rule can be there",
