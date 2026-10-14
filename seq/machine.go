@@ -25,22 +25,32 @@ func (m *Machine) start() int { return m.t.Scopes[m.scope-1].Start }
 
 func (m *Machine) Pending() bool { return m.state != 0 }
 
+type outcome int
+
+const (
+	missed outcome = iota
+	taken
+	reread
+)
+
 func (m *Machine) Step(s Sym, env Env) (bool, []*Accept) {
-	if m.t.Alpha.IsEvent(s) {
-		return m.event(s, env)
-	}
-	if m.state != 0 {
-		if ok, f := m.from(m.state, s, env); ok || len(f) > 0 {
-			return ok, f
+	var fired []*Accept
+	for {
+		o, f := m.next(s, env)
+		fired = append(fired, f...)
+		if o != reread {
+			return o == taken, fired
 		}
-		m.Reset()
 	}
-	return m.from(m.start(), s, env)
 }
 
-func (m *Machine) event(s Sym, env Env) (bool, []*Accept) {
+func (m *Machine) next(s Sym, env Env) (outcome, []*Accept) {
 	if m.state != 0 {
-		return m.from(m.state, s, env)
+		o, f := m.from(m.state, s, env)
+		if o != missed || m.t.Alpha.IsEvent(s) {
+			return o, f
+		}
+		m.Reset()
 	}
 	return m.from(m.start(), s, env)
 }
@@ -62,28 +72,26 @@ func (m *Machine) Waits() []string {
 	return out
 }
 
-func (m *Machine) from(at int, s Sym, env Env) (bool, []*Accept) {
+func (m *Machine) from(at int, s Sym, env Env) (outcome, []*Accept) {
 	k := m.t.Classes.Of(s)
 	if n := m.t.States[at].Next[k]; n != 0 {
 		ready, going := m.ready(n, env), m.going(n, env)
 		switch {
 		case ready != nil && ready.Ahead > 0:
-			fired := m.fire(ready)
-			taken, more := m.Step(s, env)
-			return taken, append(fired, more...)
+			return reread, m.fire(ready)
 		case ready != nil:
-			return true, m.fire(ready)
+			return taken, m.fire(ready)
 		case going:
 			m.state = n
-			return true, nil
+			return taken, nil
 		}
 	}
 	for _, a := range m.t.States[at].Any[k] {
 		if Holds(a.When, env) {
-			return true, m.fire(a)
+			return taken, m.fire(a)
 		}
 	}
-	return false, nil
+	return missed, nil
 }
 
 func (m *Machine) ready(s int, env Env) *Accept {
