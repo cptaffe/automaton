@@ -1,6 +1,8 @@
 package fa_test
 
 import (
+	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 	"unicode"
@@ -18,12 +20,25 @@ func text(s string) fa.Expr[rune] {
 	return fa.Cat(e...)
 }
 
-func run(d *fa.DFA[rune], in string) (fa.Match, int) {
-	at, rule, upto := d.Start(), fa.NoMatch, 0
+func build[S fa.Symbol](t *testing.T, rules []fa.Rule[S]) *fa.DFA[S] {
+	t.Helper()
 
-	if a := d.Accept(at); a != fa.NoMatch {
-		rule = a
+	d, err := fa.Build(rules)
+
+	if err != nil {
+		t.Fatal(err)
 	}
+
+	return d
+}
+
+type read struct {
+	rule fa.Match
+	upto int
+}
+
+func run(d *fa.DFA[rune], in string) read {
+	at, got := d.Start(), read{d.Accept(d.Start()), 0}
 
 	for i, r := range in {
 		to := d.Step(at, r)
@@ -35,79 +50,93 @@ func run(d *fa.DFA[rune], in string) (fa.Match, int) {
 		at = to
 
 		if a := d.Accept(at); a != fa.NoMatch {
-			rule, upto = a, i+len(string(r))
+			got = read{a, i + len(string(r))}
 		}
 	}
 
-	return rule, upto
+	return got
 }
 
-func TestLongestMatchThenRuleOrder(t *testing.T) {
-	rules := []fa.Rule[rune]{
+func table[S fa.Symbol](d *fa.DFA[S]) []string {
+	out := make([]string, 0, d.States()+2)
+	out = append(out, fmt.Sprintf("start %d", d.Start()))
+
+	for s := fa.State(0); int(s) <= d.States(); s++ {
+		row := fmt.Sprintf("%d done %v going %v", s, d.Done(s), d.Going(s))
+
+		for c := fa.Class(1); int(c) <= d.Classes().Len(); c++ {
+			if to := d.Next(s, c); to != fa.NoState {
+				row += fmt.Sprintf(" %s->%d", d.Classes().Part(c), to)
+			}
+		}
+
+		out = append(out, row)
+	}
+
+	return out
+}
+
+func TestAMachineTakesTheLongestMatchThenTheFirstRule(t *testing.T) {
+	words := []fa.Rule[rune]{
 		{Name: "do", Expr: text("do")},
 		{Name: "name", Expr: fa.Plus(fa.Lit(fa.Span('a', 'z')))},
 	}
-
-	d, err := fa.Build(rules)
-
-	if err != nil {
-		t.Fatal(err)
+	arrows := []fa.Rule[rune]{
+		{Name: "arrow", Expr: text("->")},
+		{Name: "dash", Expr: text("-")},
+	}
+	digits := fa.Plus(fa.Lit(fa.Span('0', '9')))
+	numbers := []fa.Rule[rune]{
+		{Name: "float", Expr: fa.Cat(digits, text("."), digits)},
+		{Name: "int", Expr: digits},
 	}
 
 	for _, c := range []struct {
-		in   string
-		rule fa.Match
-		upto int
+		name  string
+		given []fa.Rule[rune]
+		when  string
+		then  read
 	}{
-		{"do", 1, 2},
-		{"double", 2, 6},
-		{"d", 2, 1},
-		{"doing", 2, 5},
+		{"a keyword", words, "do", read{1, 2}},
+		{"a name that begins with a keyword", words, "double", read{2, 6}},
+		{"a prefix of a keyword", words, "d", read{2, 1}},
+		{"a keyword and then more letters", words, "doing", read{2, 5}},
+		{"nothing any rule reads", words, "9", read{fa.NoMatch, 0}},
+		{"the longer of two rules", arrows, "->", read{1, 2}},
+		{"the shorter after reading on", arrows, "-x", read{2, 1}},
+		{"a float", numbers, "12.5", read{1, 4}},
+		{"an int after reading past a dot", numbers, "12.foo", read{2, 2}},
 	} {
-		rule, upto := run(d, c.in)
-
-		if rule != c.rule || upto != c.upto {
-			t.Errorf("%q matches rule %d upto %d; want %d upto %d", c.in, rule, upto, c.rule, c.upto)
-		}
+		t.Run(c.name, func(t *testing.T) {
+			if got := run(build(t, c.given), c.when); got != c.then {
+				t.Errorf("%q reads as %+v; want %+v", c.when, got, c.then)
+			}
+		})
 	}
 }
 
-func TestItReadsPastTheMatchAndReturns(t *testing.T) {
-	d, err := fa.Build([]fa.Rule[rune]{
-		{Name: "arrow", Expr: text("->")},
-		{Name: "dash", Expr: text("-")},
-	})
+func TestOptReadsItsBodyOrNothing(t *testing.T) {
+	sign := []fa.Rule[rune]{{Name: "number", Expr: fa.Cat(fa.Opt(fa.Lit(fa.One('-'))), fa.Plus(fa.Lit(fa.Span('0', '9'))))}}
+	prefix := []fa.Rule[rune]{{Name: "word", Expr: fa.Cat(fa.Opt(text("ab")), text("c"))}}
 
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if rule, upto := run(d, "->"); rule != 1 || upto != 2 {
-		t.Errorf(`"->" is rule %d upto %d; want arrow upto 2`, rule, upto)
-	}
-
-	if rule, upto := run(d, "-x"); rule != 2 || upto != 1 {
-		t.Errorf(`"-x" is rule %d upto %d; want dash upto 1, having read the x`, rule, upto)
-	}
-}
-
-func TestTheOverrunIsUnbounded(t *testing.T) {
-	digits := fa.Plus(fa.Lit(fa.Span('0', '9')))
-	d, err := fa.Build([]fa.Rule[rune]{
-		{Name: "float", Expr: fa.Cat(digits, text("."), digits)},
-		{Name: "int", Expr: digits},
-	})
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if rule, upto := run(d, "12.5"); rule != 1 || upto != 4 {
-		t.Errorf(`"12.5" is rule %d upto %d; want float upto 4`, rule, upto)
-	}
-
-	if rule, upto := run(d, "12.foo"); rule != 2 || upto != 2 {
-		t.Errorf(`"12.foo" is rule %d upto %d; want int upto 2`, rule, upto)
+	for _, c := range []struct {
+		name  string
+		given []fa.Rule[rune]
+		when  string
+		then  read
+	}{
+		{"without the sign", sign, "5", read{1, 1}},
+		{"with the sign", sign, "-5", read{1, 2}},
+		{"the sign twice", sign, "--5", read{fa.NoMatch, 0}},
+		{"without the prefix", prefix, "c", read{1, 1}},
+		{"with the prefix", prefix, "abc", read{1, 3}},
+		{"half the prefix", prefix, "ac", read{fa.NoMatch, 0}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			if got := run(build(t, c.given), c.when); got != c.then {
+				t.Errorf("%q reads as %+v; want %+v", c.when, got, c.then)
+			}
+		})
 	}
 }
 
@@ -117,14 +146,10 @@ func TestARuleCoveredEverywhereIsReported(t *testing.T) {
 		{Name: "do", Expr: text("do")},
 	}
 
-	d, err := fa.Build(rules)
+	got := build(t, rules).Unreachable(rules)
 
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if got := d.Unreachable(rules); len(got) != 1 || got[0] != "do" {
-		t.Errorf("the dead rules are %v; `name` is written first and covers `do`", got)
+	if then := []string{"do"}; !reflect.DeepEqual(got, then) {
+		t.Errorf("the dead rules are %v; want %v, as name is written first and covers do", got, then)
 	}
 }
 
@@ -134,13 +159,9 @@ func TestALiveRuleIsNotReported(t *testing.T) {
 		{Name: "name", Expr: fa.Plus(fa.Lit(fa.Span('a', 'z')))},
 	}
 
-	d, err := fa.Build(rules)
+	got := build(t, rules).Unreachable(rules)
 
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if got := d.Unreachable(rules); len(got) != 0 {
+	if len(got) != 0 {
 		t.Errorf("the dead rules are %v; both are reachable", got)
 	}
 }
@@ -153,78 +174,84 @@ func TestARuleThatMatchesNothingIsRefused(t *testing.T) {
 	}
 }
 
+func TestClassesThatSplitASetAreRefused(t *testing.T) {
+	given := fa.Partition([]fa.Set[rune]{fa.Span('a', 'm'), fa.Span('h', 'z')})
+
+	_, err := fa.BuildWith([]fa.Rule[rune]{{Name: "middle", Expr: fa.Lit(fa.Span('d', 'p'))}}, given)
+
+	if err == nil || !strings.Contains(err.Error(), "the classes split d-p") {
+		t.Errorf("the refusal is %v", err)
+	}
+}
+
 func TestStarDoesNotDuplicateItsBody(t *testing.T) {
-	d, err := fa.Build([]fa.Rule[rune]{
+	d := build(t, []fa.Rule[rune]{
 		{Name: "word", Expr: fa.Plus(fa.Lit(fa.Span('a', 'z')))},
 	})
 
-	if err != nil {
-		t.Fatal(err)
+	got := table(d)
+
+	then := []string{
+		"start 1",
+		"0 done [] going []",
+		"1 done [] going [1] a-z->2",
+		"2 done [1] going [1] a-z->2",
 	}
 
-	if d.States() != 2 {
-		t.Errorf("[a-z]+ makes %d states; want 2:\n%s", d.States(), d)
+	if !reflect.DeepEqual(got, then) {
+		t.Errorf("[a-z]+ is\n%s\nwant\n%s", strings.Join(got, "\n"), strings.Join(then, "\n"))
 	}
 }
 
 func TestMinimisingMergesStatesNothingTellsApart(t *testing.T) {
-	rules := []fa.Rule[rune]{
+	d := build(t, []fa.Rule[rune]{
 		{Name: "word", Expr: fa.Alt(text("ab"), text("cb"))},
+	})
+
+	full, small := table(d), table(d.Minimise())
+
+	if then := []string{
+		"start 1",
+		"0 done [] going []",
+		"1 done [] going [1] a->2 c->4",
+		"2 done [] going [1] b->3",
+		"3 done [1] going []",
+		"4 done [] going [1] b->5",
+		"5 done [1] going []",
+	}; !reflect.DeepEqual(full, then) {
+		t.Errorf("ab|cb is\n%s\nwant\n%s", strings.Join(full, "\n"), strings.Join(then, "\n"))
 	}
 
-	d, err := fa.Build(rules)
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if d.States() != 5 {
-		t.Fatalf("the reachable machine has %d states; want 5:\n%s", d.States(), d)
-	}
-
-	m := d.Minimise()
-
-	if m.States() != 3 {
-		t.Errorf("the minimal machine has %d states; want 3:\n%s", m.States(), m)
-	}
-
-	for _, c := range []struct {
-		in   string
-		want fa.Match
-	}{{"ab", 1}, {"cb", 1}, {"ax", fa.NoMatch}, {"b", fa.NoMatch}} {
-		rule, _ := run(m, c.in)
-
-		if rule != c.want {
-			t.Errorf("minimised, %q is rule %d; want %d", c.in, rule, c.want)
-		}
+	if then := []string{
+		"start 1",
+		"0 done [] going []",
+		"1 done [] going [1] a->2 c->2",
+		"2 done [] going [1] b->3",
+		"3 done [1] going []",
+	}; !reflect.DeepEqual(small, then) {
+		t.Errorf("ab|cb minimised is\n%s\nwant\n%s", strings.Join(small, "\n"), strings.Join(then, "\n"))
 	}
 }
 
 func TestMinimisingKeepsRulesApart(t *testing.T) {
-	rules := []fa.Rule[rune]{
+	d := build(t, []fa.Rule[rune]{
 		{Name: "ab", Expr: text("ab")},
 		{Name: "ac", Expr: text("ac")},
+	})
+
+	got := table(d.Minimise())
+
+	then := []string{
+		"start 1",
+		"0 done [] going []",
+		"1 done [] going [1 2] a->2",
+		"2 done [] going [1 2] b->3 c->4",
+		"3 done [1] going []",
+		"4 done [2] going []",
 	}
 
-	d, err := fa.Build(rules)
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	m := d.Minimise()
-
-	if got := m.States(); got != d.States() {
-		t.Errorf("minimising took %d states to %d; the two accepts are distinct", d.States(), got)
-	}
-
-	for _, c := range []struct {
-		in   string
-		want fa.Match
-	}{{"ab", 1}, {"ac", 2}} {
-		if rule, _ := run(m, c.in); rule != c.want {
-			t.Errorf("minimised, %q is rule %d; want %d", c.in, rule, c.want)
-		}
+	if !reflect.DeepEqual(got, then) {
+		t.Errorf("ab and ac minimised are\n%s\nwant\n%s", strings.Join(got, "\n"), strings.Join(then, "\n"))
 	}
 }
 
@@ -232,21 +259,17 @@ func TestAUnicodeRuleStaysSmall(t *testing.T) {
 	letter := fa.Lit(fa.Category(unicode.L))
 	digit := fa.Lit(fa.Category(unicode.Nd))
 
-	d, err := fa.Build([]fa.Rule[rune]{
+	d := build(t, []fa.Rule[rune]{
 		{Name: "name", Expr: fa.Cat(letter, fa.Star(fa.Alt(letter, digit)))},
 		{Name: "number", Expr: fa.Plus(digit)},
 	})
-
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	if d.Classes().Len() != 2 {
 		t.Errorf("the alphabet is %d classes; letters and digits are two", d.Classes().Len())
 	}
 
-	if d.States() > 6 {
-		t.Errorf("the machine has %d states for two rules over all of unicode:\n%s", d.States(), d)
+	if d.States() != 4 {
+		t.Errorf("the machine has %d states for two rules over all of unicode; want 4", d.States())
 	}
 
 	if at := d.Step(d.Start(), '漢'); at == fa.NoState || d.Accept(at) != 1 {
@@ -258,70 +281,64 @@ func TestAUnicodeRuleStaysSmall(t *testing.T) {
 	}
 }
 
-func TestTheTableHasNoEmptyTransitions(t *testing.T) {
-	d, err := fa.Build([]fa.Rule[rune]{
+func TestStringListsEachStateWithItsAcceptAndMoves(t *testing.T) {
+	d := build(t, []fa.Rule[rune]{
+		{Name: "num", Expr: fa.Plus(fa.Lit(fa.Span('0', '9')))},
 		{Name: "word", Expr: fa.Star(fa.Alt(
 			fa.Lit(fa.Span('a', 'b')),
 			fa.Lit(fa.Span('0', '9')),
 		))},
 	})
 
-	if err != nil {
-		t.Fatal(err)
+	got := d.String()
+
+	if then := "1 accept 2 0-9->2 ab->3\n2 accept 1 0-9->2 ab->3\n3 accept 2 0-9->3 ab->3\n"; got != then {
+		t.Errorf("the table is\n%s\nwant\n%s", got, then)
 	}
-
-	out := d.String()
-
-	if strings.Contains(out, "nothing->") {
-		t.Errorf("the table holds an edge that reads nothing:\n%s", out)
-	}
-
-	for s := fa.State(1); int(s) <= d.States(); s++ {
-		for c := fa.Class(1); int(c) <= d.Classes().Len(); c++ {
-			if at := d.Next(s, c); at != fa.NoState && d.Classes().Part(c).Empty() {
-				t.Errorf("state %d leaves on an empty class to %d", s, at)
-			}
-		}
-	}
-
-	t.Logf("star of an alternation, as a table:\n%s", out)
 }
 
-func TestAStateKnowsItsRules(t *testing.T) {
+func TestAStateKnowsWhichRulesAreDoneAndWhichGoOn(t *testing.T) {
 	one := func(x uint16) fa.Expr[uint16] { return fa.Lit(fa.One(x)) }
-	d, err := fa.Build([]fa.Rule[uint16]{
+	d := build(t, []fa.Rule[uint16]{
 		{Name: "a", Expr: one(1)},
 		{Name: "ab", Expr: fa.Cat(one(1), one(2))},
 		{Name: "a+", Expr: fa.Plus(one(1))},
 	})
-	if err != nil {
-		t.Fatal(err)
+
+	got := table(d)
+
+	then := []string{
+		"start 1",
+		"0 done [] going []",
+		"1 done [] going [1 2 3] 1->2",
+		"2 done [1 3] going [2 3] 1->3 2->4",
+		"3 done [3] going [3] 1->3",
+		"4 done [2] going []",
 	}
-	at := d.Step(d.Start(), 1)
-	if got := d.Done(at); len(got) != 2 || got[0] != 1 || got[1] != 3 {
-		t.Errorf("after 1, done is %v; want a and a+", got)
-	}
-	if got := d.Going(at); len(got) != 2 || got[0] != 2 || got[1] != 3 {
-		t.Errorf("after 1, going is %v; want ab and a+", got)
-	}
-	if d.Accept(at) != 1 {
-		t.Errorf("after 1, the winner is %d; want a", d.Accept(at))
+
+	if !reflect.DeepEqual(got, then) {
+		t.Errorf("a, ab and a+ are\n%s\nwant\n%s", strings.Join(got, "\n"), strings.Join(then, "\n"))
 	}
 }
 
 func TestAFallbackTakesWhatNothingElseDoes(t *testing.T) {
-	d, err := fa.Build([]fa.Rule[rune]{
-		{Expr: fa.Cat(fa.Lit(fa.One('x')), fa.Lit(fa.One('s'))), Name: "save"},
-		{Expr: fa.Cat(fa.Lit(fa.One('x')), fa.Fallback(fa.Span('a', 'z'))), Name: "other"},
+	d := build(t, []fa.Rule[rune]{
+		{Name: "save", Expr: fa.Cat(fa.Lit(fa.One('x')), fa.Lit(fa.One('s')))},
+		{Name: "other", Expr: fa.Cat(fa.Lit(fa.One('x')), fa.Fallback(fa.Span('a', 'z')))},
 	})
-	if err != nil {
-		t.Fatal(err)
+
+	got := table(d)
+
+	then := []string{
+		"start 1",
+		"0 done [] going []",
+		"1 done [] going [1 2] x->2",
+		"2 done [] going [1 2] a-rt-wyz->3 s->4 x->3",
+		"3 done [2] going []",
+		"4 done [1] going []",
 	}
-	at := d.Step(d.Start(), 'x')
-	if got := d.Accept(d.Step(at, 's')); got != 1 {
-		t.Errorf("x s finishes %d; want the specific rule, 1", got)
-	}
-	if got := d.Accept(d.Step(at, 'q')); got != 2 {
-		t.Errorf("x q finishes %d; want the fallback, 2", got)
+
+	if !reflect.DeepEqual(got, then) {
+		t.Errorf("x s beside x and any letter is\n%s\nwant\n%s", strings.Join(got, "\n"), strings.Join(then, "\n"))
 	}
 }
