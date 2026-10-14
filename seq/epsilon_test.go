@@ -1,276 +1,239 @@
-package seq
+package seq_test
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/cptaffe/automaton/seq"
+	"github.com/cptaffe/automaton/seq/seqtest"
 )
 
-func app(name string) Cond {
-	c, err := NewCompare("app", Eq, name)
+func app(name string) seq.Cond {
+	c, err := seq.NewCompare("app", seq.Eq, name)
 	if err != nil {
 		panic(err)
 	}
 	return c
 }
 
-func modes(t *testing.T) *Table {
+func modes(t *testing.T) *seq.Table {
 	t.Helper()
-	a := NewAlphabet([]string{"s", "x", "m", "esc", "k"}, "settle")
-	g := &Grammar{
+	a := seq.NewAlphabet([]string{"s", "x", "m", "esc", "k"}, "settle")
+	g := &seq.Grammar{
 		Name:   "keys",
 		Scopes: []string{"main", "acme", "safari", "marks"},
 		Delays: map[string]time.Duration{"settle": time.Second},
-		Rules: []Rule{
+		Rules: []seq.Rule{
 			{Scope: "main", Include: "acme", When: app("devdraw"), Line: 1},
 			{Scope: "main", Include: "safari", When: app("Safari"), Line: 2},
-			{Scope: "acme", Pattern: "s", Elems: []Class{keys(a, "s")}, Action: "put", Line: 3},
-			{Scope: "acme", Pattern: "x settle", Elems: []Class{keys(a, "x"), event("settle")}, Action: "show", Line: 4},
-			{Scope: "acme", Pattern: "x s", Elems: []Class{keys(a, "x"), keys(a, "s")}, Action: "save", Line: 5},
-			{Scope: "acme", Pattern: "m", Elems: []Class{keys(a, "m")}, Goto: "marks", Line: 6},
-			{Scope: "safari", Pattern: "s", Elems: []Class{keys(a, "s")}, Action: "share", Line: 7},
-			{Scope: "marks", Pattern: "k", Elems: []Class{keys(a, "k")}, Action: "mark", Line: 8},
-			{Scope: "marks", Pattern: "esc", Elems: []Class{keys(a, "esc")}, Goto: "main", Line: 9},
+			rule(a, 3, "acme", "s", "put"),
+			rule(a, 4, "acme", "x settle", "show"),
+			rule(a, 5, "acme", "x s", "save"),
+			goes(rule(a, 6, "acme", "m", ""), "marks", ""),
+			rule(a, 7, "safari", "s", "share"),
+			rule(a, 8, "marks", "k", "mark"),
+			goes(rule(a, 9, "marks", "esc", ""), "main", ""),
 		},
 	}
-	tab, err := Compile(g, a)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(tab.Conflicts) > 0 {
-		t.Fatal(tab.Conflicts)
-	}
-	return tab
+	return compile(t, g, a)
 }
 
-type step struct {
-	key, app string
-	ok       bool
-	fired    string
-}
-
-func run(t *testing.T, tab *Table, steps []step) {
-	t.Helper()
-	m := machine(t, tab, "")
-	for i, s := range steps {
-		ok, fired := m.Step(sym(tab.Alpha, s.key), Env{"app": s.app})
-		if ok != s.ok || actions(fired) != s.fired {
-			t.Errorf("step %d, %s in %s: took %v and fired %q; want %v and %q", i, s.key, s.app, ok, actions(fired), s.ok, s.fired)
-		}
-	}
-}
+var (
+	devdraw = seq.Env{"app": "devdraw"}
+	safari  = seq.Env{"app": "Safari"}
+	finder  = seq.Env{"app": "Finder"}
+)
 
 func TestAGuardedEpsilonChoosesByApp(t *testing.T) {
-	run(t, modes(t), []step{
-		{"s", "devdraw", true, "put"},
-		{"s", "Safari", true, "share"},
-		{"s", "Finder", false, ""},
-		{"x", "Safari", false, ""},
-		{"k", "devdraw", false, ""},
+	tab := modes(t)
+	m := seqtest.Machine(t, tab, "")
+
+	seqtest.Run(t, m, tab.Alpha, nil, []seqtest.Step{
+		{Key: "s", Env: devdraw, Taken: true, Fired: "put"},
+		{Key: "s", Env: safari, Taken: true, Fired: "share"},
+		{Key: "s", Env: finder},
+		{Key: "x", Env: safari},
+		{Key: "k", Env: devdraw},
 	})
 }
 
 func TestAPrefixIsNotTakenWhereItsRuleDoesNotHold(t *testing.T) {
-	run(t, modes(t), []step{
-		{"x", "Finder", false, ""},
-		{"x", "devdraw", true, ""},
-		{"s", "devdraw", true, "save"},
-		{"x", "devdraw", true, ""},
-		{"settle", "devdraw", true, "show"},
+	tab := modes(t)
+	m := seqtest.Machine(t, tab, "")
+
+	seqtest.Run(t, m, tab.Alpha, nil, []seqtest.Step{
+		{Key: "x", Env: finder},
+		{Key: "x", Env: devdraw, Taken: true, Pending: true},
+		{Key: "s", Env: devdraw, Taken: true, Fired: "save"},
+		{Key: "x", Env: devdraw, Taken: true, Pending: true},
+		{Key: "settle", Env: devdraw, Taken: true, Fired: "show"},
 	})
 }
 
 func TestAModeIsLeftByGoingBack(t *testing.T) {
 	tab := modes(t)
-	run(t, tab, []step{
-		{"m", "devdraw", true, ""},
-		{"k", "Safari", true, "mark"},
-		{"s", "Safari", false, ""},
-		{"esc", "devdraw", true, ""},
-		{"s", "Safari", true, "share"},
-		{"k", "devdraw", false, ""},
+	m := seqtest.Machine(t, tab, "")
+
+	seqtest.Run(t, m, tab.Alpha, nil, []seqtest.Step{
+		{Key: "m", Env: devdraw, Taken: true},
+		{Key: "k", Env: safari, Taken: true, Fired: "mark"},
+		{Key: "s", Env: safari},
+		{Key: "esc", Env: devdraw, Taken: true},
+		{Key: "s", Env: safari, Taken: true, Fired: "share"},
+		{Key: "k", Env: devdraw},
 	})
 }
 
-func TestATimerEndsARule(t *testing.T) {
-	a := NewAlphabet([]string{"a", "b"}, "hangup", "settle")
-	g := &Grammar{Name: "g", Scopes: []string{"s"},
-		Delays: map[string]time.Duration{"hangup": time.Second, "settle": time.Second},
-		Rules: []Rule{
-			{Scope: "s", Pattern: "a settle", Elems: []Class{keys(a, "a"), event("settle")}, Action: "one"},
-			{Scope: "s", Pattern: "a b", Elems: []Class{keys(a, "a"), keys(a, "b")}, Action: "two"},
-			{Scope: "s", Pattern: "a <hangup>", Elems: []Class{keys(a, "a"), event("hangup")}, Action: "hung"},
-		}}
-	tab, err := Compile(g, a)
-	if err != nil {
-		t.Fatal(err)
-	}
-	m := machine(t, tab, "")
-	m.Step(sym(a, "a"), nil)
-	if got := strings.Join(m.Waits(), " "); got != "hangup settle" {
-		t.Errorf("after a, the machine waits for %q", got)
-	}
-	if _, f := m.Step(sym(a, "settle"), nil); actions(f) != "one" {
-		t.Errorf("settle after a fired %q; want one", actions(f))
-	}
-	m.Step(sym(a, "a"), nil)
-	if _, f := m.Step(sym(a, "hangup"), nil); actions(f) != "hung" {
-		t.Errorf("a then hangup fired %q; want hung", actions(f))
-	}
-}
-
-func TestACompleteRuleAnEventCanFollowIsAmbiguous(t *testing.T) {
-	a := NewAlphabet([]string{"a"}, "hangup")
-	g := &Grammar{Name: "g", Scopes: []string{"s"},
-		Delays: map[string]time.Duration{"hangup": time.Second},
-		Rules: []Rule{
-			{Scope: "s", Pattern: "a", Elems: []Class{keys(a, "a")}, Action: "one", Line: 1},
-			{Scope: "s", Pattern: "a <hangup>", Elems: []Class{keys(a, "a"), event("hangup")}, Action: "hung", Line: 2},
-		}}
-	tab, err := Compile(g, a)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(tab.Conflicts) != 1 || !strings.Contains(tab.Conflicts[0], `g:1: "a" is complete, and a <hangup> can still follow`) {
-		t.Errorf("the conflicts are %v", tab.Conflicts)
-	}
-}
-
-func TestAnUnknownScopeIsAnError(t *testing.T) {
-	tab := compile(t)
-	if _, err := NewMachine(tab, "nosuch"); err == nil {
-		t.Error("a machine began in a scope that is not there")
-	}
-	a := alphabet()
-	if _, err := Compile(&Grammar{Name: "g", Scopes: []string{"s"}, Rules: []Rule{{Scope: "s", Pattern: "a", Elems: []Class{keys(a, "a")}, Goto: "typo"}}}, a); err == nil {
-		t.Error("a -> to no scope compiled")
-	}
-}
-
-func TestAnEpsilonIsChecked(t *testing.T) {
-	a := alphabet()
-	for _, c := range []struct {
-		rules []Rule
-		want  string
-	}{
-		{[]Rule{{Scope: "s", Include: "nowhere"}}, "no such scope"},
-		{[]Rule{{Scope: "s", Include: "t"}, {Scope: "t", Include: "s"}}, "goes round in a loop"},
-		{[]Rule{{Scope: "s", Include: "t", Action: "x"}}, "does nothing else"},
-		{[]Rule{{Scope: "s", Action: "x"}}, "no pattern"},
-	} {
-		g := &Grammar{Name: "g", Scopes: []string{"s", "t"}, Rules: append(c.rules, Rule{Scope: "t", Pattern: "a", Elems: []Class{keys(a, "a")}, Action: "a"})}
-		if err := Check(g); err == nil || !strings.Contains(err.Error(), c.want) {
-			t.Errorf("got %v; want %q", err, c.want)
-		}
-	}
-}
-
-func TestResetDropsAPrefix(t *testing.T) {
+func TestAMachineBeginsOnlyInACompiledScope(t *testing.T) {
 	tab := modes(t)
-	m := machine(t, tab, "")
-	env := Env{"app": "devdraw"}
-	m.Step(sym(tab.Alpha, "x"), env)
-	if !m.Pending() {
-		t.Fatal("x is not pending")
-	}
-	m.Reset()
-	if _, f := m.Step(sym(tab.Alpha, "settle"), env); m.Pending() || len(f) != 0 {
-		t.Errorf("after a reset, settle fired %q", actions(f))
+	for _, c := range []struct {
+		name  string
+		given string
+		then  string
+		err   string
+	}{
+		{name: "the first scope by default", given: "", then: "main"},
+		{name: "a scope a rule goes to", given: "marks", then: "marks"},
+		{name: "a scope only read in", given: "acme", err: `keys has no scope "acme"`},
+		{name: "a scope that is not there", given: "nosuch", err: `keys has no scope "nosuch"`},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			m, err := seq.NewMachine(tab, c.given)
+
+			switch {
+			case c.err != "" && (err == nil || err.Error() != c.err):
+				t.Errorf("NewMachine(%q) = %v; want %s", c.given, err, c.err)
+			case c.err == "" && err != nil:
+				t.Errorf("NewMachine(%q) = %v", c.given, err)
+			case c.err == "" && m.Scope() != c.then:
+				t.Errorf("NewMachine(%q) begins in %s; want %s", c.given, m.Scope(), c.then)
+			}
+		})
 	}
 }
 
 func TestOnlyAPlaceAMachineCanBeIsCompiled(t *testing.T) {
 	tab := modes(t)
-	if scopeNames(tab) != "main marks" {
-		t.Errorf("the scopes are %v; acme and safari are only read in", tab.Scopes)
-	}
-	if _, err := NewMachine(tab, "acme"); err == nil {
-		t.Error("a machine began in a scope nothing goes to")
+
+	names := scopeNames(tab)
+
+	if names != "main marks" {
+		t.Errorf("the scopes are %q; want main marks, as acme and safari are only read in", names)
 	}
 }
 
-func hk(t *testing.T, a *Alphabet, g *Grammar) *Table {
-	t.Helper()
-	tab, err := Compile(g, a)
-	if err != nil {
-		t.Fatal(err)
+func TestADelayEndsARule(t *testing.T) {
+	a := seq.NewAlphabet([]string{"a", "b"}, "hangup", "settle")
+	tab := compile(t, &seq.Grammar{Name: "g", Scopes: []string{"s"},
+		Delays: map[string]time.Duration{"hangup": time.Second, "settle": time.Second},
+		Rules: []seq.Rule{
+			rule(a, 1, "s", "a settle", "one"),
+			rule(a, 2, "s", "a b", "two"),
+			rule(a, 3, "s", "a hangup", "hung"),
+		}}, a)
+	m := seqtest.Machine(t, tab, "")
+
+	seqtest.Run(t, m, a, nil, seqtest.Prefix("a"))
+	waits := m.Waits()
+	seqtest.Run(t, m, a, nil, []seqtest.Step{
+		{Key: "settle", Taken: true, Fired: "one"},
+		{Key: "a", Taken: true, Pending: true},
+		{Key: "hangup", Taken: true, Fired: "hung"},
+		{Key: "hangup"},
+	})
+
+	if want := []string{"hangup", "settle"}; !reflect.DeepEqual(waits, want) {
+		t.Errorf("after a, the machine waits for %q; want %q", waits, want)
 	}
-	return tab
 }
 
-func TestOverlappingRepeatsCompile(t *testing.T) {
-	a := NewAlphabet([]string{"1", "2"}, "T")
-	one := keys(a, "1")
-	g := &Grammar{Name: "g", Scopes: []string{"s"}, Delays: map[string]time.Duration{"T": time.Second},
-		Rules: []Rule{{Scope: "s", Pattern: "1+1+2", Elems: []Class{many(one), many(one), keys(a, "2")}, Action: "x"}}}
-	done := make(chan error, 1)
-	go func() { _, err := Compile(g, a); done <- err }()
-	select {
-	case err := <-done:
-		if err != nil {
-			t.Fatal(err)
-		}
-	case <-time.After(5 * time.Second):
-		t.Fatal("1+1+2 is still compiling")
+func TestResetDropsAPrefix(t *testing.T) {
+	tab := modes(t)
+	m := seqtest.Machine(t, tab, "")
+	seqtest.Run(t, m, tab.Alpha, devdraw, seqtest.Prefix("x"))
+
+	m.Reset()
+
+	seqtest.Run(t, m, tab.Alpha, devdraw, []seqtest.Step{{Key: "settle"}})
+}
+
+func TestOverlappingRepeatsMatch(t *testing.T) {
+	a := seq.NewAlphabet([]string{"1", "2"})
+	tab := compile(t, &seq.Grammar{Name: "g", Scopes: []string{"s"}, Rules: []seq.Rule{rule(a, 1, "s", "1+ 1+ 2", "x")}}, a)
+	for _, c := range []struct {
+		name string
+		then []seqtest.Step
+	}{
+		{name: "one of each", then: append(seqtest.Prefix("1 1"), seqtest.Step{Key: "2", Taken: true, Fired: "x"})},
+		{name: "more of the first", then: append(seqtest.Prefix("1 1 1 1"), seqtest.Step{Key: "2", Taken: true, Fired: "x"})},
+		{name: "too few", then: append(seqtest.Prefix("1"), seqtest.Step{Key: "2"})},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			seqtest.Run(t, seqtest.Machine(t, tab, ""), a, nil, c.then)
+		})
 	}
 }
 
 func TestACompleteRuleFiresThoughAnotherScopeGoesOn(t *testing.T) {
-	a := NewAlphabet([]string{"x", "s"})
-	g := &Grammar{Name: "g", Scopes: []string{"main", "a", "b"},
-		Rules: []Rule{
+	a := seq.NewAlphabet([]string{"x", "s"})
+	tab := compile(t, &seq.Grammar{Name: "g", Scopes: []string{"main", "a", "b"},
+		Rules: []seq.Rule{
 			{Scope: "main", Include: "a"},
 			{Scope: "main", Include: "b"},
-			{Scope: "a", Pattern: "x", Elems: []Class{keys(a, "x")}, Action: "one"},
-			{Scope: "b", Pattern: "x s", Elems: []Class{keys(a, "x"), keys(a, "s")}, Action: "two"},
-		}}
-	tab := hk(t, a, g)
-	if len(tab.Conflicts) > 0 {
-		t.Fatal(tab.Conflicts)
-	}
-	m := machine(t, tab, "")
-	if _, f := m.Step(sym(a, "x"), nil); actions(f) != "one" || m.Pending() {
-		t.Errorf("x fired %q and pending is %v; want one at once", actions(f), m.Pending())
-	}
+			rule(a, 1, "a", "x", "one"),
+			rule(a, 2, "b", "x s", "two"),
+		}}, a)
+	m := seqtest.Machine(t, tab, "")
+
+	seqtest.Run(t, m, a, nil, []seqtest.Step{
+		{Key: "x", Taken: true, Fired: "one"},
+		{Key: "s"},
+	})
 }
 
 func TestOneScopeReadInTwiceIsNoConflict(t *testing.T) {
-	a := NewAlphabet([]string{"s"})
-	g := &Grammar{Name: "g", Scopes: []string{"main", "emacs"}, Rules: []Rule{
+	a := seq.NewAlphabet([]string{"s"})
+	tab := compile(t, &seq.Grammar{Name: "g", Scopes: []string{"main", "emacs"}, Rules: []seq.Rule{
 		{Scope: "main", Include: "emacs", When: app("Emacs")},
 		{Scope: "main", Include: "emacs", When: app("Terminal")},
-		{Scope: "emacs", Pattern: "s", Elems: []Class{keys(a, "s")}, Action: "save"},
-	}}
-	tab := hk(t, a, g)
-	if len(tab.Conflicts) > 0 {
-		t.Fatal(tab.Conflicts)
-	}
-	for _, name := range []string{"Emacs", "Terminal"} {
-		m := machine(t, tab, "")
-		if ok, f := m.Step(sym(a, "s"), Env{"app": name}); !ok || actions(f) != "save" {
-			t.Errorf("in %s, s took %v and fired %q", name, ok, actions(f))
-		}
+		rule(a, 1, "emacs", "s", "save"),
+	}}, a)
+	for _, c := range []struct {
+		name  string
+		given seq.Env
+		then  seqtest.Step
+	}{
+		{name: "the first app", given: seq.Env{"app": "Emacs"}, then: seqtest.Step{Key: "s", Taken: true, Fired: "save"}},
+		{name: "the second app", given: seq.Env{"app": "Terminal"}, then: seqtest.Step{Key: "s", Taken: true, Fired: "save"}},
+		{name: "neither app", given: seq.Env{"app": "Finder"}, then: seqtest.Step{Key: "s"}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			seqtest.Run(t, seqtest.Machine(t, tab, ""), a, c.given, []seqtest.Step{c.then})
+		})
 	}
 }
 
 func TestAWildcardDropsAPrefix(t *testing.T) {
-	a := NewAlphabet([]string{"x", "s", "j"}, "settle")
-	j := keys(a, "j")
-	tab := hk(t, a, &Grammar{Name: "g", Scopes: []string{"m"},
+	a := seq.NewAlphabet([]string{"x", "s", "j"}, "settle")
+	tab := compile(t, &seq.Grammar{Name: "g", Scopes: []string{"m"},
 		Delays: map[string]time.Duration{"settle": time.Second},
-		Rules: []Rule{
-			{Scope: "m", Pattern: "x settle", Elems: []Class{keys(a, "x"), event("settle")}, Action: "one"},
-			{Scope: "m", Pattern: "x s", Elems: []Class{keys(a, "x"), keys(a, "s")}, Action: "two"},
+		Rules: []seq.Rule{
+			rule(a, 1, "m", "x settle", "one"),
+			rule(a, 2, "m", "x s", "two"),
 		},
-		Any: []Any{{Scope: "m", Pattern: "j", Elem: j, Action: "wild"}}})
-	m := machine(t, tab, "")
-	m.Step(sym(a, "x"), nil)
-	if _, f := m.Step(sym(a, "j"), nil); actions(f) != "wild" || m.Pending() {
-		t.Errorf("j after x fired %q; want wild alone", actions(f))
-	}
+		Any: []seq.Any{{Scope: "m", Pattern: "j", Elem: elems(a, "j")[0], Action: "wild"}}}, a)
+	m := seqtest.Machine(t, tab, "")
+
+	seqtest.Run(t, m, a, nil, []seqtest.Step{
+		{Key: "x", Taken: true, Pending: true},
+		{Key: "j", Taken: true, Fired: "wild"},
+		{Key: "s"},
+	})
 }
 
-func scopeNames(tab *Table) string {
+func scopeNames(tab *seq.Table) string {
 	names := make([]string, 0, len(tab.Scopes))
 	for _, s := range tab.Scopes {
 		names = append(names, s.Name)

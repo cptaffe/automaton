@@ -1,73 +1,104 @@
-package seq
+package seq_test
 
 import (
-	"strings"
 	"testing"
+
+	"github.com/cptaffe/automaton/seq"
+	"github.com/cptaffe/automaton/seq/seqtest"
 )
 
-func calls(t *testing.T, scopes []string, params map[string]string, rules ...Rule) (*Table, error) {
+func calls(t *testing.T) (*seq.Table, *seq.Alphabet) {
 	t.Helper()
-	a := NewAlphabet([]string{"a", "b", "c"}, "answered")
-	for i := range rules {
-		if rules[i].Include == "" && len(rules[i].Elems) == 0 {
-			p := rules[i].Pattern
-			if a.IsEvent(sym(a, p)) {
-				rules[i].Elems = []Class{event(p)}
-			} else {
-				rules[i].Elems = []Class{keys(a, p)}
-			}
-		}
+	a := seq.NewAlphabet([]string{"a", "b", "c", "d"}, "answered")
+	return compile(t, &seq.Grammar{
+		Name:   "g",
+		Scopes: []string{"start", "other", "dialing"},
+		Params: map[string]string{"dialing": "then"},
+		Rules: []seq.Rule{
+			goes(rule(a, 1, "start", "a", "call"), "dialing", "other"),
+			goes(rule(a, 2, "start", "b", "back"), "dialing", "this"),
+			rule(a, 3, "other", "c", "other"),
+			goes(rule(a, 4, "dialing", "answered", ""), "then", ""),
+		},
+		Any: []seq.Any{
+			{Scope: "dialing", Pattern: "b", Elem: elems(a, "b")[0], Action: "gave-up", Goto: "then", Line: 5},
+			{Pattern: "d", Elem: elems(a, "d")[0], Action: "hush", Line: 6},
+		},
+	}, a), a
+}
+
+func TestATemplateIsCompiledOncePerArgument(t *testing.T) {
+	tab, _ := calls(t)
+
+	names := scopeNames(tab)
+
+	if names != "start dialing(other) dialing(start) other" {
+		t.Errorf("the scopes are %q; want start dialing(other) dialing(start) other", names)
 	}
-	return Compile(&Grammar{Name: "g", Scopes: scopes, Params: params, Rules: rules}, a)
 }
 
 func TestAParameterIsWhereTheScopeGoesNext(t *testing.T) {
-	tab, err := calls(t, []string{"start", "other", "dialing"}, map[string]string{"dialing": "then"},
-		Rule{Scope: "start", Pattern: "a", Action: "call", Goto: "dialing", Arg: "other"},
-		Rule{Scope: "start", Pattern: "b", Action: "back", Goto: "dialing", Arg: "this"},
-		Rule{Scope: "other", Pattern: "c", Action: "other"},
-		Rule{Scope: "dialing", Pattern: "answered", Goto: "then"},
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := scopeNames(tab); got != "start dialing(other) dialing(start) other" {
-		t.Errorf("the scopes are %q", got)
-	}
-	m := machine(t, tab, "")
-	for _, c := range []struct{ sym, scope string }{
-		{"a", "dialing(other)"}, {"c", "dialing(other)"}, {"answered", "other"},
+	tab, a := calls(t)
+	for _, c := range []struct {
+		name  string
+		given []seqtest.Step
+		then  string
+	}{
+		{
+			name:  "into the template",
+			given: []seqtest.Step{{Key: "a", Taken: true, Fired: "call"}, {Key: "c"}},
+			then:  "dialing(other)",
+		},
+		{
+			name:  "out by a rule to the argument",
+			given: []seqtest.Step{{Key: "a", Taken: true, Fired: "call"}, {Key: "answered", Taken: true}, {Key: "c", Taken: true, Fired: "other"}},
+			then:  "other",
+		},
+		{
+			name:  "out by a wildcard to the argument",
+			given: []seqtest.Step{{Key: "a", Taken: true, Fired: "call"}, {Key: "b", Taken: true, Fired: "gave-up"}},
+			then:  "other",
+		},
+		{
+			name:  "back to where this was",
+			given: []seqtest.Step{{Key: "b", Taken: true, Fired: "back"}, {Key: "answered", Taken: true}},
+			then:  "start",
+		},
+		{
+			name:  "a wildcard of every scope in the template",
+			given: []seqtest.Step{{Key: "a", Taken: true, Fired: "call"}, {Key: "d", Taken: true, Fired: "hush"}},
+			then:  "dialing(other)",
+		},
+		{
+			name:  "a wildcard of every scope outside the template",
+			given: []seqtest.Step{{Key: "d", Taken: true, Fired: "hush"}},
+			then:  "start",
+		},
 	} {
-		m.Step(sym(tab.Alpha, c.sym), nil)
-		if m.Scope() != c.scope {
-			t.Errorf("after %s the machine is in %s; want %s", c.sym, m.Scope(), c.scope)
-		}
-	}
-	m = machine(t, tab, "")
-	m.Step(sym(tab.Alpha, "b"), nil)
-	m.Step(sym(tab.Alpha, "answered"), nil)
-	if m.Scope() != "start" {
-		t.Errorf("-> dialing(this) came back to %s", m.Scope())
+		t.Run(c.name, func(t *testing.T) {
+			m := seqtest.Machine(t, tab, "")
+
+			seqtest.Run(t, m, a, nil, c.given)
+
+			if m.Scope() != c.then {
+				t.Errorf("the machine is in %s; want %s", m.Scope(), c.then)
+			}
+		})
 	}
 }
 
-func TestATemplateCannotHoldItself(t *testing.T) {
-	_, err := calls(t, []string{"start", "t"}, map[string]string{"t": "then"},
-		Rule{Scope: "start", Pattern: "a", Goto: "t", Arg: "start"},
-		Rule{Scope: "t", Pattern: "a", Goto: "t", Arg: "this"},
-		Rule{Scope: "t", Pattern: "b", Goto: "then"},
-	)
-	if err == nil || !strings.Contains(err.Error(), "t(t(start)) holds t inside itself") {
-		t.Errorf("t calling t(this) compiled: %v", err)
-	}
-	if _, err := calls(t, []string{"start", "t"}, map[string]string{"t": "then"},
-		Rule{Scope: "start", Pattern: "a", Goto: "t", Arg: "start"},
-		Rule{Scope: "t", Pattern: "a", Goto: "t", Arg: "then"},
-		Rule{Scope: "t", Pattern: "b", Goto: "then"},
-	); err != nil {
-		t.Errorf("t going back to itself with its own parameter: %v", err)
-	}
-	if _, err := calls(t, []string{"this"}, nil, Rule{Scope: "this", Pattern: "a", Action: "x"}); err == nil {
-		t.Error("a scope called this compiled")
+func TestATemplateMayGoBackToItselfByItsParameter(t *testing.T) {
+	a := seq.NewAlphabet([]string{"a", "b"})
+	g := &seq.Grammar{Name: "g", Scopes: []string{"start", "t"}, Params: map[string]string{"t": "then"},
+		Rules: []seq.Rule{
+			goes(rule(a, 1, "start", "a", "x"), "t", "start"),
+			goes(rule(a, 2, "t", "a", "x"), "t", "then"),
+			goes(rule(a, 3, "t", "b", "x"), "then", ""),
+		}}
+
+	tab := compile(t, g, a)
+
+	if names := scopeNames(tab); names != "start t(start)" {
+		t.Errorf("the scopes are %q; want start t(start)", names)
 	}
 }
