@@ -135,7 +135,7 @@ func TestAStateIsNamedByItsScopeOrWhatItAccepts(t *testing.T) {
 }
 
 func TestADialPlanIsDrawnWhole(t *testing.T) {
-	tree, err := keypad.Parse(strings.NewReader("%delay T 5s\n\nstart:\n  0           do operator -> start\n  NXX T       do short when on\n  960-X       do long\n"), "plan.tree")
+	tree, err := keypad.Parse(strings.NewReader("%delay T 5s\n\nstart:\n  0           do operator -> start\n  NXX T       do short when on\n  960 X       do long\n"), "plan.tree")
 	if err != nil {
 		t.Fatal(err)
 	}

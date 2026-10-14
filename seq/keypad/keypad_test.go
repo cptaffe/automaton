@@ -15,8 +15,8 @@ const plan = `%delay T 5s
 start:
   *98           do voicemail  -> mailbox
   0             do operator
-  NXX-XXXX T    do line
-  960-XXX-XXXX  do line-ten
+  NXX XXXX T    do line
+  960 XXX XXXX  do line-ten
   ... abandon   do dial-again
 
 mailbox:
@@ -299,7 +299,8 @@ func TestABadPlanDoesNotParse(t *testing.T) {
 		{name: "a name after the condition", given: "s:\n  1 do a when x y\n", then: `t.tree:2: "y" is a name, and one cannot stand here`},
 		{name: "a when with no condition", given: "s:\n  1 do a when\n", then: "t.tree:2: a new line cannot stand here"},
 		{name: "a goto with no scope", given: "s:\n  1 do a ->\n", then: "t.tree:2: a new line cannot stand here"},
-		{name: "a stray parenthesis", given: "s:\n  1 (\n", then: "t.tree:2: ( cannot stand here"},
+		{name: "a stray parenthesis", given: "s:\n  1 )\n", then: "t.tree:2: ) cannot stand here"},
+		{name: "a wildcard that repeats", given: "s:\n  ... 1+ do a\n", then: "t.tree:2: `... 1+` is more than one symbol"},
 		{name: "a declaration that is not one", given: "%bogus\n", then: "t.tree:1: %bogus is not a declaration"},
 		{name: "a delay in a scope", given: "s:\n  %delay T 1s\n", then: "t.tree:2: %delay T 1s belongs above every scope: a symbol lasts as long wherever it is read"},
 		{name: "a delay that is not a duration", given: "%delay T soon\n", then: "t.tree:1: %delay T soon: soon is not a duration"},
@@ -335,7 +336,6 @@ func TestABadPlanDoesNotCompile(t *testing.T) {
 		{name: "a parameter given to a scope without one", given: []tree{{"t.tree", "s:\n  1 do a -> s(s)\n"}}, then: "t:2: s takes no parameter and was given s"},
 		{name: "a first scope that takes a parameter", given: []tree{{"t.tree", "w(x):\n  1 -> x\ns:\n  2 -> w(s)\n"}}, then: "t: w takes a parameter, and the first scope is where a machine begins"},
 		{name: "a symbol nothing declares", given: []tree{{"t.tree", "s:\n  1 nope do a\n"}}, then: `t:2: "nope" is in a pattern and nothing declares it`},
-		{name: "a wildcard that repeats", given: []tree{{"t.tree", "s:\n  ... 1+ do a\n"}}, then: "t:2: `... 1+` reads more than one key, and a wildcard reads one"},
 		{name: "a hand-off to a tree that is not there", given: []tree{{"t.tree", dialTree}}, then: "t:3: -> dialing(menu), and there is no scope menu"},
 		{name: "two trees of one name", given: []tree{{"t.tree", "s:\n  1 do a\n"}, {"t/t.tree", "s:\n  2 do b\n"}}, then: "two trees are called t"},
 		{name: "a goto to no scope or tree", given: []tree{{"t.tree", "s:\n  1 do a -> v\n"}, {"u.tree", "start:\n  1 do b\n"}}, then: "t:2: -> v, and there is no such scope or tree"},
@@ -473,7 +473,7 @@ func TestAScopeMayBeOpenedAgain(t *testing.T) {
 }
 
 func TestAPatternReadsAsWritten(t *testing.T) {
-	given := "start:\n  960-NXX-XXXX  do far\n  1  answered   do up\n  ... abandon   do again\n"
+	given := "start:\n  960 NXX XXXX  do far\n  1  answered   do up\n  ... abandon   do again\n"
 
 	tree := parse(t, given, "p.tree")
 
@@ -484,7 +484,7 @@ func TestAPatternReadsAsWritten(t *testing.T) {
 	for _, x := range tree.Any {
 		got = append(got, x.Pattern)
 	}
-	if want := []string{"960-NXX-XXXX", "1 answered", "abandon"}; !reflect.DeepEqual(got, want) {
+	if want := []string{"960 NXX XXXX", "1 answered", "abandon"}; !reflect.DeepEqual(got, want) {
 		t.Errorf("patterns %q; want %q", got, want)
 	}
 }
@@ -502,5 +502,61 @@ func TestAStrayKeyIsThePlans(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			seqtest.Run(t, seqtest.Machine(t, tab, ""), tab.Alpha, nil, c.when)
 		})
+	}
+}
+
+func TestAPlanPatternIsAnExpressionOverKeys(t *testing.T) {
+	for _, c := range []struct {
+		name  string
+		given string
+		when  []seqtest.Step
+	}{
+		{
+			name:  "alternatives",
+			given: "start:\n  (0 | 1) 1  do short\n",
+			when:  []seqtest.Step{{Key: "1", Taken: true, Pending: true}, {Key: "1", Taken: true, Fired: "short"}},
+		},
+		{
+			name:  "a repeated group",
+			given: "%delay T 1s\nstart:\n  (1 2)+ T  do pairs\n",
+			when: append(seqtest.Prefix("1 2 1 2"),
+				seqtest.Step{Key: "T", Taken: true, Fired: "pairs"}),
+		},
+		{
+			name:  "an optional key",
+			given: "start:\n  9 1? 2  do nine\n",
+			when:  then("9 1", seqtest.Step{Key: "2", Taken: true, Fired: "nine"}),
+		},
+		{
+			name:  "every digit but one",
+			given: "start:\n  0  do operator\n  (X \\ 0) #  do digit\n",
+			when:  then("5", seqtest.Step{Key: "#", Taken: true, Fired: "digit"}),
+		},
+		{
+			name:  "a name and a group that begin a rule",
+			given: "%delay T 1s\nstart:\n  T (1 | 2)  do after\n",
+			when:  then("T", seqtest.Step{Key: "2", Taken: true, Fired: "after"}),
+		},
+		{
+			name:  "a header that takes a parameter",
+			given: "start:\n  1  -> wait(start)\nwait(then):\n  2  do back  -> then\n",
+			when:  []seqtest.Step{{Key: "1", Taken: true}, {Key: "2", Taken: true, Fired: "back"}},
+		},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			tab := compile(t, parse(t, c.given, "p.tree"))
+
+			m := seqtest.Machine(t, tab, "")
+
+			seqtest.Run(t, m, tab.Alpha, nil, c.when)
+		})
+	}
+}
+
+func TestAPlanRefusesADashBetweenSymbols(t *testing.T) {
+	_, err := Parse(strings.NewReader("start:\n  NXX-XXXX  do local\n"), "p.tree")
+
+	if err == nil || err.Error() != "p.tree:2: start: no rule reads '-'" {
+		t.Errorf("got %v; want the dash refused", err)
 	}
 }

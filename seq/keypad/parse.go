@@ -67,6 +67,10 @@ var kinds = map[int]int{
 	scan.TokNot:     NOT,
 	scan.TokSym:     SYM,
 	scan.TokName:    IDENT,
+	scan.TokBar:     BAR,
+	scan.TokPlus:    PLUS,
+	scan.TokOpt:     OPT,
+	scan.TokMinus:   MINUS,
 }
 
 type word struct {
@@ -76,16 +80,17 @@ type word struct {
 }
 
 type symv struct {
-	e    seq.Expr
+	e    seq.Class
 	text string
 	line int
 	lead string
 }
 
 type pat struct {
-	elems []seq.Expr
-	line  int
-	text  string
+	e    seq.Expr
+	set  bool
+	line int
+	text string
 }
 
 type lexer struct {
@@ -95,10 +100,11 @@ type lexer struct {
 	tokLine int
 	block   []string
 	bare    bool
-	lead    string
 	end     int
 	g       *seq.Grammar
 	cur     string
+	ahead   []lex.Token
+	call    bool
 }
 
 type move struct{ to, arg string }
@@ -129,74 +135,93 @@ func (l *lexer) Lex(v *yySymType) int {
 func (l *lexer) Error(string) {}
 
 func (l *lexer) lex(v *yySymType) (int, string) {
+	tok, lead, ok := l.token()
+	if !ok {
+		return 0, ""
+	}
+	v.word = word{tok.Text, tok.At.Line, lead}
+	switch tok.Kind {
+	case scan.TokNewline:
+		if l.bare {
+			l.block = nil
+		}
+		l.bare = true
+		return NEWLINE, "a new line"
+	case scan.TokSym:
+		v.sym = symv{symbolOf(tok.Text), tok.Text, tok.At.Line, lead}
+	case scan.TokDeclaration:
+		l.Fail("%s is not a declaration", tok.Text)
+		return 0, ""
+	case scan.TokLparen:
+		if l.call {
+			l.call = false
+			return CALL, tok.Text
+		}
+	}
+	return kinds[tok.Kind], tok.Text
+}
+
+func (l *lexer) token() (lex.Token, string, bool) {
 	for {
-		tok, ok := l.Next()
+		tok, ok := l.pull()
 		if !ok {
-			return 0, ""
+			return tok, "", false
 		}
 		l.tokLine = tok.At.Line
-		lead := l.lead
+		if tok.Kind == scan.TokName && (l.tok == 0 || l.tok == NEWLINE) {
+			l.call = l.header()
+		}
+		lead := ""
 		if tok.At.Offset > l.end {
-			lead += " "
+			lead = " "
 		}
-		l.lead, l.end = "", tok.End()
-		if tok.Kind == scan.TokDash {
-			l.lead = lead + tok.Text
-			continue
-		}
-		if tok.Kind == scan.TokComment {
-			l.comment(tok.Text, l.bare)
-			l.bare = false
-			continue
-		}
-		if tok.Kind != scan.TokNewline {
-			l.bare = false
-		}
-		switch tok.Kind {
-		case scan.TokNewline:
-			if l.bare {
-				l.block = nil
+		l.end = tok.End()
+		if tok.Kind != scan.TokComment {
+			if tok.Kind != scan.TokNewline {
+				l.bare = false
 			}
-			l.bare = true
-			return NEWLINE, "a new line"
-		case scan.TokDelay:
-			v.word = word{tok.Text, tok.At.Line, lead}
-		case scan.TokSym:
-			v.sym = symv{symbolOf(tok.Text), tok.Text, tok.At.Line, lead}
-			return SYM, tok.Text
-		case scan.TokDeclaration:
-			l.Fail("%s is not a declaration", tok.Text)
-			return 0, ""
-		case scan.TokName:
-			v.word = word{tok.Text, tok.At.Line, lead}
-			return IDENT, tok.Text
+			return tok, lead, true
 		}
-		return kinds[tok.Kind], tok.Text
+		l.comment(tok.Text, l.bare)
+		l.bare = false
 	}
 }
 
-func symbolOf(text string) seq.Expr {
+func symbolOf(text string) seq.Class {
 	syms, _ := classOf(rune(text[0]))
-	c := seq.Class{Syms: syms, Text: strings.TrimSuffix(text, "+")}
-	if strings.HasSuffix(text, "+") {
-		return seq.Plus{Of: c}
+	return seq.Class{Syms: syms, Text: text}
+}
+
+func name(w word) pat {
+	c := seq.Class{Event: w.text, Text: w.text}
+	if w.text == "any" {
+		c = seq.Class{Any: true, Text: w.text}
 	}
-	return c
+	return pat{e: c, set: true, line: w.line, text: w.lead + w.text}
 }
 
-func one(s symv) pat {
-	return pat{elems: []seq.Expr{s.e}, line: s.line, text: s.text}
-}
-
-func add(p pat, s symv) pat {
-	return pat{elems: append(p.elems, s.e), line: p.line, text: p.text + s.lead + s.text}
-}
-
-func event(t word) symv {
-	if t.text == "any" {
-		return symv{seq.Class{Any: true, Text: t.text}, t.text, t.line, t.lead}
+func cat(a, b pat) pat {
+	items, ok := a.e.(seq.Cat)
+	if !ok {
+		items = seq.Cat{a.e}
 	}
-	return symv{seq.Class{Event: t.text, Text: t.text}, t.text, t.line, t.lead}
+	return pat{e: append(items, b.e), line: a.line, text: a.text + b.text}
+}
+
+func alt(a pat, op word, b pat) pat {
+	items, ok := a.e.(seq.Alt)
+	if !ok {
+		items = seq.Alt{a.e}
+	}
+	return pat{e: append(items, b.e), set: a.set && b.set, line: a.line, text: a.text + op.lead + "|" + b.text}
+}
+
+func repeat(a pat, op word, e seq.Expr) pat {
+	return pat{e: e, line: a.line, text: a.text + op.lead + op.text}
+}
+
+func minus(a pat, op word, b pat) pat {
+	return pat{e: seq.Minus{From: a.e, Take: b.e}, set: a.set && b.set, line: a.line, text: a.text + op.lead + "-" + b.text}
 }
 
 func (l *lexer) unexpected() string {
@@ -316,4 +341,30 @@ func named(a string) error {
 		return fmt.Errorf("the action %q is not lower case and hyphens", a)
 	}
 	return nil
+}
+
+func (l *lexer) pull() (lex.Token, bool) {
+	if len(l.ahead) > 0 {
+		tok := l.ahead[0]
+		l.ahead = l.ahead[1:]
+		return tok, true
+	}
+	return l.Next()
+}
+
+func (l *lexer) header() bool {
+	want := []int{scan.TokLparen, scan.TokName, scan.TokRparen, scan.TokColon}
+	for len(l.ahead) < len(want) {
+		tok, ok := l.Next()
+		if !ok {
+			return false
+		}
+		l.ahead = append(l.ahead, tok)
+	}
+	for i, k := range want {
+		if l.ahead[i].Kind != k {
+			return false
+		}
+	}
+	return true
 }

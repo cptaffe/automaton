@@ -75,6 +75,9 @@ return nil
 
 Both dialects compile to the same kind of table:
 
+- A pattern is an expression over keys, as in a `.lex` file: keys in sequence,
+  `|` between alternatives, groups, `+` and `?` after a key or group, and `\`
+  between two sets of keys, as in `X \ 0`.
 - A machine starts in the first scope, and after each match returns to the
   start of the scope it is in.
 - `-> scope` after a rule moves to that scope.
@@ -83,7 +86,7 @@ Both dialects compile to the same kind of table:
   only when a rule that holds can use it.
 - A delay declared with `%delay` is a symbol in its own right: it arrives when
   the machine has waited that long. A rule that would otherwise be the start
-  of a longer one ends with it, as `NXX-XXXX T` does; without it the pair is a
+  of a longer one ends with it, as `NXX XXXX T` does; without it the pair is a
   conflict.
 - `any` reads a key no other rule names at that point, and `... any` is a
   scope's default.
@@ -103,11 +106,11 @@ with no rules, ends the plan:
 
 start:
   0 T           do operator         -> connected
-  0 NXX-XXXX    do collect          -> connected
+  0 NXX XXXX    do collect          -> connected
   *98           do voicemail        -> dialing(mailbox)
-  NXX-XXXX T    do local            -> connected
-  NXX-XXXX #    do local            -> connected
-  960-NXX-XXXX  do long-distance    -> connected
+  NXX XXXX T    do local            -> connected
+  NXX XXXX #    do local            -> connected
+  960 NXX XXXX  do long-distance    -> connected
   ... abandon   do dial-again
 
 dialing(then):

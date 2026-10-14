@@ -3,7 +3,11 @@ package keypad
 
 import __yyfmt__ "fmt"
 
-import "github.com/cptaffe/automaton/seq"
+import (
+	"strings"
+
+	"github.com/cptaffe/automaton/seq"
+)
 
 type yySymType struct {
 	yys  int
@@ -19,18 +23,23 @@ type yySymType struct {
 
 const IDENT = 57346
 const DELAY = 57347
-const SYM = 57348
-const ARROW = 57349
-const COLON = 57350
-const DOTS = 57351
-const DO = 57352
-const WHEN = 57353
-const AND = 57354
-const OR = 57355
-const NOT = 57356
-const LPAREN = 57357
-const RPAREN = 57358
-const NEWLINE = 57359
+const BAR = 57348
+const PLUS = 57349
+const OPT = 57350
+const MINUS = 57351
+const LPAREN = 57352
+const RPAREN = 57353
+const CALL = 57354
+const SYM = 57355
+const ARROW = 57356
+const COLON = 57357
+const DOTS = 57358
+const DO = 57359
+const WHEN = 57360
+const AND = 57361
+const OR = 57362
+const NOT = 57363
+const NEWLINE = 57364
 
 var yyToknames = [...]string{
 	"$end",
@@ -38,6 +47,13 @@ var yyToknames = [...]string{
 	"$unk",
 	"IDENT",
 	"DELAY",
+	"BAR",
+	"PLUS",
+	"OPT",
+	"MINUS",
+	"LPAREN",
+	"RPAREN",
+	"CALL",
 	"SYM",
 	"ARROW",
 	"COLON",
@@ -47,8 +63,6 @@ var yyToknames = [...]string{
 	"AND",
 	"OR",
 	"NOT",
-	"LPAREN",
-	"RPAREN",
 	"NEWLINE",
 }
 
@@ -63,67 +77,72 @@ var yyExca = [...]int8{
 	1, -1,
 	-2, 0,
 	-1, 8,
-	8, 9,
-	-2, 15,
+	15, 9,
+	-2, 24,
 }
 
 const yyPrivate = 57344
 
-const yyLast = 56
+const yyLast = 71
 
 var yyAct = [...]int8{
-	39, 37, 38, 32, 25, 8, 9, 12, 16, 45,
-	11, 40, 53, 33, 50, 36, 31, 29, 3, 54,
-	30, 41, 42, 43, 14, 45, 46, 22, 18, 28,
-	17, 10, 26, 35, 19, 21, 49, 12, 34, 44,
-	27, 24, 47, 20, 48, 23, 15, 52, 51, 5,
-	4, 2, 1, 7, 6, 13,
+	51, 49, 50, 44, 34, 13, 15, 8, 9, 21,
+	12, 52, 62, 17, 48, 43, 16, 54, 26, 11,
+	41, 65, 57, 58, 45, 3, 10, 31, 53, 22,
+	57, 35, 22, 36, 38, 66, 39, 40, 24, 25,
+	23, 19, 26, 47, 30, 17, 61, 42, 16, 55,
+	46, 56, 37, 33, 59, 32, 60, 20, 5, 64,
+	63, 27, 28, 29, 4, 2, 1, 7, 6, 14,
+	18,
 }
 
 var yyPact = [...]int16{
-	-1000, -1000, 1, -1000, -1000, -1000, -1000, -1000, 9, 42,
-	24, 31, -1000, 19, 41, 37, 25, -1000, -1000, 36,
-	24, -1000, 0, 4, -1, 2, 34, -1000, 25, -1000,
-	-1000, -1000, -2, 7, 8, 2, -1000, 12, 14, -1000,
-	-1000, 7, 7, 32, -3, 7, 7, -1000, -4, 3,
-	-1000, 14, -1000, -1000, -1000,
+	-1000, -1000, 3, -1000, -1000, -1000, -1000, -1000, 29, 53,
+	23, 35, 35, -1000, 54, -1000, -1000, 35, 12, 51,
+	49, 17, 35, 48, 23, -1000, -1000, -1000, -1000, 35,
+	26, -2, 36, -7, 6, 46, 35, -1000, 17, -1000,
+	-1000, -1000, -1000, -1000, -8, 7, 39, 6, -1000, 2,
+	4, -1000, -1000, 7, 7, 42, -10, 7, 7, -1000,
+	10, 24, -1000, 4, -1000, -1000, -1000,
 }
 
 var yyPgo = [...]int8{
-	0, 8, 55, 4, 31, 3, 1, 2, 0, 54,
-	53, 52, 51, 50, 49,
+	0, 9, 70, 4, 26, 10, 5, 69, 6, 3,
+	1, 2, 0, 68, 67, 66, 65, 64, 58,
 }
 
 var yyR1 = [...]int8{
-	0, 11, 12, 12, 12, 12, 12, 12, 13, 2,
-	2, 14, 9, 10, 4, 4, 4, 4, 1, 1,
-	3, 3, 3, 5, 5, 6, 6, 7, 7, 8,
-	8, 8,
+	0, 15, 16, 16, 16, 16, 16, 16, 17, 2,
+	2, 18, 13, 14, 4, 4, 5, 5, 6, 6,
+	6, 7, 7, 8, 8, 8, 1, 1, 3, 3,
+	3, 9, 9, 10, 10, 11, 11, 12, 12, 12,
 }
 
 var yyR2 = [...]int8{
 	0, 1, 0, 2, 2, 2, 2, 2, 4, 0,
-	3, 4, 5, 6, 1, 1, 2, 2, 0, 2,
-	0, 2, 5, 0, 2, 1, 3, 1, 3, 1,
-	2, 3,
+	3, 4, 5, 6, 1, 3, 1, 2, 1, 2,
+	2, 1, 3, 1, 1, 3, 0, 2, 0, 2,
+	5, 0, 2, 1, 3, 1, 3, 1, 2, 3,
 }
 
 var yyChk = [...]int16{
-	-1000, -11, -12, 17, -13, -14, -9, -10, 4, 5,
-	-4, 9, 6, -2, 15, 4, -1, 6, 4, 10,
-	-4, 4, 8, 4, 4, -3, 7, 4, -1, 17,
-	16, 17, -5, 11, 4, -3, 17, -6, -7, -8,
-	4, 14, 15, 15, -5, 13, 12, -8, -6, 4,
-	17, -7, -8, 16, 16,
+	-1000, -15, -16, 22, -17, -18, -13, -14, 4, 5,
+	-4, 16, -5, -6, -7, -8, 13, 10, -2, 12,
+	4, -1, 6, 17, -4, 4, -6, 7, 8, 9,
+	-4, 15, 4, 4, -3, 14, -5, 4, -1, -8,
+	11, 22, 11, 22, -9, 18, 4, -3, 22, -10,
+	-11, -12, 4, 21, 10, 10, -9, 20, 19, -12,
+	-10, 4, 22, -11, -12, 11, 11,
 }
 
 var yyDef = [...]int8{
 	2, -2, 1, 3, 4, 5, 6, 7, -2, 0,
-	18, 0, 14, 0, 0, 0, 20, 16, 17, 0,
-	18, 15, 0, 0, 0, 23, 0, 19, 20, 8,
-	10, 11, 0, 0, 21, 23, 12, 24, 25, 27,
-	29, 0, 0, 0, 0, 0, 0, 30, 0, 0,
-	13, 26, 28, 31, 22,
+	26, 0, 14, 16, 18, 21, 23, 0, 0, 0,
+	0, 28, 0, 0, 26, 24, 17, 19, 20, 0,
+	0, 0, 0, 0, 31, 0, 15, 27, 28, 22,
+	25, 8, 10, 11, 0, 0, 29, 31, 12, 32,
+	33, 35, 37, 0, 0, 0, 0, 0, 0, 38,
+	0, 0, 13, 34, 36, 39, 30,
 }
 
 var yyTok1 = [...]int8{
@@ -132,7 +151,8 @@ var yyTok1 = [...]int8{
 
 var yyTok2 = [...]int8{
 	2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
-	12, 13, 14, 15, 16, 17,
+	12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
+	22,
 }
 
 var yyTok3 = [...]int8{
@@ -507,104 +527,123 @@ yydefault:
 	case 12:
 		yyDollar = yyS[yypt-5 : yypt+1]
 		{
-			yyVAL.rule = seq.Rule{Pattern: yyDollar[1].pat.text, Expr: seq.Cat(yyDollar[1].pat.elems), Line: yyDollar[1].pat.line, Action: yyDollar[2].str, Goto: yyDollar[3].move.to, Arg: yyDollar[3].move.arg, When: yyDollar[4].cond}
+			yyVAL.rule = seq.Rule{Pattern: strings.TrimSpace(yyDollar[1].pat.text), Expr: yyDollar[1].pat.e, Line: yyDollar[1].pat.line, Action: yyDollar[2].str, Goto: yyDollar[3].move.to, Arg: yyDollar[3].move.arg, When: yyDollar[4].cond}
 		}
 	case 13:
 		yyDollar = yyS[yypt-6 : yypt+1]
 		{
-			yyVAL.any = seq.Any{Pattern: yyDollar[2].pat.text, Line: yyDollar[2].pat.line, Action: yyDollar[3].str, Goto: yyDollar[4].move.to, Arg: yyDollar[4].move.arg, When: yyDollar[5].cond}
-			if len(yyDollar[2].pat.elems) == 1 {
-				yyVAL.any.Elem = yyDollar[2].pat.elems[0]
-			} else {
-				yylex.(*lexer).FailAt(yyDollar[2].pat.line, "`... %s` is more than one symbol", yyDollar[2].pat.text)
+			yyVAL.any = seq.Any{Pattern: strings.TrimSpace(yyDollar[2].pat.text), Elem: yyDollar[2].pat.e, Line: yyDollar[2].pat.line, Action: yyDollar[3].str, Goto: yyDollar[4].move.to, Arg: yyDollar[4].move.arg, When: yyDollar[5].cond}
+			if !yyDollar[2].pat.set {
+				yylex.(*lexer).FailAt(yyDollar[2].pat.line, "`... %s` is more than one symbol", strings.TrimSpace(yyDollar[2].pat.text))
 			}
 		}
-	case 14:
-		yyDollar = yyS[yypt-1 : yypt+1]
-		{
-			yyVAL.pat = one(yyDollar[1].sym)
-		}
 	case 15:
-		yyDollar = yyS[yypt-1 : yypt+1]
+		yyDollar = yyS[yypt-3 : yypt+1]
 		{
-			yyVAL.pat = one(event(yyDollar[1].word))
-		}
-	case 16:
-		yyDollar = yyS[yypt-2 : yypt+1]
-		{
-			yyVAL.pat = add(yyDollar[1].pat, yyDollar[2].sym)
+			yyVAL.pat = alt(yyDollar[1].pat, yyDollar[2].word, yyDollar[3].pat)
 		}
 	case 17:
 		yyDollar = yyS[yypt-2 : yypt+1]
 		{
-			yyVAL.pat = add(yyDollar[1].pat, event(yyDollar[2].word))
-		}
-	case 18:
-		yyDollar = yyS[yypt-0 : yypt+1]
-		{
-			yyVAL.str = ""
+			yyVAL.pat = cat(yyDollar[1].pat, yyDollar[2].pat)
 		}
 	case 19:
 		yyDollar = yyS[yypt-2 : yypt+1]
 		{
-			yyVAL.str = yyDollar[2].word.text
+			yyVAL.pat = repeat(yyDollar[1].pat, yyDollar[2].word, seq.Plus{Of: yyDollar[1].pat.e})
 		}
 	case 20:
+		yyDollar = yyS[yypt-2 : yypt+1]
+		{
+			yyVAL.pat = repeat(yyDollar[1].pat, yyDollar[2].word, seq.Opt{Of: yyDollar[1].pat.e})
+		}
+	case 22:
+		yyDollar = yyS[yypt-3 : yypt+1]
+		{
+			yyVAL.pat = minus(yyDollar[1].pat, yyDollar[2].word, yyDollar[3].pat)
+		}
+	case 23:
+		yyDollar = yyS[yypt-1 : yypt+1]
+		{
+			yyVAL.pat = pat{e: yyDollar[1].sym.e, set: true, line: yyDollar[1].sym.line, text: yyDollar[1].sym.lead + yyDollar[1].sym.text}
+		}
+	case 24:
+		yyDollar = yyS[yypt-1 : yypt+1]
+		{
+			yyVAL.pat = name(yyDollar[1].word)
+		}
+	case 25:
+		yyDollar = yyS[yypt-3 : yypt+1]
+		{
+			yyVAL.pat = yyDollar[2].pat
+			yyVAL.pat.text = yyDollar[1].word.lead + "(" + yyDollar[2].pat.text + yyDollar[3].word.lead + ")"
+		}
+	case 26:
+		yyDollar = yyS[yypt-0 : yypt+1]
+		{
+			yyVAL.str = ""
+		}
+	case 27:
+		yyDollar = yyS[yypt-2 : yypt+1]
+		{
+			yyVAL.str = yyDollar[2].word.text
+		}
+	case 28:
 		yyDollar = yyS[yypt-0 : yypt+1]
 		{
 			yyVAL.move = move{}
 		}
-	case 21:
+	case 29:
 		yyDollar = yyS[yypt-2 : yypt+1]
 		{
 			yyVAL.move = move{to: yyDollar[2].word.text}
 		}
-	case 22:
+	case 30:
 		yyDollar = yyS[yypt-5 : yypt+1]
 		{
 			yyVAL.move = move{to: yyDollar[2].word.text, arg: yyDollar[4].word.text}
 		}
-	case 23:
+	case 31:
 		yyDollar = yyS[yypt-0 : yypt+1]
 		{
 			yyVAL.cond = nil
 		}
-	case 24:
+	case 32:
 		yyDollar = yyS[yypt-2 : yypt+1]
 		{
 			yyVAL.cond = yyDollar[2].cond
 		}
-	case 25:
+	case 33:
 		yyDollar = yyS[yypt-1 : yypt+1]
 		{
 			yyVAL.cond = yyDollar[1].cond
 		}
-	case 26:
+	case 34:
 		yyDollar = yyS[yypt-3 : yypt+1]
 		{
 			yyVAL.cond = seq.AnyOf(yyDollar[1].cond, yyDollar[3].cond)
 		}
-	case 27:
+	case 35:
 		yyDollar = yyS[yypt-1 : yypt+1]
 		{
 			yyVAL.cond = yyDollar[1].cond
 		}
-	case 28:
+	case 36:
 		yyDollar = yyS[yypt-3 : yypt+1]
 		{
 			yyVAL.cond = seq.AllOf(yyDollar[1].cond, yyDollar[3].cond)
 		}
-	case 29:
+	case 37:
 		yyDollar = yyS[yypt-1 : yypt+1]
 		{
 			yyVAL.cond = seq.Name(yyDollar[1].word.text)
 		}
-	case 30:
+	case 38:
 		yyDollar = yyS[yypt-2 : yypt+1]
 		{
 			yyVAL.cond = seq.Not{Of: yyDollar[2].cond}
 		}
-	case 31:
+	case 39:
 		yyDollar = yyS[yypt-3 : yypt+1]
 		{
 			yyVAL.cond = yyDollar[2].cond

@@ -1,7 +1,11 @@
 %{
 package keypad
 
-import "github.com/cptaffe/automaton/seq"
+import (
+	"strings"
+
+	"github.com/cptaffe/automaton/seq"
+)
 %}
 
 %union {
@@ -15,13 +19,13 @@ import "github.com/cptaffe/automaton/seq"
 	any  seq.Any
 }
 
-%token <word> IDENT DELAY
+%token <word> IDENT DELAY BAR PLUS OPT MINUS LPAREN RPAREN CALL
 %token <sym> SYM
-%token ARROW COLON DOTS DO WHEN AND OR NOT LPAREN RPAREN NEWLINE
+%token ARROW COLON DOTS DO WHEN AND OR NOT NEWLINE
 
 %type <str> action param_
 %type <move> goto_
-%type <pat> syms
+%type <pat> pattern cat piece diff atom
 %type <cond> when_ expr term factor
 %type <rule> rule
 %type <any> anyrule
@@ -46,7 +50,7 @@ header:
 
 param_:
 		{ $$ = "" }
-	| LPAREN IDENT RPAREN   { $$ = $2.text }
+	| CALL IDENT RPAREN     { $$ = $2.text }
 	;
 
 decl:
@@ -54,29 +58,51 @@ decl:
 	;
 
 rule:
-	  syms action goto_ when_ NEWLINE
+	  pattern action goto_ when_ NEWLINE
 		{
-			$$ = seq.Rule{Pattern: $1.text, Expr: seq.Cat($1.elems), Line: $1.line, Action: $2, Goto: $3.to, Arg: $3.arg, When: $4}
+			$$ = seq.Rule{Pattern: strings.TrimSpace($1.text), Expr: $1.e, Line: $1.line, Action: $2, Goto: $3.to, Arg: $3.arg, When: $4}
 		}
 	;
 
 anyrule:
-	  DOTS syms action goto_ when_ NEWLINE
+	  DOTS pattern action goto_ when_ NEWLINE
 		{
-			$$ = seq.Any{Pattern: $2.text, Line: $2.line, Action: $3, Goto: $4.to, Arg: $4.arg, When: $5}
-			if len($2.elems) == 1 {
-				$$.Elem = $2.elems[0]
-			} else {
-				yylex.(*lexer).FailAt($2.line, "`... %s` is more than one symbol", $2.text)
+			$$ = seq.Any{Pattern: strings.TrimSpace($2.text), Elem: $2.e, Line: $2.line, Action: $3, Goto: $4.to, Arg: $4.arg, When: $5}
+			if !$2.set {
+				yylex.(*lexer).FailAt($2.line, "`... %s` is more than one symbol", strings.TrimSpace($2.text))
 			}
 		}
 	;
 
-syms:
-	  SYM           { $$ = one($1) }
-	| IDENT         { $$ = one(event($1)) }
-	| syms SYM      { $$ = add($1, $2) }
-	| syms IDENT    { $$ = add($1, event($2)) }
+pattern:
+	  cat
+	| pattern BAR cat      { $$ = alt($1, $2, $3) }
+	;
+
+cat:
+	  piece
+	| cat piece            { $$ = cat($1, $2) }
+	;
+
+piece:
+	  diff
+	| diff PLUS            { $$ = repeat($1, $2, seq.Plus{Of: $1.e}) }
+	| diff OPT             { $$ = repeat($1, $2, seq.Opt{Of: $1.e}) }
+	;
+
+diff:
+	  atom
+	| diff MINUS atom      { $$ = minus($1, $2, $3) }
+	;
+
+atom:
+	  SYM                  { $$ = pat{e: $1.e, set: true, line: $1.line, text: $1.lead + $1.text} }
+	| IDENT                { $$ = name($1) }
+	| LPAREN pattern RPAREN
+		{
+			$$ = $2
+			$$.text = $1.lead + "(" + $2.text + $3.lead + ")"
+		}
 	;
 
 action:

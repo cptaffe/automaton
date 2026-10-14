@@ -92,10 +92,10 @@ func TestLrdotDrawsTheShapeAndTheTokens(t *testing.T) {
 		when  string
 		then  drawn
 	}{
-		{"the shape is drawn", given, "gram.dot", drawn{"keypad", "", 14, 23}},
+		{"the shape is drawn", given, "gram.dot", drawn{"keypad", "", 18, 30}},
 		{
 			"the tokens are drawn beside it", given, "gram-tokens.dot",
-			drawn{"keypad", `keypad over tokens -- 19 states, 14 tokens; expr, factor, term self-embed, so this reads more than the grammar does\l`, 19, 41},
+			drawn{"keypad", `keypad over tokens -- 20 states, 19 tokens; atom, cat, diff, expr, factor, pattern, piece, term self-embed, so this reads more than the grammar does\l`, 20, 52},
 		},
 	} {
 		t.Run(c.name, func(t *testing.T) {
@@ -114,7 +114,7 @@ func TestLrdotNamesTheShapeAfterItsFileAndCanLeaveOutTheTokens(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit %d; want 0", code)
 	}
-	if got, want := parse(t, filepath.Join(given, "other.dot")), (drawn{"other", "", 14, 23}); got != want {
+	if got, want := parse(t, filepath.Join(given, "other.dot")), (drawn{"other", "", 18, 30}); got != want {
 		t.Errorf("got %+v; want %+v", got, want)
 	}
 	if _, err := os.Stat(filepath.Join(given, "other-tokens.dot")); !errors.Is(err, fs.ErrNotExist) {

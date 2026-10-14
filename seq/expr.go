@@ -158,14 +158,21 @@ func setOf(e Expr) (fa.Set[Sym], bool, error) {
 		if err != nil {
 			return fa.Set[Sym]{}, false, err
 		}
-		return from.Without(take), weak, nil
+		left := from.Without(take)
+		if left.Empty() {
+			return fa.Set[Sym]{}, false, fmt.Errorf("%s leaves no keys", text(e))
+		}
+		return left, weak, nil
 	}
 	return fa.Set[Sym]{}, false, fmt.Errorf("%s is not a set of keys", text(e))
 }
 
 func text(e Expr) string {
-	if c, ok := e.(Class); ok {
-		return c.Text
+	switch e := e.(type) {
+	case Class:
+		return e.Text
+	case Minus:
+		return text(e.From) + " - " + text(e.Take)
 	}
 	return "a sequence or repeat"
 }
