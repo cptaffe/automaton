@@ -38,6 +38,22 @@ func Edges(g dot.Graph) []string {
 	return out
 }
 
+func Groups(g dot.Graph) []string {
+	out := make([]string, 0, len(g.Groups))
+
+	for _, gr := range g.Groups {
+		members := make([]string, 0, len(gr.Nodes))
+
+		for _, n := range gr.Nodes {
+			members = append(members, name(n)+kind(n))
+		}
+
+		out = append(out, strings.TrimSpace(gr.Label)+": "+strings.Join(members, ", "))
+	}
+
+	return out
+}
+
 func nodes(g dot.Graph) []dot.Node {
 	out := append([]dot.Node(nil), g.Nodes...)
 
