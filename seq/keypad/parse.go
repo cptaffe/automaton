@@ -121,7 +121,7 @@ func Parse(r io.Reader, from string) (*seq.Grammar, error) {
 
 func (l *lexer) Lex(v *yySymType) int {
 	t, text := l.lex(v)
-	l.tok, l.tokText, l.tokLine = t, text, l.Line()
+	l.tok, l.tokText = t, text
 	return t
 }
 
@@ -133,6 +133,7 @@ func (l *lexer) lex(v *yySymType) (int, string) {
 		if !ok {
 			return 0, ""
 		}
+		l.tokLine = tok.At.Line
 		lead := l.lead
 		if tok.At.Offset > l.end {
 			lead += " "

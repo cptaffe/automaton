@@ -285,6 +285,8 @@ func TestABadPlanDoesNotParse(t *testing.T) {
 		{name: "a wildcard's action in capitals", given: "s:\n  ... 1 do Put\n", then: `t.tree:2: the action "Put" is not lower case and hyphens`},
 		{name: "a symbol after the action", given: "s:\n  1 do a 2\n", then: `t.tree:2: "2" is a pattern symbol, and one cannot stand here`},
 		{name: "a name after the condition", given: "s:\n  1 do a when x y\n", then: `t.tree:2: "y" is a name, and one cannot stand here`},
+		{name: "a when with no condition", given: "s:\n  1 do a when\n", then: "t.tree:2: a new line cannot stand here"},
+		{name: "a goto with no scope", given: "s:\n  1 do a ->\n", then: "t.tree:2: a new line cannot stand here"},
 		{name: "a stray parenthesis", given: "s:\n  1 (\n", then: "t.tree:2: ( cannot stand here"},
 		{name: "a declaration that is not one", given: "%bogus\n", then: "t.tree:1: %bogus is not a declaration"},
 		{name: "a delay in a scope", given: "s:\n  %delay T 1s\n", then: "t.tree:2: %delay T 1s belongs above every scope: a symbol lasts as long wherever it is read"},
