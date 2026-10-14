@@ -58,7 +58,6 @@ when_:
 
 decl:
 	  DELAY WORD WORD NEWLINE         { yylex.(*lexer).delay($1.line, $2.text, $3.text) }
-	| DELAY WORD MINUS WORD NEWLINE   { yylex.(*lexer).delay($1.line, $2.text, "-"+$4.text) }
 	;
 
 rule:
@@ -90,7 +89,7 @@ piece:
 
 diff:
 	  atom
-	| diff MINUS atom  { $$ = join('-', " - ", $1, $3) }
+	| diff MINUS atom  { $$ = join('-', " \\ ", $1, $3) }
 	;
 
 atom:

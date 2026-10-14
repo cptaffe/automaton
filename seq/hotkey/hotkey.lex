@@ -1,6 +1,6 @@
 part   = (alphabetic | digit | [_.])+
 mark   = any \ alphabetic \ digit \ blank \ [\n"{}#:]
-chord  = part ("-" (part | mark))*
+chord  = "-"? part ("-" (part | mark))*
 ident  = (alphabetic | "_") (alphabetic | digit | "_")*
 quoted = "\"" [^"\n]* "\"" | "'" [^'\n]* "'"
 
@@ -22,7 +22,7 @@ start {
   "+"                 emit plus
   "?"                 emit opt
   "/"                 emit slash
-  "-"                 emit minus
+  "\\"                emit minus
   "\"" [^"\n]+ "\""    emit key
   chord               emit word
 }

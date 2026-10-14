@@ -559,7 +559,7 @@ func TestAPatternIsAnExpressionOverKeys(t *testing.T) {
 		},
 		{
 			name:  "every key but one",
-			given: "main:\n\tcontrol-x control-s { put }\n\tcontrol-x (any - escape) { }\n",
+			given: "main:\n\tcontrol-x control-s { put }\n\tcontrol-x (any \\ escape) { }\n",
 			when: []seqtest.Step{
 				{Key: "control-x", Taken: true, Pending: true},
 				{Key: "j", Taken: true},
@@ -605,7 +605,7 @@ func TestAPatternRefusesWhatIsNotAnExpressionOverKeys(t *testing.T) {
 		then  string
 	}{
 		{"a hyphen that joins two keys", "main:\n\tj-k { x }\n", "hotkeys:2: j-k: no such key"},
-		{"a difference of a sequence", "main:\n\t(j k) - x { x }\n", "hotkeys:2: a sequence or repeat is not a set of keys"},
+		{"a difference of a sequence", "main:\n\t(j k) \\ x { x }\n", "hotkeys:2: a sequence or repeat is not a set of keys"},
 		{"a wildcard of a sequence", "... (j k) { x }\nmain:\n\tx { x }\n", "hotkeys:1: ... takes one key"},
 		{"a group left open", "main:\n\t(j | k return { x }\n", "hotkeys:2: { cannot stand here"},
 		{"an operator with nothing before it", "main:\n\t| j { x }\n", "hotkeys:2: | cannot stand here"},
