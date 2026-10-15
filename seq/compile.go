@@ -113,8 +113,8 @@ func (c *compiler) bind(a *Alphabet) error {
 	c.rules = make([]Rule, len(g.Rules))
 	for i, r := range g.Rules {
 		var err error
-		if r.Expr, err = bindAll(r.Expr, a); err == nil {
-			r.Peek, err = bindAll(r.Peek, a)
+		if r.Expr, err = bind(r.Expr, a); err == nil {
+			r.Peek, err = bind(r.Peek, a)
 		}
 		if err == nil && r.Peek != nil {
 			_, _, err = setOf(r.Peek)
@@ -386,19 +386,10 @@ func (r Rule) whole() Expr {
 	return Cat{r.Expr, r.Peek}
 }
 
-func bindAll(e Expr, a *Alphabet) (Expr, error) {
-	if e == nil {
-		return nil, nil
-	}
-	return bind(e, a)
-}
-
 func exprSets(es ...Expr) []fa.Set[Sym] {
 	var out []fa.Set[Sym]
 	for _, e := range es {
-		if e != nil {
-			out = sets(e, out)
-		}
+		out = sets(e, out)
 	}
 	return out
 }
