@@ -13,32 +13,22 @@ import (
 	"github.com/cptaffe/automaton/lex"
 )
 
-func predefined(bare bool) map[string]fa.Expr[rune] {
-	out := map[string]fa.Expr[rune]{"any": fa.Lit(fa.Span(0, utf8.MaxRune))}
+func (p *parser) preload() {
+	pre := prelude()
+	names := make([]string, 0, len(pre)+1)
+	names = append(names, "any")
 
-	if bare {
-		return out
+	for _, d := range pre {
+		p.named[d.Name] = d.Expr
+		p.given[d.Name] = "is in the prelude"
+		names = append(names, d.Name)
 	}
 
-	for _, d := range prelude() {
-		out[d.Name] = d.Expr
+	sort.Strings(names)
+
+	for _, name := range names {
+		p.file.Defs = append(p.file.Defs, Def{Name: name, Expr: p.named[name]})
 	}
-
-	return out
-}
-
-func given(bare bool) map[string]string {
-	out := map[string]string{"any": "is built in"}
-
-	if bare {
-		return out
-	}
-
-	for _, d := range prelude() {
-		out[d.Name] = "is in the prelude"
-	}
-
-	return out
 }
 
 func (p *parser) define(w word, e fa.Expr[rune]) {
@@ -231,20 +221,6 @@ func (p *parser) category(name string) fa.Set[rune] {
 	}
 
 	return s
-}
-
-func builtinNames() []string {
-	pre := prelude()
-	out := make([]string, 0, len(pre)+1)
-	out = append(out, "any")
-
-	for _, d := range pre {
-		out = append(out, d.Name)
-	}
-
-	sort.Strings(out)
-
-	return out
 }
 
 func (p *parser) known() string {

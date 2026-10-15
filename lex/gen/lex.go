@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/cptaffe/automaton/fa"
 	"github.com/cptaffe/automaton/lex"
@@ -44,13 +45,13 @@ func newParser(ctx context.Context, r io.Reader, from string, bare bool) (*parse
 		return nil, err
 	}
 
-	p := &parser{Reader: in, named: predefined(bare), given: given(bare),
-		file: &File{Path: from}}
+	p := &parser{Reader: in,
+		named: map[string]fa.Expr[rune]{"any": fa.Lit(fa.Span(0, utf8.MaxRune))},
+		given: map[string]string{"any": "is built in"},
+		file:  &File{Path: from}}
 
 	if !bare {
-		for _, name := range builtinNames() {
-			p.file.Defs = append(p.file.Defs, Def{Name: name, Expr: p.named[name]})
-		}
+		p.preload()
 	}
 
 	return p, nil
