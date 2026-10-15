@@ -2,237 +2,993 @@
 
 package scan
 
-import "github.com/cptaffe/automaton/lex"
+import (
+	"context"
+	"io"
 
-const (
-	TokAnycase      = 1
-	TokArrow        = 2
-	TokCaret        = 3
-	TokClass        = 4
-	TokDash         = 5
-	TokDefine       = 6
-	TokDo           = 7
-	TokEmit         = 8
-	TokIgnore       = 9
-	TokLbrace       = 10
-	TokLbrack       = 11
-	TokLparen       = 12
-	TokMinus        = 13
-	TokName         = 14
-	TokNewline      = 15
-	TokOpt          = 16
-	TokOr           = 17
-	TokPlus         = 18
-	TokRbrace       = 19
-	TokRbrack       = 20
-	TokRparen       = 21
-	TokStar         = 22
-	TokText         = 23
-	TokUnterminated = 24
+	"github.com/cptaffe/automaton/lex"
 )
 
-var Spec = &lex.Spec{
-	Tokens: []string{"anycase", "arrow", "caret", "class", "dash", "define", "do", "emit", "ignore", "lbrace", "lbrack", "lparen", "minus", "name", "newline", "opt", "or", "plus", "rbrace", "rbrack", "rparen", "star", "text", "unterminated"},
-	Ranges: []lex.Range{
-		{Lo: 0, Hi: 8, Class: 1},
-		{Lo: 9, Hi: 9, Class: 2},
-		{Lo: 10, Hi: 10, Class: 3},
-		{Lo: 11, Hi: 31, Class: 1},
-		{Lo: 32, Hi: 32, Class: 2},
-		{Lo: 33, Hi: 33, Class: 1},
-		{Lo: 34, Hi: 34, Class: 4},
-		{Lo: 35, Hi: 39, Class: 1},
-		{Lo: 40, Hi: 40, Class: 5},
-		{Lo: 41, Hi: 41, Class: 6},
-		{Lo: 42, Hi: 42, Class: 7},
-		{Lo: 43, Hi: 43, Class: 8},
-		{Lo: 44, Hi: 44, Class: 1},
-		{Lo: 45, Hi: 45, Class: 9},
-		{Lo: 46, Hi: 46, Class: 10},
-		{Lo: 47, Hi: 47, Class: 1},
-		{Lo: 48, Hi: 57, Class: 11},
-		{Lo: 58, Hi: 58, Class: 12},
-		{Lo: 59, Hi: 59, Class: 13},
-		{Lo: 60, Hi: 60, Class: 1},
-		{Lo: 61, Hi: 61, Class: 14},
-		{Lo: 62, Hi: 62, Class: 15},
-		{Lo: 63, Hi: 63, Class: 16},
-		{Lo: 64, Hi: 64, Class: 1},
-		{Lo: 65, Hi: 90, Class: 17},
-		{Lo: 91, Hi: 91, Class: 18},
-		{Lo: 92, Hi: 92, Class: 19},
-		{Lo: 93, Hi: 93, Class: 20},
-		{Lo: 94, Hi: 94, Class: 21},
-		{Lo: 95, Hi: 96, Class: 1},
-		{Lo: 97, Hi: 99, Class: 17},
-		{Lo: 100, Hi: 100, Class: 22},
-		{Lo: 101, Hi: 101, Class: 23},
-		{Lo: 102, Hi: 102, Class: 17},
-		{Lo: 103, Hi: 103, Class: 24},
-		{Lo: 104, Hi: 104, Class: 17},
-		{Lo: 105, Hi: 105, Class: 25},
-		{Lo: 106, Hi: 108, Class: 17},
-		{Lo: 109, Hi: 109, Class: 26},
-		{Lo: 110, Hi: 110, Class: 27},
-		{Lo: 111, Hi: 111, Class: 28},
-		{Lo: 112, Hi: 113, Class: 17},
-		{Lo: 114, Hi: 114, Class: 29},
-		{Lo: 115, Hi: 115, Class: 17},
-		{Lo: 116, Hi: 116, Class: 30},
-		{Lo: 117, Hi: 122, Class: 17},
-		{Lo: 123, Hi: 123, Class: 31},
-		{Lo: 124, Hi: 124, Class: 32},
-		{Lo: 125, Hi: 125, Class: 33},
-		{Lo: 126, Hi: 1114111, Class: 1},
-	},
-	Scopes: []lex.Scope{
-		{
-			Name: "start", Start: 1,
-			States: []lex.State{
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
-				{Next: []int{0, 0, 2, 3, 4, 5, 6, 7, 8, 9, 0, 0, 0, 10, 11, 0, 12, 13, 14, 15, 0, 0, 16, 17, 13, 18, 13, 13, 13, 13, 13, 19, 20, 21}},
-				{Next: []int{0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 2},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 3},
-				{Next: []int{0, 4, 4, 0, 22, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 23, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4}, Accept: 18},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 14},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 12},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 9},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 10},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 24, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
-				{Next: []int{0, 10, 10, 0, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10}, Accept: 1},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 5},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 11},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 25, 25, 13, 0, 0, 0, 0, 0, 13, 0, 0, 0, 0, 13, 13, 13, 13, 13, 13, 13, 13, 13, 0, 0, 0}, Accept: 22},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 15},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 13},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 25, 25, 13, 0, 0, 0, 0, 0, 13, 0, 0, 0, 0, 13, 13, 13, 13, 13, 13, 26, 13, 13, 0, 0, 0}, Accept: 22},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 25, 25, 13, 0, 0, 0, 0, 0, 13, 0, 0, 0, 0, 13, 13, 13, 13, 27, 13, 13, 13, 13, 0, 0, 0}, Accept: 22},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 25, 25, 13, 0, 0, 0, 0, 0, 13, 0, 0, 0, 0, 13, 13, 28, 13, 13, 13, 13, 13, 13, 0, 0, 0}, Accept: 22},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 6},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 8},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 7},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 29, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 17},
-				{Next: []int{0, 4, 4, 0, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4}, Accept: 18},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 4},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 13, 0, 0, 0, 0, 0, 13, 0, 0, 0, 0, 13, 13, 13, 13, 13, 13, 13, 13, 13, 0, 0, 0}},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 25, 25, 13, 0, 0, 0, 0, 0, 13, 0, 0, 0, 0, 13, 13, 13, 13, 13, 13, 13, 13, 13, 0, 0, 0}, Accept: 21},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 25, 25, 13, 0, 0, 0, 0, 0, 13, 0, 0, 0, 0, 13, 13, 13, 30, 13, 13, 13, 13, 13, 0, 0, 0}, Accept: 22},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 25, 25, 13, 0, 0, 0, 0, 0, 13, 0, 0, 0, 0, 13, 13, 13, 13, 13, 31, 13, 13, 13, 0, 0, 0}, Accept: 22},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 16},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 25, 25, 13, 0, 0, 0, 0, 0, 13, 0, 0, 0, 0, 13, 13, 13, 13, 13, 13, 13, 13, 32, 0, 0, 0}, Accept: 22},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 25, 25, 13, 0, 0, 0, 0, 0, 13, 0, 0, 0, 0, 13, 13, 13, 13, 13, 13, 33, 13, 13, 0, 0, 0}, Accept: 22},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 25, 25, 13, 0, 0, 0, 0, 0, 13, 0, 0, 0, 0, 13, 13, 13, 13, 13, 13, 13, 13, 13, 0, 0, 0}, Accept: 19},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 25, 25, 13, 0, 0, 0, 0, 0, 13, 0, 0, 0, 0, 13, 13, 13, 13, 13, 13, 13, 34, 13, 0, 0, 0}, Accept: 22},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 25, 25, 13, 0, 0, 0, 0, 0, 13, 0, 0, 0, 0, 13, 35, 13, 13, 13, 13, 13, 13, 13, 0, 0, 0}, Accept: 22},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 25, 25, 13, 0, 0, 0, 0, 0, 13, 0, 0, 0, 0, 13, 13, 13, 13, 13, 13, 13, 13, 13, 0, 0, 0}, Accept: 20},
-			},
-			Acts: []lex.Act{
-				{},
-				{},
-				{Emit: 15},
-				{Emit: 2, Goto: 2},
-				{Emit: 6},
-				{Emit: 10},
-				{Emit: 19},
-				{Emit: 17},
-				{Emit: 22},
-				{Emit: 18},
-				{Emit: 16},
-				{Emit: 21},
-				{Emit: 13},
-				{Emit: 12},
-				{Emit: 11, Goto: 3},
-				{Emit: 1},
-				{Emit: 23},
-				{Emit: 24},
-				{Emit: 8, Goto: 2},
-				{Emit: 9},
-				{Emit: 7, Goto: 2},
-				{Emit: 14},
-			},
-		},
-		{
-			Name: "name", Start: 1,
-			States: []lex.State{
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
-				{Next: []int{0, 0, 2, 3, 4, 5, 6, 7, 8, 9, 0, 0, 0, 10, 11, 0, 12, 13, 14, 15, 0, 0, 13, 13, 13, 13, 13, 13, 13, 13, 13, 16, 17, 18}},
-				{Next: []int{0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 4},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 2},
-				{Next: []int{0, 4, 4, 0, 19, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 20, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4}, Accept: 20},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 16},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 14},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 11},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 12},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 21, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
-				{Next: []int{0, 10, 10, 0, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10}, Accept: 3},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 7},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 13},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 22, 22, 13, 0, 0, 0, 0, 0, 13, 0, 0, 0, 0, 13, 13, 13, 13, 13, 13, 13, 13, 13, 0, 0, 0}, Accept: 1},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 17},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 15},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 8},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 10},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 9},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 23, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 19},
-				{Next: []int{0, 4, 4, 0, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4}, Accept: 20},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 6},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 13, 0, 0, 0, 0, 0, 13, 0, 0, 0, 0, 13, 13, 13, 13, 13, 13, 13, 13, 13, 0, 0, 0}},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 18},
-			},
-			Acts: []lex.Act{
-				{Emit: 14, Goto: 1},
-				{Emit: 15, Goto: 1},
-				{},
-				{},
-				{Emit: 15},
-				{Emit: 2, Goto: 2},
-				{Emit: 6},
-				{Emit: 10},
-				{Emit: 19},
-				{Emit: 17},
-				{Emit: 22},
-				{Emit: 18},
-				{Emit: 16},
-				{Emit: 21},
-				{Emit: 13},
-				{Emit: 12},
-				{Emit: 11, Goto: 3},
-				{Emit: 1},
-				{Emit: 23},
-				{Emit: 24},
-				{Emit: 8, Goto: 2},
-				{Emit: 9},
-				{Emit: 7, Goto: 2},
-				{Emit: 14},
-			},
-		},
-		{
-			Name: "klass(start)", Start: 1,
-			States: []lex.State{
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
-				{Next: []int{0, 2, 2, 3, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 2, 5, 6, 7, 8, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2}},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 7},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 2},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 4},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 7},
-				{Next: []int{0, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10}, Accept: 7},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 1},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 3},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 11, 11, 11, 0, 0, 0, 0, 0, 11, 0, 0, 0, 0, 11, 11, 11, 11, 11, 11, 11, 11, 11, 0, 0, 0}},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 6},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 11, 11, 11, 12, 0, 0, 0, 0, 11, 0, 0, 0, 0, 11, 11, 11, 11, 11, 11, 11, 11, 11, 0, 0, 0}},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 13, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 5},
-			},
-			Acts: []lex.Act{
-				{Emit: 20, Goto: 1},
-				{Emit: 15},
-				{Emit: 3},
-				{Emit: 5},
-				{Emit: 4},
-				{Emit: 23},
-				{Emit: 23},
-			},
-		},
-	},
+type Tok int
+
+const (
+	TokAnycase      Tok = 1
+	TokArrow        Tok = 2
+	TokCaret        Tok = 3
+	TokClass        Tok = 4
+	TokDash         Tok = 5
+	TokDefine       Tok = 6
+	TokDo           Tok = 7
+	TokEmit         Tok = 8
+	TokIgnore       Tok = 9
+	TokLbrace       Tok = 10
+	TokLbrack       Tok = 11
+	TokLparen       Tok = 12
+	TokMinus        Tok = 13
+	TokName         Tok = 14
+	TokNewline      Tok = 15
+	TokOpt          Tok = 16
+	TokOr           Tok = 17
+	TokPlus         Tok = 18
+	TokRbrace       Tok = 19
+	TokRbrack       Tok = 20
+	TokRparen       Tok = 21
+	TokStar         Tok = 22
+	TokText         Tok = 23
+	TokUnterminated Tok = 24
+)
+
+var tokNames = []string{"", "anycase", "arrow", "caret", "class", "dash", "define", "do", "emit", "ignore", "lbrace", "lbrack", "lparen", "minus", "name", "newline", "opt", "or", "plus", "rbrace", "rbrack", "rparen", "star", "text", "unterminated"}
+
+func (t Tok) String() string {
+	if t < 1 || int(t) >= len(tokNames) {
+		return ""
+	}
+
+	return tokNames[t]
+}
+
+type stateFn func(*lexer) stateFn
+
+type lexer struct {
+	lex.Emitter[Tok, stateFn]
+}
+
+func Lex(ctx context.Context, r io.Reader) <-chan lex.Token[Tok] {
+	l := &lexer{Emitter: lex.NewEmitter[Tok, stateFn](ctx, r)}
+
+	go l.run()
+
+	return l.Items()
+}
+
+func (l *lexer) run() {
+	defer l.Close()
+
+	for state := stateFn(lexStart); state != nil; {
+		state = state(l)
+	}
+}
+
+func lexStart(l *lexer) stateFn {
+	if l.Begin() {
+		l.End("start")
+
+		return nil
+	}
+
+	var r rune
+
+	l.Quiet(false)
+	r = l.Next()
+	switch {
+	case r == 0x9 || r == ' ':
+		goto s2
+	case r == 0xa:
+		goto s3
+	case r == '"':
+		goto s4
+	case r == '(':
+		goto s5
+	case r == ')':
+		goto s6
+	case r == '*':
+		goto s7
+	case r == '+':
+		goto s8
+	case r == '-':
+		goto s9
+	case r == ';':
+		goto s10
+	case r == '=':
+		goto s11
+	case r == '?':
+		goto s12
+	case 'A' <= r && r <= 'Z' || 'a' <= r && r <= 'c' || 'f' <= r && r <= 'h' || 'j' <= r && r <= 'z':
+		goto s13
+	case r == '[':
+		goto s14
+	case r == '\\':
+		goto s15
+	case r == 'd':
+		goto s16
+	case r == 'e':
+		goto s17
+	case r == 'i':
+		goto s18
+	case r == '{':
+		goto s19
+	case r == '|':
+		goto s20
+	case r == '}':
+		goto s21
+	}
+	goto done
+s2:
+	l.Quiet(true)
+	l.Mark(2)
+	r = l.Next()
+	switch {
+	case r == 0x9 || r == ' ':
+		goto s2
+	}
+	goto done
+s3:
+	l.Quiet(false)
+	l.Mark(3)
+	goto done
+s4:
+	l.Quiet(false)
+	l.Mark(18)
+	r = l.Next()
+	switch {
+	case 0x0 <= r && r <= 0x9 || 0xb <= r && r <= '!' || '#' <= r && r <= '[' || ']' <= r && r <= 0x10ffff:
+		goto s4
+	case r == '"':
+		goto s22
+	case r == '\\':
+		goto s23
+	}
+	goto done
+s5:
+	l.Quiet(false)
+	l.Mark(14)
+	goto done
+s6:
+	l.Quiet(false)
+	l.Mark(12)
+	goto done
+s7:
+	l.Quiet(false)
+	l.Mark(9)
+	goto done
+s8:
+	l.Quiet(false)
+	l.Mark(10)
+	goto done
+s9:
+	l.Quiet(false)
+	r = l.Next()
+	switch {
+	case r == '>':
+		goto s24
+	}
+	goto done
+s10:
+	l.Quiet(true)
+	l.Mark(1)
+	r = l.Next()
+	switch {
+	case 0x0 <= r && r <= 0x9 || 0xb <= r && r <= 0x10ffff:
+		goto s10
+	}
+	goto done
+s11:
+	l.Quiet(false)
+	l.Mark(5)
+	goto done
+s12:
+	l.Quiet(false)
+	l.Mark(11)
+	goto done
+s13:
+	l.Quiet(false)
+	l.Mark(22)
+	r = l.Next()
+	switch {
+	case '0' <= r && r <= '9' || 'A' <= r && r <= 'Z' || 'a' <= r && r <= 'z':
+		goto s13
+	case '-' <= r && r <= '.':
+		goto s25
+	}
+	goto done
+s14:
+	l.Quiet(false)
+	l.Mark(15)
+	goto done
+s15:
+	l.Quiet(false)
+	l.Mark(13)
+	goto done
+s16:
+	l.Quiet(false)
+	l.Mark(22)
+	r = l.Next()
+	switch {
+	case '0' <= r && r <= '9' || 'A' <= r && r <= 'Z' || 'a' <= r && r <= 'n' || 'p' <= r && r <= 'z':
+		goto s13
+	case '-' <= r && r <= '.':
+		goto s25
+	case r == 'o':
+		goto s26
+	}
+	goto done
+s17:
+	l.Quiet(false)
+	l.Mark(22)
+	r = l.Next()
+	switch {
+	case '0' <= r && r <= '9' || 'A' <= r && r <= 'Z' || 'a' <= r && r <= 'l' || 'n' <= r && r <= 'z':
+		goto s13
+	case '-' <= r && r <= '.':
+		goto s25
+	case r == 'm':
+		goto s27
+	}
+	goto done
+s18:
+	l.Quiet(false)
+	l.Mark(22)
+	r = l.Next()
+	switch {
+	case '0' <= r && r <= '9' || 'A' <= r && r <= 'Z' || 'a' <= r && r <= 'f' || 'h' <= r && r <= 'z':
+		goto s13
+	case '-' <= r && r <= '.':
+		goto s25
+	case r == 'g':
+		goto s28
+	}
+	goto done
+s19:
+	l.Quiet(false)
+	l.Mark(6)
+	goto done
+s20:
+	l.Quiet(false)
+	l.Mark(8)
+	goto done
+s21:
+	l.Quiet(false)
+	l.Mark(7)
+	goto done
+s22:
+	l.Quiet(false)
+	l.Mark(17)
+	r = l.Next()
+	switch {
+	case r == 'i':
+		goto s29
+	}
+	goto done
+s23:
+	l.Quiet(false)
+	l.Mark(18)
+	r = l.Next()
+	switch {
+	case 0x0 <= r && r <= 0x9 || 0xb <= r && r <= 0x10ffff:
+		goto s4
+	}
+	goto done
+s24:
+	l.Quiet(false)
+	l.Mark(4)
+	goto done
+s25:
+	l.Quiet(false)
+	r = l.Next()
+	switch {
+	case '0' <= r && r <= '9' || 'A' <= r && r <= 'Z' || 'a' <= r && r <= 'z':
+		goto s13
+	}
+	goto done
+s26:
+	l.Quiet(false)
+	l.Mark(21)
+	r = l.Next()
+	switch {
+	case '0' <= r && r <= '9' || 'A' <= r && r <= 'Z' || 'a' <= r && r <= 'z':
+		goto s13
+	case '-' <= r && r <= '.':
+		goto s25
+	}
+	goto done
+s27:
+	l.Quiet(false)
+	l.Mark(22)
+	r = l.Next()
+	switch {
+	case '0' <= r && r <= '9' || 'A' <= r && r <= 'Z' || 'a' <= r && r <= 'h' || 'j' <= r && r <= 'z':
+		goto s13
+	case '-' <= r && r <= '.':
+		goto s25
+	case r == 'i':
+		goto s30
+	}
+	goto done
+s28:
+	l.Quiet(false)
+	l.Mark(22)
+	r = l.Next()
+	switch {
+	case '0' <= r && r <= '9' || 'A' <= r && r <= 'Z' || 'a' <= r && r <= 'm' || 'o' <= r && r <= 'z':
+		goto s13
+	case '-' <= r && r <= '.':
+		goto s25
+	case r == 'n':
+		goto s31
+	}
+	goto done
+s29:
+	l.Quiet(false)
+	l.Mark(16)
+	goto done
+s30:
+	l.Quiet(false)
+	l.Mark(22)
+	r = l.Next()
+	switch {
+	case '0' <= r && r <= '9' || 'A' <= r && r <= 'Z' || 'a' <= r && r <= 's' || 'u' <= r && r <= 'z':
+		goto s13
+	case '-' <= r && r <= '.':
+		goto s25
+	case r == 't':
+		goto s32
+	}
+	goto done
+s31:
+	l.Quiet(false)
+	l.Mark(22)
+	r = l.Next()
+	switch {
+	case '0' <= r && r <= '9' || 'A' <= r && r <= 'Z' || 'a' <= r && r <= 'n' || 'p' <= r && r <= 'z':
+		goto s13
+	case '-' <= r && r <= '.':
+		goto s25
+	case r == 'o':
+		goto s33
+	}
+	goto done
+s32:
+	l.Quiet(false)
+	l.Mark(19)
+	r = l.Next()
+	switch {
+	case '0' <= r && r <= '9' || 'A' <= r && r <= 'Z' || 'a' <= r && r <= 'z':
+		goto s13
+	case '-' <= r && r <= '.':
+		goto s25
+	}
+	goto done
+s33:
+	l.Quiet(false)
+	l.Mark(22)
+	r = l.Next()
+	switch {
+	case '0' <= r && r <= '9' || 'A' <= r && r <= 'Z' || 'a' <= r && r <= 'q' || 's' <= r && r <= 'z':
+		goto s13
+	case '-' <= r && r <= '.':
+		goto s25
+	case r == 'r':
+		goto s34
+	}
+	goto done
+s34:
+	l.Quiet(false)
+	l.Mark(22)
+	r = l.Next()
+	switch {
+	case '0' <= r && r <= '9' || 'A' <= r && r <= 'Z' || 'a' <= r && r <= 'd' || 'f' <= r && r <= 'z':
+		goto s13
+	case '-' <= r && r <= '.':
+		goto s25
+	case r == 'e':
+		goto s35
+	}
+	goto done
+s35:
+	l.Quiet(false)
+	l.Mark(20)
+	r = l.Next()
+	switch {
+	case '0' <= r && r <= '9' || 'A' <= r && r <= 'Z' || 'a' <= r && r <= 'z':
+		goto s13
+	case '-' <= r && r <= '.':
+		goto s25
+	}
+	goto done
+done:
+	switch l.Back() {
+	case 1:
+		l.Skip()
+
+		return lexStart
+	case 2:
+		l.Skip()
+
+		return lexStart
+	case 3:
+		if !l.Emit(TokNewline, 0) {
+			return nil
+		}
+
+		return lexStart
+	case 4:
+		if !l.Emit(TokArrow, 0) {
+			return nil
+		}
+
+		return lexName
+	case 5:
+		if !l.Emit(TokDefine, 0) {
+			return nil
+		}
+
+		return lexStart
+	case 6:
+		if !l.Emit(TokLbrace, 0) {
+			return nil
+		}
+
+		return lexStart
+	case 7:
+		if !l.Emit(TokRbrace, 0) {
+			return nil
+		}
+
+		return lexStart
+	case 8:
+		if !l.Emit(TokOr, 0) {
+			return nil
+		}
+
+		return lexStart
+	case 9:
+		if !l.Emit(TokStar, 0) {
+			return nil
+		}
+
+		return lexStart
+	case 10:
+		if !l.Emit(TokPlus, 0) {
+			return nil
+		}
+
+		return lexStart
+	case 11:
+		if !l.Emit(TokOpt, 0) {
+			return nil
+		}
+
+		return lexStart
+	case 12:
+		if !l.Emit(TokRparen, 0) {
+			return nil
+		}
+
+		return lexStart
+	case 13:
+		if !l.Emit(TokMinus, 0) {
+			return nil
+		}
+
+		return lexStart
+	case 14:
+		if !l.Emit(TokLparen, 0) {
+			return nil
+		}
+
+		return lexStart
+	case 15:
+		if !l.Emit(TokLbrack, 0) {
+			return nil
+		}
+
+		return lexKlassStart
+	case 16:
+		if !l.Emit(TokAnycase, 0) {
+			return nil
+		}
+
+		return lexStart
+	case 17:
+		if !l.Emit(TokText, 0) {
+			return nil
+		}
+
+		return lexStart
+	case 18:
+		if !l.Emit(TokUnterminated, 0) {
+			return nil
+		}
+
+		return lexStart
+	case 19:
+		if !l.Emit(TokEmit, 0) {
+			return nil
+		}
+
+		return lexName
+	case 20:
+		if !l.Emit(TokIgnore, 0) {
+			return nil
+		}
+
+		return lexStart
+	case 21:
+		if !l.Emit(TokDo, 0) {
+			return nil
+		}
+
+		return lexName
+	case 22:
+		if !l.Emit(TokName, 0) {
+			return nil
+		}
+
+		return lexStart
+	}
+
+	l.Fail("start")
+
+	return nil
+}
+
+func lexName(l *lexer) stateFn {
+	if l.Begin() {
+		l.End("name")
+
+		return nil
+	}
+
+	var r rune
+
+	l.Quiet(false)
+	r = l.Next()
+	switch {
+	case r == 0x9 || r == ' ':
+		goto s2
+	case r == 0xa:
+		goto s3
+	case r == '"':
+		goto s4
+	case r == '(':
+		goto s5
+	case r == ')':
+		goto s6
+	case r == '*':
+		goto s7
+	case r == '+':
+		goto s8
+	case r == '-':
+		goto s9
+	case r == ';':
+		goto s10
+	case r == '=':
+		goto s11
+	case r == '?':
+		goto s12
+	case 'A' <= r && r <= 'Z' || 'a' <= r && r <= 'z':
+		goto s13
+	case r == '[':
+		goto s14
+	case r == '\\':
+		goto s15
+	case r == '{':
+		goto s16
+	case r == '|':
+		goto s17
+	case r == '}':
+		goto s18
+	}
+	goto done
+s2:
+	l.Quiet(true)
+	l.Mark(4)
+	r = l.Next()
+	switch {
+	case r == 0x9 || r == ' ':
+		goto s2
+	}
+	goto done
+s3:
+	l.Quiet(false)
+	l.Mark(2)
+	goto done
+s4:
+	l.Quiet(false)
+	l.Mark(20)
+	r = l.Next()
+	switch {
+	case 0x0 <= r && r <= 0x9 || 0xb <= r && r <= '!' || '#' <= r && r <= '[' || ']' <= r && r <= 0x10ffff:
+		goto s4
+	case r == '"':
+		goto s19
+	case r == '\\':
+		goto s20
+	}
+	goto done
+s5:
+	l.Quiet(false)
+	l.Mark(16)
+	goto done
+s6:
+	l.Quiet(false)
+	l.Mark(14)
+	goto done
+s7:
+	l.Quiet(false)
+	l.Mark(11)
+	goto done
+s8:
+	l.Quiet(false)
+	l.Mark(12)
+	goto done
+s9:
+	l.Quiet(false)
+	r = l.Next()
+	switch {
+	case r == '>':
+		goto s21
+	}
+	goto done
+s10:
+	l.Quiet(true)
+	l.Mark(3)
+	r = l.Next()
+	switch {
+	case 0x0 <= r && r <= 0x9 || 0xb <= r && r <= 0x10ffff:
+		goto s10
+	}
+	goto done
+s11:
+	l.Quiet(false)
+	l.Mark(7)
+	goto done
+s12:
+	l.Quiet(false)
+	l.Mark(13)
+	goto done
+s13:
+	l.Quiet(false)
+	l.Mark(1)
+	r = l.Next()
+	switch {
+	case '0' <= r && r <= '9' || 'A' <= r && r <= 'Z' || 'a' <= r && r <= 'z':
+		goto s13
+	case '-' <= r && r <= '.':
+		goto s22
+	}
+	goto done
+s14:
+	l.Quiet(false)
+	l.Mark(17)
+	goto done
+s15:
+	l.Quiet(false)
+	l.Mark(15)
+	goto done
+s16:
+	l.Quiet(false)
+	l.Mark(8)
+	goto done
+s17:
+	l.Quiet(false)
+	l.Mark(10)
+	goto done
+s18:
+	l.Quiet(false)
+	l.Mark(9)
+	goto done
+s19:
+	l.Quiet(false)
+	l.Mark(19)
+	r = l.Next()
+	switch {
+	case r == 'i':
+		goto s23
+	}
+	goto done
+s20:
+	l.Quiet(false)
+	l.Mark(20)
+	r = l.Next()
+	switch {
+	case 0x0 <= r && r <= 0x9 || 0xb <= r && r <= 0x10ffff:
+		goto s4
+	}
+	goto done
+s21:
+	l.Quiet(false)
+	l.Mark(6)
+	goto done
+s22:
+	l.Quiet(false)
+	r = l.Next()
+	switch {
+	case '0' <= r && r <= '9' || 'A' <= r && r <= 'Z' || 'a' <= r && r <= 'z':
+		goto s13
+	}
+	goto done
+s23:
+	l.Quiet(false)
+	l.Mark(18)
+	goto done
+done:
+	switch l.Back() {
+	case 1:
+		if !l.Emit(TokName, 0) {
+			return nil
+		}
+
+		return lexStart
+	case 2:
+		if !l.Emit(TokNewline, 0) {
+			return nil
+		}
+
+		return lexStart
+	case 3:
+		l.Skip()
+
+		return lexName
+	case 4:
+		l.Skip()
+
+		return lexName
+	case 6:
+		if !l.Emit(TokArrow, 0) {
+			return nil
+		}
+
+		return lexName
+	case 7:
+		if !l.Emit(TokDefine, 0) {
+			return nil
+		}
+
+		return lexName
+	case 8:
+		if !l.Emit(TokLbrace, 0) {
+			return nil
+		}
+
+		return lexName
+	case 9:
+		if !l.Emit(TokRbrace, 0) {
+			return nil
+		}
+
+		return lexName
+	case 10:
+		if !l.Emit(TokOr, 0) {
+			return nil
+		}
+
+		return lexName
+	case 11:
+		if !l.Emit(TokStar, 0) {
+			return nil
+		}
+
+		return lexName
+	case 12:
+		if !l.Emit(TokPlus, 0) {
+			return nil
+		}
+
+		return lexName
+	case 13:
+		if !l.Emit(TokOpt, 0) {
+			return nil
+		}
+
+		return lexName
+	case 14:
+		if !l.Emit(TokRparen, 0) {
+			return nil
+		}
+
+		return lexName
+	case 15:
+		if !l.Emit(TokMinus, 0) {
+			return nil
+		}
+
+		return lexName
+	case 16:
+		if !l.Emit(TokLparen, 0) {
+			return nil
+		}
+
+		return lexName
+	case 17:
+		if !l.Emit(TokLbrack, 0) {
+			return nil
+		}
+
+		return lexKlassStart
+	case 18:
+		if !l.Emit(TokAnycase, 0) {
+			return nil
+		}
+
+		return lexName
+	case 19:
+		if !l.Emit(TokText, 0) {
+			return nil
+		}
+
+		return lexName
+	case 20:
+		if !l.Emit(TokUnterminated, 0) {
+			return nil
+		}
+
+		return lexName
+	}
+
+	l.Fail("name")
+
+	return nil
+}
+
+func lexKlassStart(l *lexer) stateFn {
+	if l.Begin() {
+		l.End("klass(start)")
+
+		return nil
+	}
+
+	var r rune
+
+	l.Quiet(false)
+	r = l.Next()
+	switch {
+	case 0x0 <= r && r <= 0x9 || 0xb <= r && r <= ',' || '.' <= r && r <= 'Z' || '_' <= r && r <= 0x10ffff:
+		goto s2
+	case r == 0xa:
+		goto s3
+	case r == '-':
+		goto s4
+	case r == '[':
+		goto s5
+	case r == '\\':
+		goto s6
+	case r == ']':
+		goto s7
+	case r == '^':
+		goto s8
+	}
+	goto done
+s2:
+	l.Quiet(false)
+	l.Mark(7)
+	goto done
+s3:
+	l.Quiet(false)
+	l.Mark(2)
+	goto done
+s4:
+	l.Quiet(false)
+	l.Mark(4)
+	goto done
+s5:
+	l.Quiet(false)
+	l.Mark(7)
+	r = l.Next()
+	switch {
+	case r == ':':
+		goto s9
+	}
+	goto done
+s6:
+	l.Quiet(false)
+	l.Mark(7)
+	r = l.Next()
+	switch {
+	case 0x0 <= r && r <= 0x10ffff:
+		goto s10
+	}
+	goto done
+s7:
+	l.Quiet(false)
+	l.Mark(1)
+	goto done
+s8:
+	l.Quiet(false)
+	l.Mark(3)
+	goto done
+s9:
+	l.Quiet(false)
+	r = l.Next()
+	switch {
+	case '-' <= r && r <= '.' || '0' <= r && r <= '9' || 'A' <= r && r <= 'Z' || 'a' <= r && r <= 'z':
+		goto s11
+	}
+	goto done
+s10:
+	l.Quiet(false)
+	l.Mark(6)
+	goto done
+s11:
+	l.Quiet(false)
+	r = l.Next()
+	switch {
+	case '-' <= r && r <= '.' || '0' <= r && r <= '9' || 'A' <= r && r <= 'Z' || 'a' <= r && r <= 'z':
+		goto s11
+	case r == ':':
+		goto s12
+	}
+	goto done
+s12:
+	l.Quiet(false)
+	r = l.Next()
+	switch {
+	case r == ']':
+		goto s13
+	}
+	goto done
+s13:
+	l.Quiet(false)
+	l.Mark(5)
+	goto done
+done:
+	switch l.Back() {
+	case 1:
+		if !l.Emit(TokRbrack, 0) {
+			return nil
+		}
+
+		return lexStart
+	case 2:
+		if !l.Emit(TokNewline, 0) {
+			return nil
+		}
+
+		return lexKlassStart
+	case 3:
+		if !l.Emit(TokCaret, 0) {
+			return nil
+		}
+
+		return lexKlassStart
+	case 4:
+		if !l.Emit(TokDash, 0) {
+			return nil
+		}
+
+		return lexKlassStart
+	case 5:
+		if !l.Emit(TokClass, 0) {
+			return nil
+		}
+
+		return lexKlassStart
+	case 6:
+		if !l.Emit(TokText, 0) {
+			return nil
+		}
+
+		return lexKlassStart
+	case 7:
+		if !l.Emit(TokText, 0) {
+			return nil
+		}
+
+		return lexKlassStart
+	}
+
+	l.Fail("klass(start)")
+
+	return nil
 }

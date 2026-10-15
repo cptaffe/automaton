@@ -1,0 +1,35 @@
+-- words --
+start {
+  ";" [^\n]*   ignore
+  blank+       ignore
+  "\n"         emit newline
+  [a-z]+       emit word
+  "="          emit define
+  "+"          emit plus
+  "{"          emit lbrace
+  "}"          emit rbrace
+}
+-- comments --
+start {
+  "/*" ([^*] | "*"+ [^*/])* "*"+ "/"  ignore
+  blank+  ignore
+  "\n"    emit newline
+  [a-z]+  emit word
+}
+-- unspaced --
+start {
+  [^ \n]+ emit word
+  " " ignore
+  "\n" emit newline
+}
+-- spanning --
+start {
+  "/*" [^*]* "*/"  emit comment
+  "\n"  emit newline
+}
+-- does --
+start {
+  "a"  do first emit a
+  "b"  emit b
+  "c"  emit c do second
+}

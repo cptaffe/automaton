@@ -15,12 +15,6 @@ type File string
 
 const Default File = "t.lex"
 
-func Compile(t testing.TB, src string) *lex.Spec {
-	t.Helper()
-
-	return Default.Compile(t, src)
-}
-
 func Error(src string) error { return Default.Error(src) }
 
 func Build(t testing.TB, src string) (*gen.Flat, []gen.Machine) {
@@ -29,23 +23,7 @@ func Build(t testing.TB, src string) (*gen.Flat, []gen.Machine) {
 	return Default.Build(t, src)
 }
 
-func (f File) Compile(t testing.TB, src string) *lex.Spec {
-	t.Helper()
-
-	spec, err := f.compile(src)
-
-	if err != nil {
-		t.Fatalf("compiling %s\n%s\n%v", f, src, err)
-	}
-
-	return spec
-}
-
-func (f File) Error(src string) error {
-	_, err := f.compile(src)
-
-	return err
-}
+func (f File) Error(src string) error { return f.compile(src) }
 
 func (f File) Build(t testing.TB, src string) (*gen.Flat, []gen.Machine) {
 	t.Helper()
@@ -77,30 +55,50 @@ func (f File) build(src string) (*gen.Flat, []gen.Machine, []string, error) {
 	return flat, ms, dead, err
 }
 
-func (f File) compile(src string) (*lex.Spec, error) {
-	flat, ms, dead, err := f.build(src)
+func (f File) compile(src string) error {
+	_, _, dead, err := f.build(src)
 
-	if err != nil {
-		return nil, err
+	if err == nil && len(dead) > 0 {
+		err = fmt.Errorf("%s", strings.Join(dead, "\n"))
 	}
 
-	if len(dead) > 0 {
-		return nil, fmt.Errorf("%s", strings.Join(dead, "\n"))
+	return err
+}
+
+type Lexer struct {
+	Lex  func(context.Context, io.Reader) <-chan lex.Token[int]
+	Name func(int) string
+}
+
+func Of[K interface {
+	~int
+	fmt.Stringer
+}](lexf func(context.Context, io.Reader) <-chan lex.Token[K]) Lexer {
+	run := func(ctx context.Context, r io.Reader) <-chan lex.Token[int] {
+		out := make(chan lex.Token[int])
+
+		go func() {
+			defer close(out)
+
+			for t := range lexf(ctx, r) {
+				select {
+				case out <- lex.Token[int]{Kind: int(t.Kind), Text: t.Text, Do: t.Do, At: t.At, Err: t.Err}:
+				case <-ctx.Done():
+					return
+				}
+			}
+		}()
+
+		return out
 	}
 
-	return gen.Spec(flat, ms)
+	return Lexer{Lex: run, Name: func(k int) string { return K(k).String() }}
 }
 
-func Read(t testing.TB, spec *lex.Spec, input string) ([]string, error) {
+func Read(t testing.TB, lx Lexer, input string) ([]string, error) {
 	t.Helper()
 
-	return ReadFrom(t, spec, spec.Scopes[0].Name, input)
-}
-
-func ReadFrom(t testing.TB, spec *lex.Spec, scope, input string) ([]string, error) {
-	t.Helper()
-
-	toks := TokensFrom(t, spec, scope, strings.NewReader(input))
+	toks := Tokens(t, lx, strings.NewReader(input))
 	out := make([]string, 0, len(toks))
 
 	for _, tok := range toks {
@@ -108,30 +106,21 @@ func ReadFrom(t testing.TB, spec *lex.Spec, scope, input string) ([]string, erro
 			return out, tok.Err
 		}
 
-		out = append(out, spec.Token(tok.Kind)+"("+tok.Text+")")
+		out = append(out, lx.Name(tok.Kind)+"("+tok.Text+")")
 	}
 
 	return out, nil
 }
 
-func Tokens(t testing.TB, spec *lex.Spec, in io.Reader) []lex.Token {
+func Tokens(t testing.TB, lx Lexer, in io.Reader) []lex.Token[int] {
 	t.Helper()
 
-	return TokensFrom(t, spec, spec.Scopes[0].Name, in)
-}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-func TokensFrom(t testing.TB, spec *lex.Spec, scope string, in io.Reader) []lex.Token {
-	t.Helper()
+	var out []lex.Token[int]
 
-	ch, err := lex.Lex(context.Background(), spec, in, scope)
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	var out []lex.Token
-
-	for tok := range ch {
+	for tok := range lx.Lex(ctx, in) {
 		out = append(out, tok)
 
 		if tok.Err != nil {

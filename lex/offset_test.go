@@ -13,6 +13,8 @@ import (
 
 	"github.com/cptaffe/automaton/internal/lextest"
 	"github.com/cptaffe/automaton/lex"
+	"github.com/cptaffe/automaton/lex/internal/cases"
+	"github.com/cptaffe/automaton/lex/internal/cases/words"
 )
 
 type drip struct {
@@ -70,19 +72,7 @@ func (a *around) Read(p []byte) (int, error) {
 	return 0, io.EOF
 }
 
-const words = `start {
-  ";" [^\n]*   ignore
-  blank+       ignore
-  "\n"         emit newline
-  [a-z]+       emit word
-  "="          emit define
-  "+"          emit plus
-  "{"          emit lbrace
-  "}"          emit rbrace
-}
-`
-
-func positions(toks []lex.Token) []string {
+func positions(toks []lex.Token[int]) []string {
 	out := make([]string, 0, len(toks))
 
 	for _, tok := range toks {
@@ -110,14 +100,14 @@ func TestATokensPlaceDoesNotDependOnHowTheInputArrived(t *testing.T) {
 		{"a byte at a time", &drip{s: src}, want},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			spec := lextest.Compile(t, words)
+			lx := cases.Lexers["words"]
 
-			toks := lextest.Tokens(t, spec, c.given)
+			toks := lextest.Tokens(t, lx, c.given)
 
 			got := make([]string, 0, len(toks))
 
 			for _, tok := range toks {
-				got = append(got, fmt.Sprintf("%s@%d:%d:%d", spec.Token(tok.Kind), tok.At.Offset, tok.At.Line, tok.At.Col))
+				got = append(got, fmt.Sprintf("%s@%d:%d:%d", lx.Name(tok.Kind), tok.At.Offset, tok.At.Line, tok.At.Col))
 
 				if src[tok.At.Offset:tok.End()] != tok.Text {
 					t.Errorf("%q at %d is not what the source holds there", tok.Text, tok.At.Offset)
@@ -132,9 +122,7 @@ func TestATokensPlaceDoesNotDependOnHowTheInputArrived(t *testing.T) {
 }
 
 func TestAKindNumbersTheSortedTokensFromOne(t *testing.T) {
-	spec := lextest.Compile(t, words)
-
-	got := []string{spec.Token(-1), spec.Token(0), spec.Token(1), spec.Token(6), spec.Token(7)}
+	got := []string{words.Tok(-1).String(), words.Tok(0).String(), words.Tok(1).String(), words.Tok(6).String(), words.Tok(7).String()}
 
 	if want := []string{"", "", "define", "word", ""}; !reflect.DeepEqual(got, want) {
 		t.Errorf("kinds -1, 0, 1, 6 and 7 are %q; want %q", got, want)
@@ -142,11 +130,7 @@ func TestAKindNumbersTheSortedTokensFromOne(t *testing.T) {
 }
 
 func TestAnErrorCarriesItsFileAndLine(t *testing.T) {
-	r, err := lex.Open(context.Background(), lextest.Compile(t, words), strings.NewReader("word\n!\n"), "start", "dir/t.lex")
-
-	if err != nil {
-		t.Fatal(err)
-	}
+	r := lex.NewReader(cases.Lexers["words"].Lex(context.Background(), lex.Terminated(strings.NewReader("word\n!\n"))), "dir/t.lex")
 
 	for _, ok := r.Next(); ok; _, ok = r.Next() {
 	}
@@ -159,9 +143,7 @@ func TestAnErrorCarriesItsFileAndLine(t *testing.T) {
 }
 
 func TestLinesAndColumnsCountFromOne(t *testing.T) {
-	spec := lextest.Compile(t, words)
-
-	got := positions(lextest.Tokens(t, spec, strings.NewReader("ab cd\n\n  ef\n")))
+	got := positions(lextest.Tokens(t, cases.Lexers["words"], strings.NewReader("ab cd\n\n  ef\n")))
 
 	if want := []string{`"ab"@1:1`, `"cd"@1:4`, `"\n"@1:6`, `"\n"@2:1`, `"ef"@3:3`, `"\n"@3:5`}; !reflect.DeepEqual(got, want) {
 		t.Errorf("positions %q; want %q", got, want)
@@ -169,9 +151,7 @@ func TestLinesAndColumnsCountFromOne(t *testing.T) {
 }
 
 func TestIgnoredLinesAreCounted(t *testing.T) {
-	spec := lextest.Compile(t, words)
-
-	got := positions(lextest.Tokens(t, spec, strings.NewReader("; one\n; two\nword = x\n")))
+	got := positions(lextest.Tokens(t, cases.Lexers["words"], strings.NewReader("; one\n; two\nword = x\n")))
 
 	if want := []string{`"\n"@1:6`, `"\n"@2:6`, `"word"@3:1`, `"="@3:6`, `"x"@3:8`, `"\n"@3:9`}; !reflect.DeepEqual(got, want) {
 		t.Errorf("positions %q; want %q", got, want)
@@ -179,9 +159,7 @@ func TestIgnoredLinesAreCounted(t *testing.T) {
 }
 
 func TestColumnsCountCharactersAndOffsetsCountBytes(t *testing.T) {
-	spec := lextest.Compile(t, "start {\n  [^ \\n]+ emit word\n  \" \" ignore\n  \"\\n\" emit newline\n}\n")
-
-	toks := lextest.Tokens(t, spec, strings.NewReader("\u00e9\u00e9 ab\n"))
+	toks := lextest.Tokens(t, cases.Lexers["unspaced"], strings.NewReader("\u00e9\u00e9 ab\n"))
 
 	got := make([]string, 0, len(toks))
 
@@ -198,11 +176,7 @@ func TestTheReaderStreamsAnEndlessInput(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	r, err := lex.Open(ctx, lextest.Compile(t, words), endless{}, "start", "t.lex")
-
-	if err != nil {
-		t.Fatal(err)
-	}
+	r := lex.NewReader(cases.Lexers["words"].Lex(ctx, lex.Terminated(endless{})), "t.lex")
 
 	for i := range 1000 {
 		tok, ok := r.Next()
@@ -219,11 +193,7 @@ func TestTheReaderStreamsAnEndlessInput(t *testing.T) {
 
 func TestCancellingClosesTheTokens(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
-	toks, err := lex.Lex(ctx, lextest.Compile(t, words), endless{}, "start")
-
-	if err != nil {
-		t.Fatal(err)
-	}
+	toks := words.Lex(ctx, endless{})
 
 	<-toks
 	cancel()
@@ -254,11 +224,7 @@ func TestTheReaderSuppliesAMissingLastNewline(t *testing.T) {
 		{"nothing at all", strings.NewReader(""), nil},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			r, err := lex.Open(context.Background(), lextest.Compile(t, words), c.given, "start", "t.lex")
-
-			if err != nil {
-				t.Fatal(err)
-			}
+			r := lex.NewReader(cases.Lexers["words"].Lex(context.Background(), lex.Terminated(c.given)), "t.lex")
 
 			var got []string
 
@@ -273,35 +239,25 @@ func TestTheReaderSuppliesAMissingLastNewline(t *testing.T) {
 	}
 }
 
-const comments = `start {
-  "/*" ([^*] | "*"+ [^*/])* "*"+ "/"  ignore
-  blank+  ignore
-  "\n"    emit newline
-  [a-z]+  emit word
-}
-`
-
 func TestIgnoredTextIsDroppedAsItIsRead(t *testing.T) {
 	const n = 16 << 20
 
 	for _, c := range []struct {
 		name  string
-		given string
+		given lextest.Lexer
 		when  *around
 		then  []string
 	}{
-		{"a run of blanks", words, &around{open: "a", fill: ' ', n: n, close: "b\n"}, []string{`"a"@1:1`, fmt.Sprintf(`"b"@1:%d`, n+2), fmt.Sprintf(`"\n"@1:%d`, n+3)}},
-		{"a comment", comments, &around{open: "a/*", fill: 'x', n: n, close: "*/b\n"}, []string{`"a"@1:1`, fmt.Sprintf(`"b"@1:%d`, n+6), fmt.Sprintf(`"\n"@1:%d`, n+7)}},
+		{"a run of blanks", cases.Lexers["words"], &around{open: "a", fill: ' ', n: n, close: "b\n"}, []string{`"a"@1:1`, fmt.Sprintf(`"b"@1:%d`, n+2), fmt.Sprintf(`"\n"@1:%d`, n+3)}},
+		{"a comment", cases.Lexers["comments"], &around{open: "a/*", fill: 'x', n: n, close: "*/b\n"}, []string{`"a"@1:1`, fmt.Sprintf(`"b"@1:%d`, n+6), fmt.Sprintf(`"\n"@1:%d`, n+7)}},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			spec := lextest.Compile(t, c.given)
-
 			var before, after runtime.MemStats
 
 			runtime.GC()
 			runtime.ReadMemStats(&before)
 
-			toks := lextest.Tokens(t, spec, c.when)
+			toks := lextest.Tokens(t, c.given, c.when)
 
 			runtime.ReadMemStats(&after)
 
@@ -317,9 +273,7 @@ func TestIgnoredTextIsDroppedAsItIsRead(t *testing.T) {
 }
 
 func TestAnIgnoredMatchThatNeverEndsIsAnErrorWhereItBegan(t *testing.T) {
-	spec := lextest.Compile(t, comments)
-
-	toks := lextest.Tokens(t, spec, &around{open: "a\n/*", fill: 'x', n: 1 << 20})
+	toks := lextest.Tokens(t, cases.Lexers["comments"], &around{open: "a\n/*", fill: 'x', n: 1 << 20})
 
 	got := make([]string, 0, len(toks))
 

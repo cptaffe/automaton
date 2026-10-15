@@ -94,7 +94,7 @@ type rule struct {
 }
 
 type lexer struct {
-	*lex.Reader
+	*lex.Reader[scan.Tok]
 	tok     int
 	text    string
 	line    int
@@ -108,7 +108,7 @@ type lexer struct {
 	prelude string
 }
 
-var kinds = map[int]int{
+var kinds = map[scan.Tok]int{
 	scan.TokNewline: NEWLINE,
 	scan.TokColon:   COLON,
 	scan.TokArrow:   ARROW,
@@ -146,10 +146,7 @@ func Parse(r io.Reader, from string, kb Keyboard) (*Rules, error) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	in, err := lex.Open(ctx, scan.Spec, r, "start", from)
-	if err != nil {
-		return nil, err
-	}
+	in := lex.NewReader(scan.Lex(ctx, lex.Terminated(r)), from)
 	l := &lexer{Reader: in, bare: true, labels: map[int]string{}, scopes: map[string]bool{},
 		g: &seq.Grammar{Name: in.Name()}}
 	failed := yyParse(l) != 0

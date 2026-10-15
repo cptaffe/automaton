@@ -2,68 +2,271 @@
 
 package scan
 
-import "github.com/cptaffe/automaton/lex"
+import (
+	"context"
+	"io"
 
-const (
-	TokLiteral = 1
-	TokName    = 2
-	TokOther   = 3
+	"github.com/cptaffe/automaton/lex"
 )
 
-var Spec = &lex.Spec{
-	Tokens: []string{"literal", "name", "other"},
-	Ranges: []lex.Range{
-		{Lo: 0, Hi: 8, Class: 1},
-		{Lo: 9, Hi: 10, Class: 2},
-		{Lo: 11, Hi: 31, Class: 1},
-		{Lo: 32, Hi: 32, Class: 2},
-		{Lo: 33, Hi: 33, Class: 1},
-		{Lo: 34, Hi: 34, Class: 3},
-		{Lo: 35, Hi: 38, Class: 1},
-		{Lo: 39, Hi: 39, Class: 4},
-		{Lo: 40, Hi: 44, Class: 1},
-		{Lo: 45, Hi: 46, Class: 5},
-		{Lo: 47, Hi: 47, Class: 1},
-		{Lo: 48, Hi: 57, Class: 5},
-		{Lo: 58, Hi: 58, Class: 6},
-		{Lo: 59, Hi: 64, Class: 1},
-		{Lo: 65, Hi: 90, Class: 7},
-		{Lo: 91, Hi: 91, Class: 8},
-		{Lo: 92, Hi: 92, Class: 9},
-		{Lo: 93, Hi: 93, Class: 10},
-		{Lo: 94, Hi: 94, Class: 1},
-		{Lo: 95, Hi: 95, Class: 11},
-		{Lo: 96, Hi: 96, Class: 1},
-		{Lo: 97, Hi: 122, Class: 7},
-		{Lo: 123, Hi: 1114111, Class: 1},
-	},
-	Scopes: []lex.Scope{
-		{
-			Name: "start", Start: 1,
-			States: []lex.State{
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
-				{Next: []int{0, 2, 3, 4, 5, 2, 2, 6, 7, 2, 2, 6}},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 4},
-				{Next: []int{0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 1},
-				{Next: []int{0, 4, 4, 8, 4, 4, 4, 4, 4, 9, 4, 4}, Accept: 2},
-				{Next: []int{0, 5, 5, 5, 8, 5, 5, 5, 5, 10, 5, 5}, Accept: 2},
-				{Next: []int{0, 0, 0, 0, 0, 6, 0, 6, 0, 0, 0, 6}, Accept: 3},
-				{Next: []int{0, 7, 7, 7, 7, 7, 7, 7, 11, 12, 8, 7}, Accept: 2},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 2},
-				{Next: []int{0, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4}},
-				{Next: []int{0, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5}},
-				{Next: []int{0, 7, 7, 7, 7, 7, 13, 7, 11, 12, 8, 7}, Accept: 2},
-				{Next: []int{0, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7}},
-				{Next: []int{0, 7, 7, 7, 7, 14, 7, 14, 11, 12, 8, 7}, Accept: 2},
-				{Next: []int{0, 7, 7, 7, 7, 14, 15, 14, 11, 12, 8, 7}, Accept: 2},
-				{Next: []int{0, 7, 7, 7, 7, 7, 7, 7, 11, 12, 7, 7}, Accept: 2},
-			},
-			Acts: []lex.Act{
-				{},
-				{Emit: 1},
-				{Emit: 2},
-				{Emit: 3},
-			},
-		},
-	},
+type Tok int
+
+const (
+	TokLiteral Tok = 1
+	TokName    Tok = 2
+	TokOther   Tok = 3
+)
+
+var tokNames = []string{"", "literal", "name", "other"}
+
+func (t Tok) String() string {
+	if t < 1 || int(t) >= len(tokNames) {
+		return ""
+	}
+
+	return tokNames[t]
 }
+
+type stateFn func(*lexer) stateFn
+
+type lexer struct {
+	lex.Emitter[Tok, stateFn]
+}
+
+func Lex(ctx context.Context, r io.Reader) <-chan lex.Token[Tok] {
+	l := &lexer{Emitter: lex.NewEmitter[Tok, stateFn](ctx, r)}
+
+	go l.run()
+
+	return l.Items()
+}
+
+func (l *lexer) run() {
+	defer l.Close()
+
+	for state := stateFn(lexStart); state != nil; {
+		state = state(l)
+	}
+}
+
+func lexStart(l *lexer) stateFn {
+	if l.Begin() {
+		l.End("start")
+
+		return nil
+	}
+
+	var r rune
+
+	l.Quiet(false)
+	r = l.Next()
+	switch {
+	case lex.In(ranges1, r):
+		goto s2
+	case 0x9 <= r && r <= 0xa || r == ' ':
+		goto s3
+	case r == '"':
+		goto s4
+	case r == '\'':
+		goto s5
+	case 'A' <= r && r <= 'Z' || r == '_' || 'a' <= r && r <= 'z':
+		goto s6
+	case r == '[':
+		goto s7
+	}
+	goto done
+s2:
+	l.Quiet(false)
+	l.Mark(4)
+	goto done
+s3:
+	l.Quiet(true)
+	l.Mark(1)
+	r = l.Next()
+	switch {
+	case 0x9 <= r && r <= 0xa || r == ' ':
+		goto s3
+	}
+	goto done
+s4:
+	l.Quiet(false)
+	l.Mark(2)
+	r = l.Next()
+	switch {
+	case 0x0 <= r && r <= '!' || '#' <= r && r <= '[' || ']' <= r && r <= 0x10ffff:
+		goto s4
+	case r == '"':
+		goto s8
+	case r == '\\':
+		goto s9
+	}
+	goto done
+s5:
+	l.Quiet(false)
+	l.Mark(2)
+	r = l.Next()
+	switch {
+	case 0x0 <= r && r <= '&' || '(' <= r && r <= '[' || ']' <= r && r <= 0x10ffff:
+		goto s5
+	case r == '\'':
+		goto s8
+	case r == '\\':
+		goto s10
+	}
+	goto done
+s6:
+	l.Quiet(false)
+	l.Mark(3)
+	r = l.Next()
+	switch {
+	case lex.In(ranges2, r):
+		goto s6
+	}
+	goto done
+s7:
+	l.Quiet(false)
+	l.Mark(2)
+	r = l.Next()
+	switch {
+	case 0x0 <= r && r <= 'Z' || '^' <= r && r <= 0x10ffff:
+		goto s7
+	case r == ']':
+		goto s8
+	case r == '[':
+		goto s11
+	case r == '\\':
+		goto s12
+	}
+	goto done
+s8:
+	l.Quiet(false)
+	l.Mark(2)
+	goto done
+s9:
+	l.Quiet(false)
+	r = l.Next()
+	switch {
+	case 0x0 <= r && r <= 0x10ffff:
+		goto s4
+	}
+	goto done
+s10:
+	l.Quiet(false)
+	r = l.Next()
+	switch {
+	case 0x0 <= r && r <= 0x10ffff:
+		goto s5
+	}
+	goto done
+s11:
+	l.Quiet(false)
+	l.Mark(2)
+	r = l.Next()
+	switch {
+	case 0x0 <= r && r <= '9' || ';' <= r && r <= 'Z' || '^' <= r && r <= 0x10ffff:
+		goto s7
+	case r == ']':
+		goto s8
+	case r == '[':
+		goto s11
+	case r == '\\':
+		goto s12
+	case r == ':':
+		goto s13
+	}
+	goto done
+s12:
+	l.Quiet(false)
+	r = l.Next()
+	switch {
+	case 0x0 <= r && r <= 0x10ffff:
+		goto s7
+	}
+	goto done
+s13:
+	l.Quiet(false)
+	l.Mark(2)
+	r = l.Next()
+	switch {
+	case lex.In(ranges3, r):
+		goto s7
+	case r == ']':
+		goto s8
+	case r == '[':
+		goto s11
+	case r == '\\':
+		goto s12
+	case '-' <= r && r <= '.' || '0' <= r && r <= '9' || 'A' <= r && r <= 'Z' || 'a' <= r && r <= 'z':
+		goto s14
+	}
+	goto done
+s14:
+	l.Quiet(false)
+	l.Mark(2)
+	r = l.Next()
+	switch {
+	case lex.In(ranges4, r):
+		goto s7
+	case r == ']':
+		goto s8
+	case r == '[':
+		goto s11
+	case r == '\\':
+		goto s12
+	case '-' <= r && r <= '.' || '0' <= r && r <= '9' || 'A' <= r && r <= 'Z' || 'a' <= r && r <= 'z':
+		goto s14
+	case r == ':':
+		goto s15
+	}
+	goto done
+s15:
+	l.Quiet(false)
+	l.Mark(2)
+	r = l.Next()
+	switch {
+	case 0x0 <= r && r <= 'Z' || ']' <= r && r <= 0x10ffff:
+		goto s7
+	case r == '[':
+		goto s11
+	case r == '\\':
+		goto s12
+	}
+	goto done
+done:
+	switch l.Back() {
+	case 1:
+		l.Skip()
+
+		return lexStart
+	case 2:
+		if !l.Emit(TokLiteral, 0) {
+			return nil
+		}
+
+		return lexStart
+	case 3:
+		if !l.Emit(TokName, 0) {
+			return nil
+		}
+
+		return lexStart
+	case 4:
+		if !l.Emit(TokOther, 0) {
+			return nil
+		}
+
+		return lexStart
+	}
+
+	l.Fail("start")
+
+	return nil
+}
+
+var ranges1 = []lex.Range{{Lo: 0x0, Hi: 0x8}, {Lo: 0xb, Hi: 0x1f}, {Lo: '!', Hi: '!'}, {Lo: '#', Hi: '&'}, {Lo: '(', Hi: '@'}, {Lo: '\\', Hi: '^'}, {Lo: '`', Hi: '`'}, {Lo: '{', Hi: 0x10ffff}}
+
+var ranges2 = []lex.Range{{Lo: '-', Hi: '.'}, {Lo: '0', Hi: '9'}, {Lo: 'A', Hi: 'Z'}, {Lo: '_', Hi: '_'}, {Lo: 'a', Hi: 'z'}}
+
+var ranges3 = []lex.Range{{Lo: 0x0, Hi: ','}, {Lo: '/', Hi: '/'}, {Lo: ':', Hi: '@'}, {Lo: '^', Hi: '`'}, {Lo: '{', Hi: 0x10ffff}}
+
+var ranges4 = []lex.Range{{Lo: 0x0, Hi: ','}, {Lo: '/', Hi: '/'}, {Lo: ';', Hi: '@'}, {Lo: '^', Hi: '`'}, {Lo: '{', Hi: 0x10ffff}}

@@ -43,7 +43,7 @@ func TestGenlexRefusesWhatItCannotDo(t *testing.T) {
 	}
 }
 
-func TestGenlexWritesTheTableAndTheDrawings(t *testing.T) {
+func TestGenlexWritesTheLexerAndTheDrawings(t *testing.T) {
 	dir := t.TempDir()
 	out := filepath.Join(dir, "scan", "scan.gen.go")
 	var stderr bytes.Buffer
@@ -57,7 +57,7 @@ func TestGenlexWritesTheTableAndTheDrawings(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, want := names(file), []string{"TokClose", "TokNewline", "TokOpen", "TokWord", "Spec"}; file.Name.Name != "scan" || !reflect.DeepEqual(got, want) {
+	if got, want := names(file), []string{"Tok", "TokClose", "TokNewline", "TokOpen", "TokWord", "tokNames", "String", "stateFn", "lexer", "Lex", "run", "lexStart", "lexComment"}; file.Name.Name != "scan" || !reflect.DeepEqual(got, want) {
 		t.Errorf("package %s declares %q; want package scan declaring %q", file.Name.Name, got, want)
 	}
 	if got, want := lines(t, filepath.Join(dir, "comments.dot"), `(?m)^\s+("m\d+_s\d+" -> "m\d+_s\d+")`), []string{
@@ -102,9 +102,17 @@ func TestGenlexRefusesADeadRuleAndSaysWhatCoversIt(t *testing.T) {
 func names(file *ast.File) []string {
 	var out []string
 	for _, d := range file.Decls {
-		if g, ok := d.(*ast.GenDecl); ok && g.Tok != token.IMPORT {
-			for _, s := range g.Specs {
-				out = append(out, s.(*ast.ValueSpec).Names[0].Name)
+		switch d := d.(type) {
+		case *ast.FuncDecl:
+			out = append(out, d.Name.Name)
+		case *ast.GenDecl:
+			for _, s := range d.Specs {
+				switch s := s.(type) {
+				case *ast.TypeSpec:
+					out = append(out, s.Name.Name)
+				case *ast.ValueSpec:
+					out = append(out, s.Names[0].Name)
+				}
 			}
 		}
 	}

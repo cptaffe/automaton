@@ -10,58 +10,19 @@ import (
 
 	"github.com/cptaffe/automaton/internal/lextest"
 	"github.com/cptaffe/automaton/lex/gen"
+	"github.com/cptaffe/automaton/lex/gen/internal/cases"
 )
 
 func TestAScopeDecidesWhichRulesRead(t *testing.T) {
-	spec := lextest.Compile(t, `
-word = alpha+
-
-head {
-  "do"    emit keyword  -> body
-  word    emit name
-  -> blanks
-}
-
-body {
-  word    emit name
-  -> blanks
-}
-
-blanks {
-  " "     ignore
-  "\n"    emit newline  -> head
-}
-`)
-
-	got, err := lextest.Read(t, spec, "do do\ndo\n")
+	got, err := lextest.Read(t, cases.Lexers["scopes"], "do do\ndo\n")
 
 	if want := []string{"keyword(do)", "name(do)", "newline(\n)", "keyword(do)", "newline(\n)"}; err != nil || !reflect.DeepEqual(got, want) {
 		t.Errorf("read %q, %v; want %q", got, err, want)
 	}
 }
 
-func TestReadingCanBeginInAnyScope(t *testing.T) {
-	spec := lextest.Compile(t, `
-word = alpha+
-
-head {
-  "do"    emit keyword  -> body
-  word    emit name
-  -> blanks
-}
-
-body {
-  word    emit name
-  -> blanks
-}
-
-blanks {
-  " "     ignore
-  "\n"    emit newline  -> head
-}
-`)
-
-	got, err := lextest.ReadFrom(t, spec, "body", "do do\ndo\n")
+func TestReadingBeginsInTheFirstScope(t *testing.T) {
+	got, err := lextest.Read(t, cases.Lexers["scopesbody"], "do do\ndo\n")
 
 	if want := []string{"name(do)", "name(do)", "newline(\n)", "keyword(do)", "newline(\n)"}; err != nil || !reflect.DeepEqual(got, want) {
 		t.Errorf("read %q, %v; want %q", got, err, want)
@@ -75,15 +36,13 @@ func TestADifferenceReadsWhatIsLeftHoweverItIsSpaced(t *testing.T) {
 		when  string
 		then  []string
 	}{
-		{"spaces on both sides", `alpha \ [NX]`, "abcNXX", []string{"word(abc)", "class(NXX)"}},
-		{"no spaces", `alpha\[NX]`, "abcNXX", []string{"word(abc)", "class(NXX)"}},
-		{"a space after", `alpha\ [NX]`, "abcNXX", []string{"word(abc)", "class(NXX)"}},
-		{"a space before", `alpha \[NX]`, "abcNXX", []string{"word(abc)", "class(NXX)"}},
+		{"spaces on both sides", "diffboth", "abcNXX", []string{"word(abc)", "class(NXX)"}},
+		{"no spaces", "diffnone", "abcNXX", []string{"word(abc)", "class(NXX)"}},
+		{"a space after", "diffafter", "abcNXX", []string{"word(abc)", "class(NXX)"}},
+		{"a space before", "diffbefore", "abcNXX", []string{"word(abc)", "class(NXX)"}},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			spec := lextest.Compile(t, "plain = "+c.given+"\n\nstart {\n  plain+ emit word\n  [NX]+ emit class\n}\n")
-
-			got, err := lextest.Read(t, spec, c.when)
+			got, err := lextest.Read(t, cases.Lexers[c.given], c.when)
 
 			if err != nil || !reflect.DeepEqual(got, c.then) {
 				t.Errorf("read %q, %v; want %q", got, err, c.then)
@@ -93,9 +52,7 @@ func TestADifferenceReadsWhatIsLeftHoweverItIsSpaced(t *testing.T) {
 }
 
 func TestAHyphenInsideANameIsPartOfIt(t *testing.T) {
-	spec := lextest.Compile(t, "a = alpha\nb = [b]\na-b = [\\-]\n\nstart {\n  a-b+  emit x\n}\n")
-
-	got, err := lextest.Read(t, spec, "--")
+	got, err := lextest.Read(t, cases.Lexers["hyphen"], "--")
 
 	if want := []string{"x(--)"}; err != nil || !reflect.DeepEqual(got, want) {
 		t.Errorf("read %q, %v; want %q", got, err, want)

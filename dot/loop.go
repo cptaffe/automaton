@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/cptaffe/automaton/dot/internal/scan"
-	"github.com/cptaffe/automaton/lex"
 )
 
 type loops struct {
@@ -47,15 +46,9 @@ func read(rs []Rule) grammar {
 }
 
 func tokens(alt string) []string {
-	toks, err := lex.Lex(context.Background(), scan.Spec, strings.NewReader(alt), "start")
-
-	if err != nil {
-		return nil
-	}
-
 	var out []string
 
-	for t := range toks {
+	for t := range scan.Lex(context.Background(), strings.NewReader(alt)) {
 		out = append(out, t.Text)
 	}
 

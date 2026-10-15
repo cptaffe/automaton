@@ -10,6 +10,8 @@ import (
 
 	"github.com/cptaffe/automaton/internal/lextest"
 	"github.com/cptaffe/automaton/lex"
+	"github.com/cptaffe/automaton/lex/internal/cases"
+	"github.com/cptaffe/automaton/lex/internal/cases/does"
 )
 
 var errBroken = errors.New("broken")
@@ -29,11 +31,7 @@ func TestAnErrorUnwrapsToItsCause(t *testing.T) {
 }
 
 func TestAReadErrorReachesTheCaller(t *testing.T) {
-	r, err := lex.Open(context.Background(), lextest.Compile(t, words), broken{}, "start", "t.lex")
-
-	if err != nil {
-		t.Fatal(err)
-	}
+	r := lex.NewReader(cases.Lexers["words"].Lex(context.Background(), lex.Terminated(broken{})), "t.lex")
 
 	_, ok := r.Next()
 
@@ -54,11 +52,7 @@ func TestTheReaderNamesItsFileWithoutTheExtension(t *testing.T) {
 		{"a dot file", ".lex", ".lex"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			r, err := lex.Open(context.Background(), lextest.Compile(t, words), strings.NewReader(""), "start", c.given)
-
-			if err != nil {
-				t.Fatal(err)
-			}
+			r := lex.NewReader(cases.Lexers["words"].Lex(context.Background(), lex.Terminated(strings.NewReader(""))), c.given)
 
 			if got := r.Name(); got != c.then || r.From() != c.given {
 				t.Errorf("Name %q, From %q; want %q and %q", got, r.From(), c.then, c.given)
@@ -68,11 +62,7 @@ func TestTheReaderNamesItsFileWithoutTheExtension(t *testing.T) {
 }
 
 func TestTheReaderKeepsItsFirstFailure(t *testing.T) {
-	r, err := lex.Open(context.Background(), lextest.Compile(t, words), strings.NewReader("a\nb\n"), "start", "t.lex")
-
-	if err != nil {
-		t.Fatal(err)
-	}
+	r := lex.NewReader(cases.Lexers["words"].Lex(context.Background(), lex.Terminated(strings.NewReader("a\nb\n"))), "t.lex")
 
 	r.Next()
 	r.Next()
@@ -85,13 +75,7 @@ func TestTheReaderKeepsItsFirstFailure(t *testing.T) {
 }
 
 func TestTheReaderCountsTheLinesATokenSpans(t *testing.T) {
-	spec := lextest.Compile(t, "start {\n  \"/*\" [^*]* \"*/\"  emit comment\n  \"\\n\"  emit newline\n}\n")
-
-	r, err := lex.Open(context.Background(), spec, strings.NewReader("/*\n\n*/\n"), "start", "t.lex")
-
-	if err != nil {
-		t.Fatal(err)
-	}
+	r := lex.NewReader(cases.Lexers["spanning"].Lex(context.Background(), lex.Terminated(strings.NewReader("/*\n\n*/\n"))), "t.lex")
 
 	var got []int
 
@@ -104,55 +88,40 @@ func TestTheReaderCountsTheLinesATokenSpans(t *testing.T) {
 	}
 }
 
-func TestLexingFromAnUnknownScopeIsRefused(t *testing.T) {
-	_, err := lex.Lex(context.Background(), lextest.Compile(t, words), strings.NewReader(""), "nowhere")
-
-	if err == nil || err.Error() != "no scope called nowhere" {
-		t.Errorf("the error is %v; want no scope called nowhere", err)
-	}
-
-	_, err = lex.Open(context.Background(), lextest.Compile(t, words), strings.NewReader(""), "nowhere", "t.lex")
-
-	if err == nil || err.Error() != "no scope called nowhere" {
-		t.Errorf("Open's error is %v; want no scope called nowhere", err)
-	}
-}
-
 func TestAReturnWithNothingPushedIsAnError(t *testing.T) {
-	given := &lex.Spec{
-		Tokens: []string{"a"},
-		Ranges: []lex.Range{{Lo: 'a', Hi: 'a', Class: 1}},
-		Scopes: []lex.Scope{{
-			Name:   "start",
-			Start:  1,
-			States: []lex.State{{Next: []int{0, 0}}, {Next: []int{0, 2}}, {Next: []int{0, 0}, Accept: 1}},
-			Acts:   []lex.Act{{Emit: 1, Pop: true}},
-		}},
+	e := lex.NewEmitter[int, int](context.Background(), strings.NewReader("a"))
+
+	e.Begin()
+	_, ok := e.Pop("start")
+	e.Close()
+
+	var got []string
+
+	for tok := range e.Items() {
+		got = append(got, fmt.Sprintf("%d:%d %v", tok.At.Line, tok.At.Col, tok.Err))
 	}
 
-	got, err := lextest.Read(t, given, "a")
-
-	if err == nil || err.Error() != "start: returns with nothing to return to" || len(got) != 0 {
-		t.Errorf("read %q, %v; want nothing and start: returns with nothing to return to", got, err)
+	if want := []string{"1:1 start: returns with nothing to return to"}; ok || !reflect.DeepEqual(got, want) {
+		t.Errorf("popped %t and sent %q; want false and %q", ok, got, want)
 	}
 }
 
 func TestATokenCarriesItsDo(t *testing.T) {
-	spec := lextest.Compile(t, "start {\n  \"a\"  do first emit a\n  \"b\"  emit b\n  \"c\"  emit c do second\n}\n")
+	lx := cases.Lexers["does"]
 
-	toks := lextest.Tokens(t, spec, strings.NewReader("abc"))
+	toks := lextest.Tokens(t, lx, strings.NewReader("abc"))
 
 	got := make([]string, 0, len(toks))
 
 	for _, tok := range toks {
-		got = append(got, fmt.Sprintf("%s(%s) do %d", spec.Token(tok.Kind), tok.Text, tok.Do))
+		got = append(got, fmt.Sprintf("%s(%s) do %d", lx.Name(tok.Kind), tok.Text, tok.Do))
 	}
 
 	if want := []string{"a(a) do 1", "b(b) do 0", "c(c) do 2"}; !reflect.DeepEqual(got, want) {
 		t.Errorf("read %q; want %q", got, want)
 	}
 
-	if want := []string{"first", "second"}; !reflect.DeepEqual(spec.Does, want) {
-		t.Errorf("the does are %q; want %q", spec.Does, want)
+	if got, want := []int{does.DoFirst, does.DoSecond}, []int{1, 2}; !reflect.DeepEqual(got, want) {
+		t.Errorf("the does are %v; want %v", got, want)
 	}
 }

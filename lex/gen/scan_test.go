@@ -51,7 +51,7 @@ func TestTheScannerSplitsALexFileIntoTokens(t *testing.T) {
 		},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			got, err := lextest.Read(t, scan.Spec, c.given)
+			got, err := lextest.Read(t, lextest.Of(scan.Lex), c.given)
 
 			if err != nil || !reflect.DeepEqual(got, c.then) {
 				t.Errorf("read %q, %v; want %q", got, err, c.then)

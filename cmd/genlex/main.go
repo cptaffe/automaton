@@ -134,11 +134,7 @@ func (o output) table(path string, flat *gen.Flat, ms []gen.Machine) error {
 	if o.goOut == "" {
 		return nil
 	}
-	spec, err := gen.Spec(flat, ms)
-	if err != nil {
-		return err
-	}
-	src, err := gen.Go(spec, o.pkg, filepath.Base(path))
+	src, err := gen.Go(flat, ms, o.pkg, filepath.Base(path))
 	if err != nil {
 		return fmt.Errorf("%s: %w", path, err)
 	}

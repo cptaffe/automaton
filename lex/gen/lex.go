@@ -18,7 +18,7 @@ type word struct {
 }
 
 type parser struct {
-	*lex.Reader
+	*lex.Reader[scan.Tok]
 
 	named map[string]fa.Expr[rune]
 	given map[string]string
@@ -36,12 +36,8 @@ type parser struct {
 	stmtText   string
 }
 
-func newParser(ctx context.Context, r io.Reader, from string, bare bool) (*parser, error) {
-	in, err := lex.Open(ctx, scan.Spec, r, "start", from)
-
-	if err != nil {
-		return nil, err
-	}
+func newParser(ctx context.Context, r io.Reader, from string, bare bool) *parser {
+	in := lex.NewReader(scan.Lex(ctx, lex.Terminated(r)), from)
 
 	p := &parser{Reader: in,
 		named: map[string]fa.Expr[rune]{"any": fa.Lit(fa.Span(0, utf8.MaxRune))},
@@ -52,7 +48,7 @@ func newParser(ctx context.Context, r io.Reader, from string, bare bool) (*parse
 		p.preload()
 	}
 
-	return p, nil
+	return p
 }
 
 func (p *parser) Error(string) {}
@@ -64,7 +60,7 @@ func (p *parser) Lex(v *yySymType) int {
 	return t
 }
 
-var kinds = map[int]int{
+var kinds = map[scan.Tok]int{
 	scan.TokNewline: NEWLINE,
 	scan.TokArrow:   ARROW,
 	scan.TokDefine:  DEFINE,
@@ -124,7 +120,7 @@ func (p *parser) lex(v *yySymType) (int, string) {
 	return kinds[tok.Kind], tok.Text
 }
 
-func (p *parser) statement(tok lex.Token) {
+func (p *parser) statement(tok lex.Token[scan.Tok]) {
 	switch {
 	case tok.Kind == scan.TokNewline && len(p.reading) > 0:
 		p.stmt, p.stmtText, p.reading = p.began, string(p.reading), p.reading[:0]

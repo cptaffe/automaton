@@ -6,34 +6,21 @@ import (
 	"testing"
 
 	"github.com/cptaffe/automaton/internal/lextest"
+	"github.com/cptaffe/automaton/internal/lextest/internal/cases"
 )
 
-const scopes = "start {\n  \"a\"  emit a -> other\n}\n\nother {\n  \"b\"  emit b -> start\n}\n"
+var scopes = cases.Lexers["scopes"]
 
 func TestReadStartsInTheFirstScope(t *testing.T) {
-	spec := lextest.Compile(t, scopes)
-
-	got, err := lextest.Read(t, spec, "abab")
+	got, err := lextest.Read(t, scopes, "abab")
 
 	if want := []string{"a(a)", "b(b)", "a(a)", "b(b)"}; err != nil || !reflect.DeepEqual(got, want) {
 		t.Errorf("read %q, %v; want %q", got, err, want)
 	}
 }
 
-func TestReadFromStartsInTheScopeNamed(t *testing.T) {
-	spec := lextest.Compile(t, scopes)
-
-	got, err := lextest.ReadFrom(t, spec, "other", "bab")
-
-	if want := []string{"b(b)", "a(a)", "b(b)"}; err != nil || !reflect.DeepEqual(got, want) {
-		t.Errorf("read %q, %v; want %q", got, err, want)
-	}
-}
-
 func TestReadStopsAtTheFirstError(t *testing.T) {
-	spec := lextest.Compile(t, scopes)
-
-	got, err := lextest.Read(t, spec, "aa")
+	got, err := lextest.Read(t, scopes, "aa")
 
 	if want := []string{"a(a)"}; err == nil || err.Error() != "other: no rule reads 'a'" || !reflect.DeepEqual(got, want) {
 		t.Errorf("read %q, %v; want %q and other: no rule reads 'a'", got, err, want)

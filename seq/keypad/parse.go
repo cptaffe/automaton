@@ -50,7 +50,7 @@ func classOf(r rune) []seq.Sym {
 	return out
 }
 
-var kinds = map[int]int{
+var kinds = map[scan.Tok]int{
 	scan.TokNewline: NEWLINE,
 	scan.TokColon:   COLON,
 	scan.TokLparen:  LPAREN,
@@ -85,7 +85,7 @@ type pat struct {
 }
 
 type lexer struct {
-	*lex.Reader
+	*lex.Reader[scan.Tok]
 	tok     int
 	tokText string
 	tokLine int
@@ -94,7 +94,7 @@ type lexer struct {
 	end     int
 	g       *seq.Grammar
 	cur     string
-	ahead   []lex.Token
+	ahead   []lex.Token[scan.Tok]
 	call    bool
 }
 
@@ -103,10 +103,7 @@ type move struct{ to, arg string }
 func Parse(r io.Reader, from string) (*seq.Grammar, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	in, err := lex.Open(ctx, scan.Spec, r, "start", from)
-	if err != nil {
-		return nil, err
-	}
+	in := lex.NewReader(scan.Lex(ctx, lex.Terminated(r)), from)
 	l := &lexer{Reader: in, bare: true, g: &seq.Grammar{Name: in.Name()}}
 	if yyParse(l) != 0 && l.Err() == nil {
 		l.FailAt(l.tokLine, "%s", l.unexpected())
@@ -150,7 +147,7 @@ func (l *lexer) lex(v *yySymType) (int, string) {
 	return kinds[tok.Kind], tok.Text
 }
 
-func (l *lexer) token() (lex.Token, string, bool) {
+func (l *lexer) token() (lex.Token[scan.Tok], string, bool) {
 	for {
 		tok, ok := l.pull()
 		if !ok {
@@ -332,7 +329,7 @@ func named(a string) error {
 	return nil
 }
 
-func (l *lexer) pull() (lex.Token, bool) {
+func (l *lexer) pull() (lex.Token[scan.Tok], bool) {
 	if len(l.ahead) > 0 {
 		tok := l.ahead[0]
 		l.ahead = l.ahead[1:]
@@ -342,7 +339,7 @@ func (l *lexer) pull() (lex.Token, bool) {
 }
 
 func (l *lexer) header() bool {
-	want := []int{scan.TokLparen, scan.TokName, scan.TokRparen, scan.TokColon}
+	want := []scan.Tok{scan.TokLparen, scan.TokName, scan.TokRparen, scan.TokColon}
 	for len(l.ahead) < len(want) {
 		tok, ok := l.Next()
 		if !ok {

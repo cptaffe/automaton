@@ -8,21 +8,11 @@ import (
 
 	"github.com/cptaffe/automaton/internal/lextest"
 	"github.com/cptaffe/automaton/lex/gen"
+	"github.com/cptaffe/automaton/lex/gen/internal/cases"
 )
 
 func TestAnEpsilonReadsAnotherScopesRulesWhereItStands(t *testing.T) {
-	spec := lextest.Compile(t, `
-start {
-  "if"    emit keyword
-  -> words
-}
-
-words {
-  [a-z]+  emit word
-}
-`)
-
-	got, err := lextest.Read(t, spec, "if")
+	got, err := lextest.Read(t, cases.Lexers["epsilon"], "if")
 
 	if want := []string{"keyword(if)"}; err != nil || !reflect.DeepEqual(got, want) {
 		t.Errorf("read %q, %v; want %q", got, err, want)
@@ -54,24 +44,7 @@ func TestParsingIsSafeAtOnce(t *testing.T) {
 }
 
 func TestThisInAnIncludedScopeIsTheScopeReadingIt(t *testing.T) {
-	spec := lextest.Compile(t, `
-start {
-  -> common
-  "x"  emit x
-}
-
-common {
-  "("  emit lp -> paren(this)
-}
-
-paren(then) {
-  "("  emit lp -> paren(this)
-  ")"  emit rp -> then
-  "y"  emit y
-}
-`)
-
-	got, err := lextest.Read(t, spec, "x((y))x")
+	got, err := lextest.Read(t, cases.Lexers["epsilonthis"], "x((y))x")
 
 	if want := []string{"x(x)", "lp(()", "lp(()", "y(y)", "rp())", "rp())", "x(x)"}; err != nil || !reflect.DeepEqual(got, want) {
 		t.Errorf("read %q, %v; want %q", got, err, want)

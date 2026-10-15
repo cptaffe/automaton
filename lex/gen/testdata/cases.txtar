@@ -1,0 +1,313 @@
+-- classnd --
+vowel = [aeiou]
+start {
+  [[:unicode.nd:]]+  emit x
+}
+-- classalpha --
+vowel = [aeiou]
+start {
+  [[:alpha:]]+  emit x
+}
+-- classtwo --
+vowel = [aeiou]
+start {
+  [[:alpha:][:digit:]]+  emit x
+}
+-- classrunes --
+vowel = [aeiou]
+start {
+  [[:digit:]_]+  emit x
+}
+-- classrange --
+vowel = [aeiou]
+start {
+  [[:digit:]a-f]+  emit x
+}
+-- classnegated --
+vowel = [aeiou]
+start {
+  [^[:digit:]]+  emit x
+}
+-- classvowel --
+vowel = [aeiou]
+start {
+  [[:vowel:]]+  emit x
+}
+-- notdigit --
+start {
+  [^[:digit:]]+  emit x
+}
+-- epsilon --
+start {
+  "if"    emit keyword
+  -> words
+}
+
+words {
+  [a-z]+  emit word
+}
+-- epsilonthis --
+start {
+  -> common
+  "x"  emit x
+}
+
+common {
+  "("  emit lp -> paren(this)
+}
+
+paren(then) {
+  "("  emit lp -> paren(this)
+  ")"  emit rp -> then
+  "y"  emit y
+}
+-- comments --
+start {
+  "/*"    emit open  -> comment(this)
+  word+   emit word
+  blank+  ignore
+  "\n"    emit newline
+}
+
+comment(then) {
+  "/*"    emit open  -> comment(this)
+  "*/"    emit close -> then
+  any     ignore
+}
+-- scopes --
+word = alpha+
+
+head {
+  "do"    emit keyword  -> body
+  word    emit name
+  -> blanks
+}
+
+body {
+  word    emit name
+  -> blanks
+}
+
+blanks {
+  " "     ignore
+  "\n"    emit newline  -> head
+}
+-- scopesbody --
+word = alpha+
+
+body {
+  word    emit name
+  -> blanks
+}
+
+head {
+  "do"    emit keyword  -> body
+  word    emit name
+  -> blanks
+}
+
+blanks {
+  " "     ignore
+  "\n"    emit newline  -> head
+}
+-- diffboth --
+plain = alpha \ [NX]
+
+start {
+  plain+ emit word
+  [NX]+ emit class
+}
+-- diffnone --
+plain = alpha\[NX]
+
+start {
+  plain+ emit word
+  [NX]+ emit class
+}
+-- diffafter --
+plain = alpha\ [NX]
+
+start {
+  plain+ emit word
+  [NX]+ emit class
+}
+-- diffbefore --
+plain = alpha \[NX]
+
+start {
+  plain+ emit word
+  [NX]+ emit class
+}
+-- hyphen --
+a = alpha
+b = [b]
+a-b = [\-]
+
+start {
+  a-b+  emit x
+}
+-- patliteral --
+start {
+  "ab"  emit x
+}
+-- patescape --
+start {
+  "\t\n\\\""  emit x
+}
+-- patanycase --
+start {
+  "org"i  emit x
+}
+-- patanycaseother --
+start {
+  "é1"i  emit x
+}
+-- patoptional --
+start {
+  "a" "b"?  emit x
+}
+-- patstar --
+start {
+  "a" "b"*  emit x
+}
+-- patplus --
+start {
+  "a" "b"+  emit x
+}
+-- patchoice --
+start {
+  "ab" | "c"  emit x
+}
+-- patgroup --
+start {
+  (lower | "_")+  emit x
+}
+-- patgroupliteral --
+start {
+  ("ab" | "c")+  emit x
+}
+-- patgroupclass --
+start {
+  ([a-b] | "_")+  emit x
+}
+-- patgroupgroup --
+start {
+  (("a") "b")+  emit x
+}
+-- patclass --
+start {
+  [abc]+  emit x
+}
+-- patrange --
+start {
+  [a-c]+  emit x
+}
+-- patrangeone --
+start {
+  [a-a]+  emit x
+}
+-- patnegated --
+start {
+  [^a]+  emit x
+  "a"  emit a
+}
+-- patclassescape --
+start {
+  [\]\-\n]+  emit x
+}
+-- patprelude --
+start {
+  digit+  emit x
+}
+-- patany --
+start {
+  any  emit x
+}
+-- patdifference --
+start {
+  (alpha \ [aeiou])+  emit x
+  [aeiou]  emit v
+}
+-- patlongest --
+start {
+  "if"  emit kw
+  [a-z]+  emit word
+}
+-- patignored --
+start {
+  [a-z]+  emit word
+  " "  ignore
+}
+-- refusenegated --
+start {
+  [^a]  emit x
+}
+-- refusedifference --
+start {
+  (alpha \ [aeiou])+  emit x
+}
+-- dos --
+start {
+  "a"  do first emit a
+  "b"  emit b
+  "c"  emit c do second
+}
+-- passthrough --
+start {
+  "<"  emit open -> outer(start)
+}
+
+outer(then) {
+  "!"  emit bang -> inner(then)
+}
+
+inner(then) {
+  ">"  emit close -> then
+}
+-- nested --
+start {
+  "/*"    emit open -> comment(this)
+  [a-z]+  emit word
+  " "     ignore
+}
+
+comment(then) {
+  "/*"     emit open -> comment(this)
+  "*/"     emit close -> then
+  [a-z ]+  emit text
+}
+-- brackets --
+start {
+  "("  emit lp -> paren(this)
+  "x"  emit x
+}
+
+paren(then) {
+  "("  emit lp -> paren(this)
+  "["  emit lb -> brack(this)
+  ")"  emit rp -> then
+  "x"  emit x
+}
+
+brack(then) {
+  "["  emit lb -> brack(this)
+  "("  emit lp -> paren(this)
+  "]"  emit rb -> then
+  "x"  emit x
+}
+-- passing --
+start {
+  "<"  emit open -> outer(this)
+  "x"  emit x
+}
+
+outer(then) {
+  "<"  emit open -> outer(this)
+  "!"  emit bang -> inner(then)
+  ">"  emit close -> then
+}
+
+inner(then) {
+  "y"  emit y
+  ">"  emit close -> then
+}

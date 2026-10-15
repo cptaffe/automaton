@@ -226,11 +226,7 @@ func Parse(r io.Reader, from string) (*File, error) { return parse(r, from, fals
 func parse(r io.Reader, from string, bare bool) (*File, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	p, err := newParser(ctx, r, from, bare)
-
-	if err != nil {
-		return nil, err
-	}
+	p := newParser(ctx, r, from, bare)
 
 	if yyParse(p) != 0 && p.Err() == nil {
 		p.FailAt(p.blame(), "%s", p.unexpected())

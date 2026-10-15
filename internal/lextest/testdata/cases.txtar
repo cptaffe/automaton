@@ -1,0 +1,8 @@
+-- scopes --
+start {
+  "a"  emit a -> other
+}
+
+other {
+  "b"  emit b -> start
+}

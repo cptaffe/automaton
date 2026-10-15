@@ -1,7 +1,6 @@
 package lex
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"path/filepath"
@@ -18,22 +17,18 @@ func (e *Error) Error() string { return fmt.Sprintf("%s:%d: %v", e.File, e.Line,
 
 func (e *Error) Unwrap() error { return e.Err }
 
-type Reader struct {
-	toks <-chan Token
+type Reader[K ~int] struct {
+	toks <-chan Token[K]
 	from string
 	line int
 	err  error
 }
 
-func Open(ctx context.Context, spec *Spec, in io.Reader, scope, from string) (*Reader, error) {
-	toks, err := Lex(ctx, spec, &terminated{r: in, ended: true}, scope)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return &Reader{toks: toks, from: from, line: 1}, nil
+func NewReader[K ~int](toks <-chan Token[K], from string) *Reader[K] {
+	return &Reader[K]{toks: toks, from: from, line: 1}
 }
+
+func Terminated(r io.Reader) io.Reader { return &terminated{r: r, ended: true} }
 
 type terminated struct {
 	r          io.Reader
@@ -64,7 +59,7 @@ func (t *terminated) Read(p []byte) (int, error) {
 	return n, err
 }
 
-func (r *Reader) Next() (Token, bool) {
+func (r *Reader[K]) Next() (Token[K], bool) {
 	tok, ok := <-r.toks
 
 	if !ok {
@@ -75,7 +70,7 @@ func (r *Reader) Next() (Token, bool) {
 		r.line = tok.At.Line
 		r.Fail("%w", tok.Err)
 
-		return Token{}, false
+		return Token[K]{}, false
 	}
 
 	r.line = tok.At.Line + strings.Count(tok.Text, "\n")
@@ -83,11 +78,11 @@ func (r *Reader) Next() (Token, bool) {
 	return tok, true
 }
 
-func (r *Reader) Line() int { return r.line }
+func (r *Reader[K]) Line() int { return r.line }
 
-func (r *Reader) From() string { return r.from }
+func (r *Reader[K]) From() string { return r.from }
 
-func (r *Reader) Name() string {
+func (r *Reader[K]) Name() string {
 	base := filepath.Base(r.from)
 
 	if dot := strings.LastIndexByte(base, '.'); dot > 0 {
@@ -97,12 +92,12 @@ func (r *Reader) Name() string {
 	return base
 }
 
-func (r *Reader) Fail(f string, a ...any) { r.FailAt(r.Line(), f, a...) }
+func (r *Reader[K]) Fail(f string, a ...any) { r.FailAt(r.Line(), f, a...) }
 
-func (r *Reader) FailAt(line int, f string, a ...any) {
+func (r *Reader[K]) FailAt(line int, f string, a ...any) {
 	if r.err == nil {
 		r.err = &Error{File: r.from, Line: line, Err: fmt.Errorf(f, a...)}
 	}
 }
 
-func (r *Reader) Err() error { return r.err }
+func (r *Reader[K]) Err() error { return r.err }

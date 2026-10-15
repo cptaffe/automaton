@@ -2,1757 +2,984 @@
 
 package scan
 
-import "github.com/cptaffe/automaton/lex"
+import (
+	"context"
+	"io"
 
-const (
-	TokAnd     = 1
-	TokArrow   = 2
-	TokBar     = 3
-	TokClose   = 4
-	TokColon   = 5
-	TokComment = 6
-	TokDelay   = 7
-	TokDots    = 8
-	TokEq      = 9
-	TokIdent   = 10
-	TokKey     = 11
-	TokLbrace  = 12
-	TokLparen  = 13
-	TokMatch   = 14
-	TokMinus   = 15
-	TokNe      = 16
-	TokNewline = 17
-	TokNot     = 18
-	TokOpen    = 19
-	TokOpt     = 20
-	TokOr      = 21
-	TokPlus    = 22
-	TokRbrace  = 23
-	TokRparen  = 24
-	TokSlash   = 25
-	TokStar    = 26
-	TokString  = 27
-	TokText    = 28
-	TokWhen    = 29
-	TokWord    = 30
+	"github.com/cptaffe/automaton/lex"
 )
 
-var Spec = &lex.Spec{
-	Tokens: []string{"and", "arrow", "bar", "close", "colon", "comment", "delay", "dots", "eq", "ident", "key", "lbrace", "lparen", "match", "minus", "ne", "newline", "not", "open", "opt", "or", "plus", "rbrace", "rparen", "slash", "star", "string", "text", "when", "word"},
-	Ranges: []lex.Range{
-		{Lo: 0, Hi: 8, Class: 1},
-		{Lo: 9, Hi: 9, Class: 2},
-		{Lo: 10, Hi: 10, Class: 3},
-		{Lo: 11, Hi: 31, Class: 1},
-		{Lo: 32, Hi: 32, Class: 2},
-		{Lo: 33, Hi: 33, Class: 4},
-		{Lo: 34, Hi: 34, Class: 5},
-		{Lo: 35, Hi: 35, Class: 6},
-		{Lo: 36, Hi: 36, Class: 1},
-		{Lo: 37, Hi: 37, Class: 7},
-		{Lo: 38, Hi: 38, Class: 8},
-		{Lo: 39, Hi: 39, Class: 9},
-		{Lo: 40, Hi: 40, Class: 10},
-		{Lo: 41, Hi: 41, Class: 11},
-		{Lo: 42, Hi: 42, Class: 12},
-		{Lo: 43, Hi: 43, Class: 13},
-		{Lo: 44, Hi: 44, Class: 1},
-		{Lo: 45, Hi: 45, Class: 14},
-		{Lo: 46, Hi: 46, Class: 15},
-		{Lo: 47, Hi: 47, Class: 16},
-		{Lo: 48, Hi: 57, Class: 17},
-		{Lo: 58, Hi: 58, Class: 18},
-		{Lo: 59, Hi: 60, Class: 1},
-		{Lo: 61, Hi: 61, Class: 19},
-		{Lo: 62, Hi: 62, Class: 20},
-		{Lo: 63, Hi: 63, Class: 21},
-		{Lo: 64, Hi: 64, Class: 1},
-		{Lo: 65, Hi: 90, Class: 22},
-		{Lo: 91, Hi: 91, Class: 1},
-		{Lo: 92, Hi: 92, Class: 23},
-		{Lo: 93, Hi: 94, Class: 1},
-		{Lo: 95, Hi: 95, Class: 24},
-		{Lo: 96, Hi: 96, Class: 1},
-		{Lo: 97, Hi: 97, Class: 25},
-		{Lo: 98, Hi: 99, Class: 22},
-		{Lo: 100, Hi: 100, Class: 26},
-		{Lo: 101, Hi: 101, Class: 27},
-		{Lo: 102, Hi: 103, Class: 22},
-		{Lo: 104, Hi: 104, Class: 28},
-		{Lo: 105, Hi: 107, Class: 22},
-		{Lo: 108, Hi: 108, Class: 29},
-		{Lo: 109, Hi: 109, Class: 22},
-		{Lo: 110, Hi: 110, Class: 30},
-		{Lo: 111, Hi: 118, Class: 22},
-		{Lo: 119, Hi: 119, Class: 31},
-		{Lo: 120, Hi: 120, Class: 22},
-		{Lo: 121, Hi: 121, Class: 32},
-		{Lo: 122, Hi: 122, Class: 22},
-		{Lo: 123, Hi: 123, Class: 33},
-		{Lo: 124, Hi: 124, Class: 34},
-		{Lo: 125, Hi: 125, Class: 35},
-		{Lo: 126, Hi: 126, Class: 36},
-		{Lo: 127, Hi: 169, Class: 1},
-		{Lo: 170, Hi: 170, Class: 22},
-		{Lo: 171, Hi: 180, Class: 1},
-		{Lo: 181, Hi: 181, Class: 22},
-		{Lo: 182, Hi: 185, Class: 1},
-		{Lo: 186, Hi: 186, Class: 22},
-		{Lo: 187, Hi: 191, Class: 1},
-		{Lo: 192, Hi: 214, Class: 22},
-		{Lo: 215, Hi: 215, Class: 1},
-		{Lo: 216, Hi: 246, Class: 22},
-		{Lo: 247, Hi: 247, Class: 1},
-		{Lo: 248, Hi: 705, Class: 22},
-		{Lo: 706, Hi: 709, Class: 1},
-		{Lo: 710, Hi: 721, Class: 22},
-		{Lo: 722, Hi: 735, Class: 1},
-		{Lo: 736, Hi: 740, Class: 22},
-		{Lo: 741, Hi: 747, Class: 1},
-		{Lo: 748, Hi: 748, Class: 22},
-		{Lo: 749, Hi: 749, Class: 1},
-		{Lo: 750, Hi: 750, Class: 22},
-		{Lo: 751, Hi: 836, Class: 1},
-		{Lo: 837, Hi: 837, Class: 22},
-		{Lo: 838, Hi: 866, Class: 1},
-		{Lo: 867, Hi: 884, Class: 22},
-		{Lo: 885, Hi: 885, Class: 1},
-		{Lo: 886, Hi: 887, Class: 22},
-		{Lo: 888, Hi: 889, Class: 1},
-		{Lo: 890, Hi: 893, Class: 22},
-		{Lo: 894, Hi: 894, Class: 1},
-		{Lo: 895, Hi: 895, Class: 22},
-		{Lo: 896, Hi: 901, Class: 1},
-		{Lo: 902, Hi: 902, Class: 22},
-		{Lo: 903, Hi: 903, Class: 1},
-		{Lo: 904, Hi: 906, Class: 22},
-		{Lo: 907, Hi: 907, Class: 1},
-		{Lo: 908, Hi: 908, Class: 22},
-		{Lo: 909, Hi: 909, Class: 1},
-		{Lo: 910, Hi: 929, Class: 22},
-		{Lo: 930, Hi: 930, Class: 1},
-		{Lo: 931, Hi: 1013, Class: 22},
-		{Lo: 1014, Hi: 1014, Class: 1},
-		{Lo: 1015, Hi: 1153, Class: 22},
-		{Lo: 1154, Hi: 1161, Class: 1},
-		{Lo: 1162, Hi: 1327, Class: 22},
-		{Lo: 1328, Hi: 1328, Class: 1},
-		{Lo: 1329, Hi: 1366, Class: 22},
-		{Lo: 1367, Hi: 1368, Class: 1},
-		{Lo: 1369, Hi: 1369, Class: 22},
-		{Lo: 1370, Hi: 1375, Class: 1},
-		{Lo: 1376, Hi: 1416, Class: 22},
-		{Lo: 1417, Hi: 1455, Class: 1},
-		{Lo: 1456, Hi: 1469, Class: 22},
-		{Lo: 1470, Hi: 1470, Class: 1},
-		{Lo: 1471, Hi: 1471, Class: 22},
-		{Lo: 1472, Hi: 1472, Class: 1},
-		{Lo: 1473, Hi: 1474, Class: 22},
-		{Lo: 1475, Hi: 1475, Class: 1},
-		{Lo: 1476, Hi: 1477, Class: 22},
-		{Lo: 1478, Hi: 1478, Class: 1},
-		{Lo: 1479, Hi: 1479, Class: 22},
-		{Lo: 1480, Hi: 1487, Class: 1},
-		{Lo: 1488, Hi: 1514, Class: 22},
-		{Lo: 1515, Hi: 1518, Class: 1},
-		{Lo: 1519, Hi: 1522, Class: 22},
-		{Lo: 1523, Hi: 1551, Class: 1},
-		{Lo: 1552, Hi: 1562, Class: 22},
-		{Lo: 1563, Hi: 1567, Class: 1},
-		{Lo: 1568, Hi: 1623, Class: 22},
-		{Lo: 1624, Hi: 1624, Class: 1},
-		{Lo: 1625, Hi: 1631, Class: 22},
-		{Lo: 1632, Hi: 1645, Class: 1},
-		{Lo: 1646, Hi: 1747, Class: 22},
-		{Lo: 1748, Hi: 1748, Class: 1},
-		{Lo: 1749, Hi: 1756, Class: 22},
-		{Lo: 1757, Hi: 1760, Class: 1},
-		{Lo: 1761, Hi: 1768, Class: 22},
-		{Lo: 1769, Hi: 1772, Class: 1},
-		{Lo: 1773, Hi: 1775, Class: 22},
-		{Lo: 1776, Hi: 1785, Class: 1},
-		{Lo: 1786, Hi: 1788, Class: 22},
-		{Lo: 1789, Hi: 1790, Class: 1},
-		{Lo: 1791, Hi: 1791, Class: 22},
-		{Lo: 1792, Hi: 1807, Class: 1},
-		{Lo: 1808, Hi: 1855, Class: 22},
-		{Lo: 1856, Hi: 1868, Class: 1},
-		{Lo: 1869, Hi: 1969, Class: 22},
-		{Lo: 1970, Hi: 1993, Class: 1},
-		{Lo: 1994, Hi: 2026, Class: 22},
-		{Lo: 2027, Hi: 2035, Class: 1},
-		{Lo: 2036, Hi: 2037, Class: 22},
-		{Lo: 2038, Hi: 2041, Class: 1},
-		{Lo: 2042, Hi: 2042, Class: 22},
-		{Lo: 2043, Hi: 2047, Class: 1},
-		{Lo: 2048, Hi: 2071, Class: 22},
-		{Lo: 2072, Hi: 2073, Class: 1},
-		{Lo: 2074, Hi: 2092, Class: 22},
-		{Lo: 2093, Hi: 2111, Class: 1},
-		{Lo: 2112, Hi: 2136, Class: 22},
-		{Lo: 2137, Hi: 2143, Class: 1},
-		{Lo: 2144, Hi: 2154, Class: 22},
-		{Lo: 2155, Hi: 2159, Class: 1},
-		{Lo: 2160, Hi: 2183, Class: 22},
-		{Lo: 2184, Hi: 2184, Class: 1},
-		{Lo: 2185, Hi: 2191, Class: 22},
-		{Lo: 2192, Hi: 2198, Class: 1},
-		{Lo: 2199, Hi: 2199, Class: 22},
-		{Lo: 2200, Hi: 2207, Class: 1},
-		{Lo: 2208, Hi: 2249, Class: 22},
-		{Lo: 2250, Hi: 2259, Class: 1},
-		{Lo: 2260, Hi: 2271, Class: 22},
-		{Lo: 2272, Hi: 2274, Class: 1},
-		{Lo: 2275, Hi: 2281, Class: 22},
-		{Lo: 2282, Hi: 2287, Class: 1},
-		{Lo: 2288, Hi: 2363, Class: 22},
-		{Lo: 2364, Hi: 2364, Class: 1},
-		{Lo: 2365, Hi: 2380, Class: 22},
-		{Lo: 2381, Hi: 2381, Class: 1},
-		{Lo: 2382, Hi: 2384, Class: 22},
-		{Lo: 2385, Hi: 2388, Class: 1},
-		{Lo: 2389, Hi: 2403, Class: 22},
-		{Lo: 2404, Hi: 2416, Class: 1},
-		{Lo: 2417, Hi: 2435, Class: 22},
-		{Lo: 2436, Hi: 2436, Class: 1},
-		{Lo: 2437, Hi: 2444, Class: 22},
-		{Lo: 2445, Hi: 2446, Class: 1},
-		{Lo: 2447, Hi: 2448, Class: 22},
-		{Lo: 2449, Hi: 2450, Class: 1},
-		{Lo: 2451, Hi: 2472, Class: 22},
-		{Lo: 2473, Hi: 2473, Class: 1},
-		{Lo: 2474, Hi: 2480, Class: 22},
-		{Lo: 2481, Hi: 2481, Class: 1},
-		{Lo: 2482, Hi: 2482, Class: 22},
-		{Lo: 2483, Hi: 2485, Class: 1},
-		{Lo: 2486, Hi: 2489, Class: 22},
-		{Lo: 2490, Hi: 2492, Class: 1},
-		{Lo: 2493, Hi: 2500, Class: 22},
-		{Lo: 2501, Hi: 2502, Class: 1},
-		{Lo: 2503, Hi: 2504, Class: 22},
-		{Lo: 2505, Hi: 2506, Class: 1},
-		{Lo: 2507, Hi: 2508, Class: 22},
-		{Lo: 2509, Hi: 2509, Class: 1},
-		{Lo: 2510, Hi: 2510, Class: 22},
-		{Lo: 2511, Hi: 2518, Class: 1},
-		{Lo: 2519, Hi: 2519, Class: 22},
-		{Lo: 2520, Hi: 2523, Class: 1},
-		{Lo: 2524, Hi: 2525, Class: 22},
-		{Lo: 2526, Hi: 2526, Class: 1},
-		{Lo: 2527, Hi: 2531, Class: 22},
-		{Lo: 2532, Hi: 2543, Class: 1},
-		{Lo: 2544, Hi: 2545, Class: 22},
-		{Lo: 2546, Hi: 2555, Class: 1},
-		{Lo: 2556, Hi: 2556, Class: 22},
-		{Lo: 2557, Hi: 2560, Class: 1},
-		{Lo: 2561, Hi: 2563, Class: 22},
-		{Lo: 2564, Hi: 2564, Class: 1},
-		{Lo: 2565, Hi: 2570, Class: 22},
-		{Lo: 2571, Hi: 2574, Class: 1},
-		{Lo: 2575, Hi: 2576, Class: 22},
-		{Lo: 2577, Hi: 2578, Class: 1},
-		{Lo: 2579, Hi: 2600, Class: 22},
-		{Lo: 2601, Hi: 2601, Class: 1},
-		{Lo: 2602, Hi: 2608, Class: 22},
-		{Lo: 2609, Hi: 2609, Class: 1},
-		{Lo: 2610, Hi: 2611, Class: 22},
-		{Lo: 2612, Hi: 2612, Class: 1},
-		{Lo: 2613, Hi: 2614, Class: 22},
-		{Lo: 2615, Hi: 2615, Class: 1},
-		{Lo: 2616, Hi: 2617, Class: 22},
-		{Lo: 2618, Hi: 2621, Class: 1},
-		{Lo: 2622, Hi: 2626, Class: 22},
-		{Lo: 2627, Hi: 2630, Class: 1},
-		{Lo: 2631, Hi: 2632, Class: 22},
-		{Lo: 2633, Hi: 2634, Class: 1},
-		{Lo: 2635, Hi: 2636, Class: 22},
-		{Lo: 2637, Hi: 2640, Class: 1},
-		{Lo: 2641, Hi: 2641, Class: 22},
-		{Lo: 2642, Hi: 2648, Class: 1},
-		{Lo: 2649, Hi: 2652, Class: 22},
-		{Lo: 2653, Hi: 2653, Class: 1},
-		{Lo: 2654, Hi: 2654, Class: 22},
-		{Lo: 2655, Hi: 2671, Class: 1},
-		{Lo: 2672, Hi: 2677, Class: 22},
-		{Lo: 2678, Hi: 2688, Class: 1},
-		{Lo: 2689, Hi: 2691, Class: 22},
-		{Lo: 2692, Hi: 2692, Class: 1},
-		{Lo: 2693, Hi: 2701, Class: 22},
-		{Lo: 2702, Hi: 2702, Class: 1},
-		{Lo: 2703, Hi: 2705, Class: 22},
-		{Lo: 2706, Hi: 2706, Class: 1},
-		{Lo: 2707, Hi: 2728, Class: 22},
-		{Lo: 2729, Hi: 2729, Class: 1},
-		{Lo: 2730, Hi: 2736, Class: 22},
-		{Lo: 2737, Hi: 2737, Class: 1},
-		{Lo: 2738, Hi: 2739, Class: 22},
-		{Lo: 2740, Hi: 2740, Class: 1},
-		{Lo: 2741, Hi: 2745, Class: 22},
-		{Lo: 2746, Hi: 2748, Class: 1},
-		{Lo: 2749, Hi: 2757, Class: 22},
-		{Lo: 2758, Hi: 2758, Class: 1},
-		{Lo: 2759, Hi: 2761, Class: 22},
-		{Lo: 2762, Hi: 2762, Class: 1},
-		{Lo: 2763, Hi: 2764, Class: 22},
-		{Lo: 2765, Hi: 2767, Class: 1},
-		{Lo: 2768, Hi: 2768, Class: 22},
-		{Lo: 2769, Hi: 2783, Class: 1},
-		{Lo: 2784, Hi: 2787, Class: 22},
-		{Lo: 2788, Hi: 2808, Class: 1},
-		{Lo: 2809, Hi: 2812, Class: 22},
-		{Lo: 2813, Hi: 2816, Class: 1},
-		{Lo: 2817, Hi: 2819, Class: 22},
-		{Lo: 2820, Hi: 2820, Class: 1},
-		{Lo: 2821, Hi: 2828, Class: 22},
-		{Lo: 2829, Hi: 2830, Class: 1},
-		{Lo: 2831, Hi: 2832, Class: 22},
-		{Lo: 2833, Hi: 2834, Class: 1},
-		{Lo: 2835, Hi: 2856, Class: 22},
-		{Lo: 2857, Hi: 2857, Class: 1},
-		{Lo: 2858, Hi: 2864, Class: 22},
-		{Lo: 2865, Hi: 2865, Class: 1},
-		{Lo: 2866, Hi: 2867, Class: 22},
-		{Lo: 2868, Hi: 2868, Class: 1},
-		{Lo: 2869, Hi: 2873, Class: 22},
-		{Lo: 2874, Hi: 2876, Class: 1},
-		{Lo: 2877, Hi: 2884, Class: 22},
-		{Lo: 2885, Hi: 2886, Class: 1},
-		{Lo: 2887, Hi: 2888, Class: 22},
-		{Lo: 2889, Hi: 2890, Class: 1},
-		{Lo: 2891, Hi: 2892, Class: 22},
-		{Lo: 2893, Hi: 2901, Class: 1},
-		{Lo: 2902, Hi: 2903, Class: 22},
-		{Lo: 2904, Hi: 2907, Class: 1},
-		{Lo: 2908, Hi: 2909, Class: 22},
-		{Lo: 2910, Hi: 2910, Class: 1},
-		{Lo: 2911, Hi: 2915, Class: 22},
-		{Lo: 2916, Hi: 2928, Class: 1},
-		{Lo: 2929, Hi: 2929, Class: 22},
-		{Lo: 2930, Hi: 2945, Class: 1},
-		{Lo: 2946, Hi: 2947, Class: 22},
-		{Lo: 2948, Hi: 2948, Class: 1},
-		{Lo: 2949, Hi: 2954, Class: 22},
-		{Lo: 2955, Hi: 2957, Class: 1},
-		{Lo: 2958, Hi: 2960, Class: 22},
-		{Lo: 2961, Hi: 2961, Class: 1},
-		{Lo: 2962, Hi: 2965, Class: 22},
-		{Lo: 2966, Hi: 2968, Class: 1},
-		{Lo: 2969, Hi: 2970, Class: 22},
-		{Lo: 2971, Hi: 2971, Class: 1},
-		{Lo: 2972, Hi: 2972, Class: 22},
-		{Lo: 2973, Hi: 2973, Class: 1},
-		{Lo: 2974, Hi: 2975, Class: 22},
-		{Lo: 2976, Hi: 2978, Class: 1},
-		{Lo: 2979, Hi: 2980, Class: 22},
-		{Lo: 2981, Hi: 2983, Class: 1},
-		{Lo: 2984, Hi: 2986, Class: 22},
-		{Lo: 2987, Hi: 2989, Class: 1},
-		{Lo: 2990, Hi: 3001, Class: 22},
-		{Lo: 3002, Hi: 3005, Class: 1},
-		{Lo: 3006, Hi: 3010, Class: 22},
-		{Lo: 3011, Hi: 3013, Class: 1},
-		{Lo: 3014, Hi: 3016, Class: 22},
-		{Lo: 3017, Hi: 3017, Class: 1},
-		{Lo: 3018, Hi: 3020, Class: 22},
-		{Lo: 3021, Hi: 3023, Class: 1},
-		{Lo: 3024, Hi: 3024, Class: 22},
-		{Lo: 3025, Hi: 3030, Class: 1},
-		{Lo: 3031, Hi: 3031, Class: 22},
-		{Lo: 3032, Hi: 3071, Class: 1},
-		{Lo: 3072, Hi: 3084, Class: 22},
-		{Lo: 3085, Hi: 3085, Class: 1},
-		{Lo: 3086, Hi: 3088, Class: 22},
-		{Lo: 3089, Hi: 3089, Class: 1},
-		{Lo: 3090, Hi: 3112, Class: 22},
-		{Lo: 3113, Hi: 3113, Class: 1},
-		{Lo: 3114, Hi: 3129, Class: 22},
-		{Lo: 3130, Hi: 3132, Class: 1},
-		{Lo: 3133, Hi: 3140, Class: 22},
-		{Lo: 3141, Hi: 3141, Class: 1},
-		{Lo: 3142, Hi: 3144, Class: 22},
-		{Lo: 3145, Hi: 3145, Class: 1},
-		{Lo: 3146, Hi: 3148, Class: 22},
-		{Lo: 3149, Hi: 3156, Class: 1},
-		{Lo: 3157, Hi: 3158, Class: 22},
-		{Lo: 3159, Hi: 3159, Class: 1},
-		{Lo: 3160, Hi: 3162, Class: 22},
-		{Lo: 3163, Hi: 3163, Class: 1},
-		{Lo: 3164, Hi: 3165, Class: 22},
-		{Lo: 3166, Hi: 3167, Class: 1},
-		{Lo: 3168, Hi: 3171, Class: 22},
-		{Lo: 3172, Hi: 3199, Class: 1},
-		{Lo: 3200, Hi: 3203, Class: 22},
-		{Lo: 3204, Hi: 3204, Class: 1},
-		{Lo: 3205, Hi: 3212, Class: 22},
-		{Lo: 3213, Hi: 3213, Class: 1},
-		{Lo: 3214, Hi: 3216, Class: 22},
-		{Lo: 3217, Hi: 3217, Class: 1},
-		{Lo: 3218, Hi: 3240, Class: 22},
-		{Lo: 3241, Hi: 3241, Class: 1},
-		{Lo: 3242, Hi: 3251, Class: 22},
-		{Lo: 3252, Hi: 3252, Class: 1},
-		{Lo: 3253, Hi: 3257, Class: 22},
-		{Lo: 3258, Hi: 3260, Class: 1},
-		{Lo: 3261, Hi: 3268, Class: 22},
-		{Lo: 3269, Hi: 3269, Class: 1},
-		{Lo: 3270, Hi: 3272, Class: 22},
-		{Lo: 3273, Hi: 3273, Class: 1},
-		{Lo: 3274, Hi: 3276, Class: 22},
-		{Lo: 3277, Hi: 3284, Class: 1},
-		{Lo: 3285, Hi: 3286, Class: 22},
-		{Lo: 3287, Hi: 3291, Class: 1},
-		{Lo: 3292, Hi: 3294, Class: 22},
-		{Lo: 3295, Hi: 3295, Class: 1},
-		{Lo: 3296, Hi: 3299, Class: 22},
-		{Lo: 3300, Hi: 3312, Class: 1},
-		{Lo: 3313, Hi: 3315, Class: 22},
-		{Lo: 3316, Hi: 3327, Class: 1},
-		{Lo: 3328, Hi: 3340, Class: 22},
-		{Lo: 3341, Hi: 3341, Class: 1},
-		{Lo: 3342, Hi: 3344, Class: 22},
-		{Lo: 3345, Hi: 3345, Class: 1},
-		{Lo: 3346, Hi: 3386, Class: 22},
-		{Lo: 3387, Hi: 3388, Class: 1},
-		{Lo: 3389, Hi: 3396, Class: 22},
-		{Lo: 3397, Hi: 3397, Class: 1},
-		{Lo: 3398, Hi: 3400, Class: 22},
-		{Lo: 3401, Hi: 3401, Class: 1},
-		{Lo: 3402, Hi: 3404, Class: 22},
-		{Lo: 3405, Hi: 3405, Class: 1},
-		{Lo: 3406, Hi: 3406, Class: 22},
-		{Lo: 3407, Hi: 3411, Class: 1},
-		{Lo: 3412, Hi: 3415, Class: 22},
-		{Lo: 3416, Hi: 3422, Class: 1},
-		{Lo: 3423, Hi: 3427, Class: 22},
-		{Lo: 3428, Hi: 3449, Class: 1},
-		{Lo: 3450, Hi: 3455, Class: 22},
-		{Lo: 3456, Hi: 3456, Class: 1},
-		{Lo: 3457, Hi: 3459, Class: 22},
-		{Lo: 3460, Hi: 3460, Class: 1},
-		{Lo: 3461, Hi: 3478, Class: 22},
-		{Lo: 3479, Hi: 3481, Class: 1},
-		{Lo: 3482, Hi: 3505, Class: 22},
-		{Lo: 3506, Hi: 3506, Class: 1},
-		{Lo: 3507, Hi: 3515, Class: 22},
-		{Lo: 3516, Hi: 3516, Class: 1},
-		{Lo: 3517, Hi: 3517, Class: 22},
-		{Lo: 3518, Hi: 3519, Class: 1},
-		{Lo: 3520, Hi: 3526, Class: 22},
-		{Lo: 3527, Hi: 3534, Class: 1},
-		{Lo: 3535, Hi: 3540, Class: 22},
-		{Lo: 3541, Hi: 3541, Class: 1},
-		{Lo: 3542, Hi: 3542, Class: 22},
-		{Lo: 3543, Hi: 3543, Class: 1},
-		{Lo: 3544, Hi: 3551, Class: 22},
-		{Lo: 3552, Hi: 3569, Class: 1},
-		{Lo: 3570, Hi: 3571, Class: 22},
-		{Lo: 3572, Hi: 3584, Class: 1},
-		{Lo: 3585, Hi: 3642, Class: 22},
-		{Lo: 3643, Hi: 3647, Class: 1},
-		{Lo: 3648, Hi: 3654, Class: 22},
-		{Lo: 3655, Hi: 3660, Class: 1},
-		{Lo: 3661, Hi: 3661, Class: 22},
-		{Lo: 3662, Hi: 3712, Class: 1},
-		{Lo: 3713, Hi: 3714, Class: 22},
-		{Lo: 3715, Hi: 3715, Class: 1},
-		{Lo: 3716, Hi: 3716, Class: 22},
-		{Lo: 3717, Hi: 3717, Class: 1},
-		{Lo: 3718, Hi: 3722, Class: 22},
-		{Lo: 3723, Hi: 3723, Class: 1},
-		{Lo: 3724, Hi: 3747, Class: 22},
-		{Lo: 3748, Hi: 3748, Class: 1},
-		{Lo: 3749, Hi: 3749, Class: 22},
-		{Lo: 3750, Hi: 3750, Class: 1},
-		{Lo: 3751, Hi: 3769, Class: 22},
-		{Lo: 3770, Hi: 3770, Class: 1},
-		{Lo: 3771, Hi: 3773, Class: 22},
-		{Lo: 3774, Hi: 3775, Class: 1},
-		{Lo: 3776, Hi: 3780, Class: 22},
-		{Lo: 3781, Hi: 3781, Class: 1},
-		{Lo: 3782, Hi: 3782, Class: 22},
-		{Lo: 3783, Hi: 3788, Class: 1},
-		{Lo: 3789, Hi: 3789, Class: 22},
-		{Lo: 3790, Hi: 3803, Class: 1},
-		{Lo: 3804, Hi: 3807, Class: 22},
-		{Lo: 3808, Hi: 3839, Class: 1},
-		{Lo: 3840, Hi: 3840, Class: 22},
-		{Lo: 3841, Hi: 3903, Class: 1},
-		{Lo: 3904, Hi: 3911, Class: 22},
-		{Lo: 3912, Hi: 3912, Class: 1},
-		{Lo: 3913, Hi: 3948, Class: 22},
-		{Lo: 3949, Hi: 3952, Class: 1},
-		{Lo: 3953, Hi: 3971, Class: 22},
-		{Lo: 3972, Hi: 3975, Class: 1},
-		{Lo: 3976, Hi: 3991, Class: 22},
-		{Lo: 3992, Hi: 3992, Class: 1},
-		{Lo: 3993, Hi: 4028, Class: 22},
-		{Lo: 4029, Hi: 4095, Class: 1},
-		{Lo: 4096, Hi: 4150, Class: 22},
-		{Lo: 4151, Hi: 4151, Class: 1},
-		{Lo: 4152, Hi: 4152, Class: 22},
-		{Lo: 4153, Hi: 4154, Class: 1},
-		{Lo: 4155, Hi: 4159, Class: 22},
-		{Lo: 4160, Hi: 4175, Class: 1},
-		{Lo: 4176, Hi: 4239, Class: 22},
-		{Lo: 4240, Hi: 4249, Class: 1},
-		{Lo: 4250, Hi: 4253, Class: 22},
-		{Lo: 4254, Hi: 4255, Class: 1},
-		{Lo: 4256, Hi: 4293, Class: 22},
-		{Lo: 4294, Hi: 4294, Class: 1},
-		{Lo: 4295, Hi: 4295, Class: 22},
-		{Lo: 4296, Hi: 4300, Class: 1},
-		{Lo: 4301, Hi: 4301, Class: 22},
-		{Lo: 4302, Hi: 4303, Class: 1},
-		{Lo: 4304, Hi: 4346, Class: 22},
-		{Lo: 4347, Hi: 4347, Class: 1},
-		{Lo: 4348, Hi: 4680, Class: 22},
-		{Lo: 4681, Hi: 4681, Class: 1},
-		{Lo: 4682, Hi: 4685, Class: 22},
-		{Lo: 4686, Hi: 4687, Class: 1},
-		{Lo: 4688, Hi: 4694, Class: 22},
-		{Lo: 4695, Hi: 4695, Class: 1},
-		{Lo: 4696, Hi: 4696, Class: 22},
-		{Lo: 4697, Hi: 4697, Class: 1},
-		{Lo: 4698, Hi: 4701, Class: 22},
-		{Lo: 4702, Hi: 4703, Class: 1},
-		{Lo: 4704, Hi: 4744, Class: 22},
-		{Lo: 4745, Hi: 4745, Class: 1},
-		{Lo: 4746, Hi: 4749, Class: 22},
-		{Lo: 4750, Hi: 4751, Class: 1},
-		{Lo: 4752, Hi: 4784, Class: 22},
-		{Lo: 4785, Hi: 4785, Class: 1},
-		{Lo: 4786, Hi: 4789, Class: 22},
-		{Lo: 4790, Hi: 4791, Class: 1},
-		{Lo: 4792, Hi: 4798, Class: 22},
-		{Lo: 4799, Hi: 4799, Class: 1},
-		{Lo: 4800, Hi: 4800, Class: 22},
-		{Lo: 4801, Hi: 4801, Class: 1},
-		{Lo: 4802, Hi: 4805, Class: 22},
-		{Lo: 4806, Hi: 4807, Class: 1},
-		{Lo: 4808, Hi: 4822, Class: 22},
-		{Lo: 4823, Hi: 4823, Class: 1},
-		{Lo: 4824, Hi: 4880, Class: 22},
-		{Lo: 4881, Hi: 4881, Class: 1},
-		{Lo: 4882, Hi: 4885, Class: 22},
-		{Lo: 4886, Hi: 4887, Class: 1},
-		{Lo: 4888, Hi: 4954, Class: 22},
-		{Lo: 4955, Hi: 4991, Class: 1},
-		{Lo: 4992, Hi: 5007, Class: 22},
-		{Lo: 5008, Hi: 5023, Class: 1},
-		{Lo: 5024, Hi: 5109, Class: 22},
-		{Lo: 5110, Hi: 5111, Class: 1},
-		{Lo: 5112, Hi: 5117, Class: 22},
-		{Lo: 5118, Hi: 5120, Class: 1},
-		{Lo: 5121, Hi: 5740, Class: 22},
-		{Lo: 5741, Hi: 5742, Class: 1},
-		{Lo: 5743, Hi: 5759, Class: 22},
-		{Lo: 5760, Hi: 5760, Class: 1},
-		{Lo: 5761, Hi: 5786, Class: 22},
-		{Lo: 5787, Hi: 5791, Class: 1},
-		{Lo: 5792, Hi: 5866, Class: 22},
-		{Lo: 5867, Hi: 5869, Class: 1},
-		{Lo: 5870, Hi: 5880, Class: 22},
-		{Lo: 5881, Hi: 5887, Class: 1},
-		{Lo: 5888, Hi: 5907, Class: 22},
-		{Lo: 5908, Hi: 5918, Class: 1},
-		{Lo: 5919, Hi: 5939, Class: 22},
-		{Lo: 5940, Hi: 5951, Class: 1},
-		{Lo: 5952, Hi: 5971, Class: 22},
-		{Lo: 5972, Hi: 5983, Class: 1},
-		{Lo: 5984, Hi: 5996, Class: 22},
-		{Lo: 5997, Hi: 5997, Class: 1},
-		{Lo: 5998, Hi: 6000, Class: 22},
-		{Lo: 6001, Hi: 6001, Class: 1},
-		{Lo: 6002, Hi: 6003, Class: 22},
-		{Lo: 6004, Hi: 6015, Class: 1},
-		{Lo: 6016, Hi: 6067, Class: 22},
-		{Lo: 6068, Hi: 6069, Class: 1},
-		{Lo: 6070, Hi: 6088, Class: 22},
-		{Lo: 6089, Hi: 6102, Class: 1},
-		{Lo: 6103, Hi: 6103, Class: 22},
-		{Lo: 6104, Hi: 6107, Class: 1},
-		{Lo: 6108, Hi: 6108, Class: 22},
-		{Lo: 6109, Hi: 6175, Class: 1},
-		{Lo: 6176, Hi: 6264, Class: 22},
-		{Lo: 6265, Hi: 6271, Class: 1},
-		{Lo: 6272, Hi: 6314, Class: 22},
-		{Lo: 6315, Hi: 6319, Class: 1},
-		{Lo: 6320, Hi: 6389, Class: 22},
-		{Lo: 6390, Hi: 6399, Class: 1},
-		{Lo: 6400, Hi: 6430, Class: 22},
-		{Lo: 6431, Hi: 6431, Class: 1},
-		{Lo: 6432, Hi: 6443, Class: 22},
-		{Lo: 6444, Hi: 6447, Class: 1},
-		{Lo: 6448, Hi: 6456, Class: 22},
-		{Lo: 6457, Hi: 6479, Class: 1},
-		{Lo: 6480, Hi: 6509, Class: 22},
-		{Lo: 6510, Hi: 6511, Class: 1},
-		{Lo: 6512, Hi: 6516, Class: 22},
-		{Lo: 6517, Hi: 6527, Class: 1},
-		{Lo: 6528, Hi: 6571, Class: 22},
-		{Lo: 6572, Hi: 6575, Class: 1},
-		{Lo: 6576, Hi: 6601, Class: 22},
-		{Lo: 6602, Hi: 6655, Class: 1},
-		{Lo: 6656, Hi: 6683, Class: 22},
-		{Lo: 6684, Hi: 6687, Class: 1},
-		{Lo: 6688, Hi: 6750, Class: 22},
-		{Lo: 6751, Hi: 6752, Class: 1},
-		{Lo: 6753, Hi: 6772, Class: 22},
-		{Lo: 6773, Hi: 6822, Class: 1},
-		{Lo: 6823, Hi: 6823, Class: 22},
-		{Lo: 6824, Hi: 6846, Class: 1},
-		{Lo: 6847, Hi: 6848, Class: 22},
-		{Lo: 6849, Hi: 6859, Class: 1},
-		{Lo: 6860, Hi: 6862, Class: 22},
-		{Lo: 6863, Hi: 6911, Class: 1},
-		{Lo: 6912, Hi: 6963, Class: 22},
-		{Lo: 6964, Hi: 6964, Class: 1},
-		{Lo: 6965, Hi: 6979, Class: 22},
-		{Lo: 6980, Hi: 6980, Class: 1},
-		{Lo: 6981, Hi: 6988, Class: 22},
-		{Lo: 6989, Hi: 7039, Class: 1},
-		{Lo: 7040, Hi: 7081, Class: 22},
-		{Lo: 7082, Hi: 7083, Class: 1},
-		{Lo: 7084, Hi: 7087, Class: 22},
-		{Lo: 7088, Hi: 7097, Class: 1},
-		{Lo: 7098, Hi: 7141, Class: 22},
-		{Lo: 7142, Hi: 7142, Class: 1},
-		{Lo: 7143, Hi: 7153, Class: 22},
-		{Lo: 7154, Hi: 7167, Class: 1},
-		{Lo: 7168, Hi: 7222, Class: 22},
-		{Lo: 7223, Hi: 7244, Class: 1},
-		{Lo: 7245, Hi: 7247, Class: 22},
-		{Lo: 7248, Hi: 7257, Class: 1},
-		{Lo: 7258, Hi: 7293, Class: 22},
-		{Lo: 7294, Hi: 7295, Class: 1},
-		{Lo: 7296, Hi: 7306, Class: 22},
-		{Lo: 7307, Hi: 7311, Class: 1},
-		{Lo: 7312, Hi: 7354, Class: 22},
-		{Lo: 7355, Hi: 7356, Class: 1},
-		{Lo: 7357, Hi: 7359, Class: 22},
-		{Lo: 7360, Hi: 7400, Class: 1},
-		{Lo: 7401, Hi: 7404, Class: 22},
-		{Lo: 7405, Hi: 7405, Class: 1},
-		{Lo: 7406, Hi: 7411, Class: 22},
-		{Lo: 7412, Hi: 7412, Class: 1},
-		{Lo: 7413, Hi: 7414, Class: 22},
-		{Lo: 7415, Hi: 7417, Class: 1},
-		{Lo: 7418, Hi: 7418, Class: 22},
-		{Lo: 7419, Hi: 7423, Class: 1},
-		{Lo: 7424, Hi: 7615, Class: 22},
-		{Lo: 7616, Hi: 7634, Class: 1},
-		{Lo: 7635, Hi: 7668, Class: 22},
-		{Lo: 7669, Hi: 7679, Class: 1},
-		{Lo: 7680, Hi: 7957, Class: 22},
-		{Lo: 7958, Hi: 7959, Class: 1},
-		{Lo: 7960, Hi: 7965, Class: 22},
-		{Lo: 7966, Hi: 7967, Class: 1},
-		{Lo: 7968, Hi: 8005, Class: 22},
-		{Lo: 8006, Hi: 8007, Class: 1},
-		{Lo: 8008, Hi: 8013, Class: 22},
-		{Lo: 8014, Hi: 8015, Class: 1},
-		{Lo: 8016, Hi: 8023, Class: 22},
-		{Lo: 8024, Hi: 8024, Class: 1},
-		{Lo: 8025, Hi: 8025, Class: 22},
-		{Lo: 8026, Hi: 8026, Class: 1},
-		{Lo: 8027, Hi: 8027, Class: 22},
-		{Lo: 8028, Hi: 8028, Class: 1},
-		{Lo: 8029, Hi: 8029, Class: 22},
-		{Lo: 8030, Hi: 8030, Class: 1},
-		{Lo: 8031, Hi: 8061, Class: 22},
-		{Lo: 8062, Hi: 8063, Class: 1},
-		{Lo: 8064, Hi: 8116, Class: 22},
-		{Lo: 8117, Hi: 8117, Class: 1},
-		{Lo: 8118, Hi: 8124, Class: 22},
-		{Lo: 8125, Hi: 8125, Class: 1},
-		{Lo: 8126, Hi: 8126, Class: 22},
-		{Lo: 8127, Hi: 8129, Class: 1},
-		{Lo: 8130, Hi: 8132, Class: 22},
-		{Lo: 8133, Hi: 8133, Class: 1},
-		{Lo: 8134, Hi: 8140, Class: 22},
-		{Lo: 8141, Hi: 8143, Class: 1},
-		{Lo: 8144, Hi: 8147, Class: 22},
-		{Lo: 8148, Hi: 8149, Class: 1},
-		{Lo: 8150, Hi: 8155, Class: 22},
-		{Lo: 8156, Hi: 8159, Class: 1},
-		{Lo: 8160, Hi: 8172, Class: 22},
-		{Lo: 8173, Hi: 8177, Class: 1},
-		{Lo: 8178, Hi: 8180, Class: 22},
-		{Lo: 8181, Hi: 8181, Class: 1},
-		{Lo: 8182, Hi: 8188, Class: 22},
-		{Lo: 8189, Hi: 8304, Class: 1},
-		{Lo: 8305, Hi: 8305, Class: 22},
-		{Lo: 8306, Hi: 8318, Class: 1},
-		{Lo: 8319, Hi: 8319, Class: 22},
-		{Lo: 8320, Hi: 8335, Class: 1},
-		{Lo: 8336, Hi: 8348, Class: 22},
-		{Lo: 8349, Hi: 8449, Class: 1},
-		{Lo: 8450, Hi: 8450, Class: 22},
-		{Lo: 8451, Hi: 8454, Class: 1},
-		{Lo: 8455, Hi: 8455, Class: 22},
-		{Lo: 8456, Hi: 8457, Class: 1},
-		{Lo: 8458, Hi: 8467, Class: 22},
-		{Lo: 8468, Hi: 8468, Class: 1},
-		{Lo: 8469, Hi: 8469, Class: 22},
-		{Lo: 8470, Hi: 8472, Class: 1},
-		{Lo: 8473, Hi: 8477, Class: 22},
-		{Lo: 8478, Hi: 8483, Class: 1},
-		{Lo: 8484, Hi: 8484, Class: 22},
-		{Lo: 8485, Hi: 8485, Class: 1},
-		{Lo: 8486, Hi: 8486, Class: 22},
-		{Lo: 8487, Hi: 8487, Class: 1},
-		{Lo: 8488, Hi: 8488, Class: 22},
-		{Lo: 8489, Hi: 8489, Class: 1},
-		{Lo: 8490, Hi: 8493, Class: 22},
-		{Lo: 8494, Hi: 8494, Class: 1},
-		{Lo: 8495, Hi: 8505, Class: 22},
-		{Lo: 8506, Hi: 8507, Class: 1},
-		{Lo: 8508, Hi: 8511, Class: 22},
-		{Lo: 8512, Hi: 8516, Class: 1},
-		{Lo: 8517, Hi: 8521, Class: 22},
-		{Lo: 8522, Hi: 8525, Class: 1},
-		{Lo: 8526, Hi: 8526, Class: 22},
-		{Lo: 8527, Hi: 8543, Class: 1},
-		{Lo: 8544, Hi: 8584, Class: 22},
-		{Lo: 8585, Hi: 9397, Class: 1},
-		{Lo: 9398, Hi: 9449, Class: 22},
-		{Lo: 9450, Hi: 11263, Class: 1},
-		{Lo: 11264, Hi: 11492, Class: 22},
-		{Lo: 11493, Hi: 11498, Class: 1},
-		{Lo: 11499, Hi: 11502, Class: 22},
-		{Lo: 11503, Hi: 11505, Class: 1},
-		{Lo: 11506, Hi: 11507, Class: 22},
-		{Lo: 11508, Hi: 11519, Class: 1},
-		{Lo: 11520, Hi: 11557, Class: 22},
-		{Lo: 11558, Hi: 11558, Class: 1},
-		{Lo: 11559, Hi: 11559, Class: 22},
-		{Lo: 11560, Hi: 11564, Class: 1},
-		{Lo: 11565, Hi: 11565, Class: 22},
-		{Lo: 11566, Hi: 11567, Class: 1},
-		{Lo: 11568, Hi: 11623, Class: 22},
-		{Lo: 11624, Hi: 11630, Class: 1},
-		{Lo: 11631, Hi: 11631, Class: 22},
-		{Lo: 11632, Hi: 11647, Class: 1},
-		{Lo: 11648, Hi: 11670, Class: 22},
-		{Lo: 11671, Hi: 11679, Class: 1},
-		{Lo: 11680, Hi: 11686, Class: 22},
-		{Lo: 11687, Hi: 11687, Class: 1},
-		{Lo: 11688, Hi: 11694, Class: 22},
-		{Lo: 11695, Hi: 11695, Class: 1},
-		{Lo: 11696, Hi: 11702, Class: 22},
-		{Lo: 11703, Hi: 11703, Class: 1},
-		{Lo: 11704, Hi: 11710, Class: 22},
-		{Lo: 11711, Hi: 11711, Class: 1},
-		{Lo: 11712, Hi: 11718, Class: 22},
-		{Lo: 11719, Hi: 11719, Class: 1},
-		{Lo: 11720, Hi: 11726, Class: 22},
-		{Lo: 11727, Hi: 11727, Class: 1},
-		{Lo: 11728, Hi: 11734, Class: 22},
-		{Lo: 11735, Hi: 11735, Class: 1},
-		{Lo: 11736, Hi: 11742, Class: 22},
-		{Lo: 11743, Hi: 11743, Class: 1},
-		{Lo: 11744, Hi: 11775, Class: 22},
-		{Lo: 11776, Hi: 11822, Class: 1},
-		{Lo: 11823, Hi: 11823, Class: 22},
-		{Lo: 11824, Hi: 12292, Class: 1},
-		{Lo: 12293, Hi: 12295, Class: 22},
-		{Lo: 12296, Hi: 12320, Class: 1},
-		{Lo: 12321, Hi: 12329, Class: 22},
-		{Lo: 12330, Hi: 12336, Class: 1},
-		{Lo: 12337, Hi: 12341, Class: 22},
-		{Lo: 12342, Hi: 12343, Class: 1},
-		{Lo: 12344, Hi: 12348, Class: 22},
-		{Lo: 12349, Hi: 12352, Class: 1},
-		{Lo: 12353, Hi: 12438, Class: 22},
-		{Lo: 12439, Hi: 12444, Class: 1},
-		{Lo: 12445, Hi: 12447, Class: 22},
-		{Lo: 12448, Hi: 12448, Class: 1},
-		{Lo: 12449, Hi: 12538, Class: 22},
-		{Lo: 12539, Hi: 12539, Class: 1},
-		{Lo: 12540, Hi: 12543, Class: 22},
-		{Lo: 12544, Hi: 12548, Class: 1},
-		{Lo: 12549, Hi: 12591, Class: 22},
-		{Lo: 12592, Hi: 12592, Class: 1},
-		{Lo: 12593, Hi: 12686, Class: 22},
-		{Lo: 12687, Hi: 12703, Class: 1},
-		{Lo: 12704, Hi: 12735, Class: 22},
-		{Lo: 12736, Hi: 12783, Class: 1},
-		{Lo: 12784, Hi: 12799, Class: 22},
-		{Lo: 12800, Hi: 13311, Class: 1},
-		{Lo: 13312, Hi: 19903, Class: 22},
-		{Lo: 19904, Hi: 19967, Class: 1},
-		{Lo: 19968, Hi: 42124, Class: 22},
-		{Lo: 42125, Hi: 42191, Class: 1},
-		{Lo: 42192, Hi: 42237, Class: 22},
-		{Lo: 42238, Hi: 42239, Class: 1},
-		{Lo: 42240, Hi: 42508, Class: 22},
-		{Lo: 42509, Hi: 42511, Class: 1},
-		{Lo: 42512, Hi: 42527, Class: 22},
-		{Lo: 42528, Hi: 42537, Class: 1},
-		{Lo: 42538, Hi: 42539, Class: 22},
-		{Lo: 42540, Hi: 42559, Class: 1},
-		{Lo: 42560, Hi: 42606, Class: 22},
-		{Lo: 42607, Hi: 42611, Class: 1},
-		{Lo: 42612, Hi: 42619, Class: 22},
-		{Lo: 42620, Hi: 42622, Class: 1},
-		{Lo: 42623, Hi: 42735, Class: 22},
-		{Lo: 42736, Hi: 42774, Class: 1},
-		{Lo: 42775, Hi: 42783, Class: 22},
-		{Lo: 42784, Hi: 42785, Class: 1},
-		{Lo: 42786, Hi: 42888, Class: 22},
-		{Lo: 42889, Hi: 42890, Class: 1},
-		{Lo: 42891, Hi: 42972, Class: 22},
-		{Lo: 42973, Hi: 42992, Class: 1},
-		{Lo: 42993, Hi: 43013, Class: 22},
-		{Lo: 43014, Hi: 43014, Class: 1},
-		{Lo: 43015, Hi: 43047, Class: 22},
-		{Lo: 43048, Hi: 43071, Class: 1},
-		{Lo: 43072, Hi: 43123, Class: 22},
-		{Lo: 43124, Hi: 43135, Class: 1},
-		{Lo: 43136, Hi: 43203, Class: 22},
-		{Lo: 43204, Hi: 43204, Class: 1},
-		{Lo: 43205, Hi: 43205, Class: 22},
-		{Lo: 43206, Hi: 43249, Class: 1},
-		{Lo: 43250, Hi: 43255, Class: 22},
-		{Lo: 43256, Hi: 43258, Class: 1},
-		{Lo: 43259, Hi: 43259, Class: 22},
-		{Lo: 43260, Hi: 43260, Class: 1},
-		{Lo: 43261, Hi: 43263, Class: 22},
-		{Lo: 43264, Hi: 43273, Class: 1},
-		{Lo: 43274, Hi: 43306, Class: 22},
-		{Lo: 43307, Hi: 43311, Class: 1},
-		{Lo: 43312, Hi: 43346, Class: 22},
-		{Lo: 43347, Hi: 43359, Class: 1},
-		{Lo: 43360, Hi: 43388, Class: 22},
-		{Lo: 43389, Hi: 43391, Class: 1},
-		{Lo: 43392, Hi: 43442, Class: 22},
-		{Lo: 43443, Hi: 43443, Class: 1},
-		{Lo: 43444, Hi: 43455, Class: 22},
-		{Lo: 43456, Hi: 43470, Class: 1},
-		{Lo: 43471, Hi: 43471, Class: 22},
-		{Lo: 43472, Hi: 43487, Class: 1},
-		{Lo: 43488, Hi: 43503, Class: 22},
-		{Lo: 43504, Hi: 43513, Class: 1},
-		{Lo: 43514, Hi: 43518, Class: 22},
-		{Lo: 43519, Hi: 43519, Class: 1},
-		{Lo: 43520, Hi: 43574, Class: 22},
-		{Lo: 43575, Hi: 43583, Class: 1},
-		{Lo: 43584, Hi: 43597, Class: 22},
-		{Lo: 43598, Hi: 43615, Class: 1},
-		{Lo: 43616, Hi: 43638, Class: 22},
-		{Lo: 43639, Hi: 43641, Class: 1},
-		{Lo: 43642, Hi: 43710, Class: 22},
-		{Lo: 43711, Hi: 43711, Class: 1},
-		{Lo: 43712, Hi: 43712, Class: 22},
-		{Lo: 43713, Hi: 43713, Class: 1},
-		{Lo: 43714, Hi: 43714, Class: 22},
-		{Lo: 43715, Hi: 43738, Class: 1},
-		{Lo: 43739, Hi: 43741, Class: 22},
-		{Lo: 43742, Hi: 43743, Class: 1},
-		{Lo: 43744, Hi: 43759, Class: 22},
-		{Lo: 43760, Hi: 43761, Class: 1},
-		{Lo: 43762, Hi: 43765, Class: 22},
-		{Lo: 43766, Hi: 43776, Class: 1},
-		{Lo: 43777, Hi: 43782, Class: 22},
-		{Lo: 43783, Hi: 43784, Class: 1},
-		{Lo: 43785, Hi: 43790, Class: 22},
-		{Lo: 43791, Hi: 43792, Class: 1},
-		{Lo: 43793, Hi: 43798, Class: 22},
-		{Lo: 43799, Hi: 43807, Class: 1},
-		{Lo: 43808, Hi: 43814, Class: 22},
-		{Lo: 43815, Hi: 43815, Class: 1},
-		{Lo: 43816, Hi: 43822, Class: 22},
-		{Lo: 43823, Hi: 43823, Class: 1},
-		{Lo: 43824, Hi: 43866, Class: 22},
-		{Lo: 43867, Hi: 43867, Class: 1},
-		{Lo: 43868, Hi: 43881, Class: 22},
-		{Lo: 43882, Hi: 43887, Class: 1},
-		{Lo: 43888, Hi: 44010, Class: 22},
-		{Lo: 44011, Hi: 44031, Class: 1},
-		{Lo: 44032, Hi: 55203, Class: 22},
-		{Lo: 55204, Hi: 55215, Class: 1},
-		{Lo: 55216, Hi: 55238, Class: 22},
-		{Lo: 55239, Hi: 55242, Class: 1},
-		{Lo: 55243, Hi: 55291, Class: 22},
-		{Lo: 55292, Hi: 63743, Class: 1},
-		{Lo: 63744, Hi: 64109, Class: 22},
-		{Lo: 64110, Hi: 64111, Class: 1},
-		{Lo: 64112, Hi: 64217, Class: 22},
-		{Lo: 64218, Hi: 64255, Class: 1},
-		{Lo: 64256, Hi: 64262, Class: 22},
-		{Lo: 64263, Hi: 64274, Class: 1},
-		{Lo: 64275, Hi: 64279, Class: 22},
-		{Lo: 64280, Hi: 64284, Class: 1},
-		{Lo: 64285, Hi: 64296, Class: 22},
-		{Lo: 64297, Hi: 64297, Class: 1},
-		{Lo: 64298, Hi: 64310, Class: 22},
-		{Lo: 64311, Hi: 64311, Class: 1},
-		{Lo: 64312, Hi: 64316, Class: 22},
-		{Lo: 64317, Hi: 64317, Class: 1},
-		{Lo: 64318, Hi: 64318, Class: 22},
-		{Lo: 64319, Hi: 64319, Class: 1},
-		{Lo: 64320, Hi: 64321, Class: 22},
-		{Lo: 64322, Hi: 64322, Class: 1},
-		{Lo: 64323, Hi: 64324, Class: 22},
-		{Lo: 64325, Hi: 64325, Class: 1},
-		{Lo: 64326, Hi: 64433, Class: 22},
-		{Lo: 64434, Hi: 64466, Class: 1},
-		{Lo: 64467, Hi: 64829, Class: 22},
-		{Lo: 64830, Hi: 64847, Class: 1},
-		{Lo: 64848, Hi: 64911, Class: 22},
-		{Lo: 64912, Hi: 64913, Class: 1},
-		{Lo: 64914, Hi: 64967, Class: 22},
-		{Lo: 64968, Hi: 65007, Class: 1},
-		{Lo: 65008, Hi: 65019, Class: 22},
-		{Lo: 65020, Hi: 65135, Class: 1},
-		{Lo: 65136, Hi: 65140, Class: 22},
-		{Lo: 65141, Hi: 65141, Class: 1},
-		{Lo: 65142, Hi: 65276, Class: 22},
-		{Lo: 65277, Hi: 65312, Class: 1},
-		{Lo: 65313, Hi: 65338, Class: 22},
-		{Lo: 65339, Hi: 65344, Class: 1},
-		{Lo: 65345, Hi: 65370, Class: 22},
-		{Lo: 65371, Hi: 65381, Class: 1},
-		{Lo: 65382, Hi: 65470, Class: 22},
-		{Lo: 65471, Hi: 65473, Class: 1},
-		{Lo: 65474, Hi: 65479, Class: 22},
-		{Lo: 65480, Hi: 65481, Class: 1},
-		{Lo: 65482, Hi: 65487, Class: 22},
-		{Lo: 65488, Hi: 65489, Class: 1},
-		{Lo: 65490, Hi: 65495, Class: 22},
-		{Lo: 65496, Hi: 65497, Class: 1},
-		{Lo: 65498, Hi: 65500, Class: 22},
-		{Lo: 65501, Hi: 65535, Class: 1},
-		{Lo: 65536, Hi: 65547, Class: 22},
-		{Lo: 65548, Hi: 65548, Class: 1},
-		{Lo: 65549, Hi: 65574, Class: 22},
-		{Lo: 65575, Hi: 65575, Class: 1},
-		{Lo: 65576, Hi: 65594, Class: 22},
-		{Lo: 65595, Hi: 65595, Class: 1},
-		{Lo: 65596, Hi: 65597, Class: 22},
-		{Lo: 65598, Hi: 65598, Class: 1},
-		{Lo: 65599, Hi: 65613, Class: 22},
-		{Lo: 65614, Hi: 65615, Class: 1},
-		{Lo: 65616, Hi: 65629, Class: 22},
-		{Lo: 65630, Hi: 65663, Class: 1},
-		{Lo: 65664, Hi: 65786, Class: 22},
-		{Lo: 65787, Hi: 65855, Class: 1},
-		{Lo: 65856, Hi: 65908, Class: 22},
-		{Lo: 65909, Hi: 66175, Class: 1},
-		{Lo: 66176, Hi: 66204, Class: 22},
-		{Lo: 66205, Hi: 66207, Class: 1},
-		{Lo: 66208, Hi: 66256, Class: 22},
-		{Lo: 66257, Hi: 66303, Class: 1},
-		{Lo: 66304, Hi: 66335, Class: 22},
-		{Lo: 66336, Hi: 66348, Class: 1},
-		{Lo: 66349, Hi: 66378, Class: 22},
-		{Lo: 66379, Hi: 66383, Class: 1},
-		{Lo: 66384, Hi: 66426, Class: 22},
-		{Lo: 66427, Hi: 66431, Class: 1},
-		{Lo: 66432, Hi: 66461, Class: 22},
-		{Lo: 66462, Hi: 66463, Class: 1},
-		{Lo: 66464, Hi: 66499, Class: 22},
-		{Lo: 66500, Hi: 66503, Class: 1},
-		{Lo: 66504, Hi: 66511, Class: 22},
-		{Lo: 66512, Hi: 66512, Class: 1},
-		{Lo: 66513, Hi: 66517, Class: 22},
-		{Lo: 66518, Hi: 66559, Class: 1},
-		{Lo: 66560, Hi: 66717, Class: 22},
-		{Lo: 66718, Hi: 66735, Class: 1},
-		{Lo: 66736, Hi: 66771, Class: 22},
-		{Lo: 66772, Hi: 66775, Class: 1},
-		{Lo: 66776, Hi: 66811, Class: 22},
-		{Lo: 66812, Hi: 66815, Class: 1},
-		{Lo: 66816, Hi: 66855, Class: 22},
-		{Lo: 66856, Hi: 66863, Class: 1},
-		{Lo: 66864, Hi: 66915, Class: 22},
-		{Lo: 66916, Hi: 66927, Class: 1},
-		{Lo: 66928, Hi: 66938, Class: 22},
-		{Lo: 66939, Hi: 66939, Class: 1},
-		{Lo: 66940, Hi: 66954, Class: 22},
-		{Lo: 66955, Hi: 66955, Class: 1},
-		{Lo: 66956, Hi: 66962, Class: 22},
-		{Lo: 66963, Hi: 66963, Class: 1},
-		{Lo: 66964, Hi: 66965, Class: 22},
-		{Lo: 66966, Hi: 66966, Class: 1},
-		{Lo: 66967, Hi: 66977, Class: 22},
-		{Lo: 66978, Hi: 66978, Class: 1},
-		{Lo: 66979, Hi: 66993, Class: 22},
-		{Lo: 66994, Hi: 66994, Class: 1},
-		{Lo: 66995, Hi: 67001, Class: 22},
-		{Lo: 67002, Hi: 67002, Class: 1},
-		{Lo: 67003, Hi: 67004, Class: 22},
-		{Lo: 67005, Hi: 67007, Class: 1},
-		{Lo: 67008, Hi: 67059, Class: 22},
-		{Lo: 67060, Hi: 67071, Class: 1},
-		{Lo: 67072, Hi: 67382, Class: 22},
-		{Lo: 67383, Hi: 67391, Class: 1},
-		{Lo: 67392, Hi: 67413, Class: 22},
-		{Lo: 67414, Hi: 67423, Class: 1},
-		{Lo: 67424, Hi: 67431, Class: 22},
-		{Lo: 67432, Hi: 67455, Class: 1},
-		{Lo: 67456, Hi: 67461, Class: 22},
-		{Lo: 67462, Hi: 67462, Class: 1},
-		{Lo: 67463, Hi: 67504, Class: 22},
-		{Lo: 67505, Hi: 67505, Class: 1},
-		{Lo: 67506, Hi: 67514, Class: 22},
-		{Lo: 67515, Hi: 67583, Class: 1},
-		{Lo: 67584, Hi: 67589, Class: 22},
-		{Lo: 67590, Hi: 67591, Class: 1},
-		{Lo: 67592, Hi: 67592, Class: 22},
-		{Lo: 67593, Hi: 67593, Class: 1},
-		{Lo: 67594, Hi: 67637, Class: 22},
-		{Lo: 67638, Hi: 67638, Class: 1},
-		{Lo: 67639, Hi: 67640, Class: 22},
-		{Lo: 67641, Hi: 67643, Class: 1},
-		{Lo: 67644, Hi: 67644, Class: 22},
-		{Lo: 67645, Hi: 67646, Class: 1},
-		{Lo: 67647, Hi: 67669, Class: 22},
-		{Lo: 67670, Hi: 67679, Class: 1},
-		{Lo: 67680, Hi: 67702, Class: 22},
-		{Lo: 67703, Hi: 67711, Class: 1},
-		{Lo: 67712, Hi: 67742, Class: 22},
-		{Lo: 67743, Hi: 67807, Class: 1},
-		{Lo: 67808, Hi: 67826, Class: 22},
-		{Lo: 67827, Hi: 67827, Class: 1},
-		{Lo: 67828, Hi: 67829, Class: 22},
-		{Lo: 67830, Hi: 67839, Class: 1},
-		{Lo: 67840, Hi: 67861, Class: 22},
-		{Lo: 67862, Hi: 67871, Class: 1},
-		{Lo: 67872, Hi: 67897, Class: 22},
-		{Lo: 67898, Hi: 67903, Class: 1},
-		{Lo: 67904, Hi: 67929, Class: 22},
-		{Lo: 67930, Hi: 67967, Class: 1},
-		{Lo: 67968, Hi: 68023, Class: 22},
-		{Lo: 68024, Hi: 68029, Class: 1},
-		{Lo: 68030, Hi: 68031, Class: 22},
-		{Lo: 68032, Hi: 68095, Class: 1},
-		{Lo: 68096, Hi: 68099, Class: 22},
-		{Lo: 68100, Hi: 68100, Class: 1},
-		{Lo: 68101, Hi: 68102, Class: 22},
-		{Lo: 68103, Hi: 68107, Class: 1},
-		{Lo: 68108, Hi: 68115, Class: 22},
-		{Lo: 68116, Hi: 68116, Class: 1},
-		{Lo: 68117, Hi: 68119, Class: 22},
-		{Lo: 68120, Hi: 68120, Class: 1},
-		{Lo: 68121, Hi: 68149, Class: 22},
-		{Lo: 68150, Hi: 68191, Class: 1},
-		{Lo: 68192, Hi: 68220, Class: 22},
-		{Lo: 68221, Hi: 68223, Class: 1},
-		{Lo: 68224, Hi: 68252, Class: 22},
-		{Lo: 68253, Hi: 68287, Class: 1},
-		{Lo: 68288, Hi: 68295, Class: 22},
-		{Lo: 68296, Hi: 68296, Class: 1},
-		{Lo: 68297, Hi: 68324, Class: 22},
-		{Lo: 68325, Hi: 68351, Class: 1},
-		{Lo: 68352, Hi: 68405, Class: 22},
-		{Lo: 68406, Hi: 68415, Class: 1},
-		{Lo: 68416, Hi: 68437, Class: 22},
-		{Lo: 68438, Hi: 68447, Class: 1},
-		{Lo: 68448, Hi: 68466, Class: 22},
-		{Lo: 68467, Hi: 68479, Class: 1},
-		{Lo: 68480, Hi: 68497, Class: 22},
-		{Lo: 68498, Hi: 68607, Class: 1},
-		{Lo: 68608, Hi: 68680, Class: 22},
-		{Lo: 68681, Hi: 68735, Class: 1},
-		{Lo: 68736, Hi: 68786, Class: 22},
-		{Lo: 68787, Hi: 68799, Class: 1},
-		{Lo: 68800, Hi: 68850, Class: 22},
-		{Lo: 68851, Hi: 68863, Class: 1},
-		{Lo: 68864, Hi: 68903, Class: 22},
-		{Lo: 68904, Hi: 68937, Class: 1},
-		{Lo: 68938, Hi: 68965, Class: 22},
-		{Lo: 68966, Hi: 68968, Class: 1},
-		{Lo: 68969, Hi: 68969, Class: 22},
-		{Lo: 68970, Hi: 68974, Class: 1},
-		{Lo: 68975, Hi: 68997, Class: 22},
-		{Lo: 68998, Hi: 69247, Class: 1},
-		{Lo: 69248, Hi: 69289, Class: 22},
-		{Lo: 69290, Hi: 69290, Class: 1},
-		{Lo: 69291, Hi: 69292, Class: 22},
-		{Lo: 69293, Hi: 69295, Class: 1},
-		{Lo: 69296, Hi: 69297, Class: 22},
-		{Lo: 69298, Hi: 69313, Class: 1},
-		{Lo: 69314, Hi: 69319, Class: 22},
-		{Lo: 69320, Hi: 69369, Class: 1},
-		{Lo: 69370, Hi: 69372, Class: 22},
-		{Lo: 69373, Hi: 69375, Class: 1},
-		{Lo: 69376, Hi: 69404, Class: 22},
-		{Lo: 69405, Hi: 69414, Class: 1},
-		{Lo: 69415, Hi: 69415, Class: 22},
-		{Lo: 69416, Hi: 69423, Class: 1},
-		{Lo: 69424, Hi: 69445, Class: 22},
-		{Lo: 69446, Hi: 69487, Class: 1},
-		{Lo: 69488, Hi: 69505, Class: 22},
-		{Lo: 69506, Hi: 69551, Class: 1},
-		{Lo: 69552, Hi: 69572, Class: 22},
-		{Lo: 69573, Hi: 69599, Class: 1},
-		{Lo: 69600, Hi: 69622, Class: 22},
-		{Lo: 69623, Hi: 69631, Class: 1},
-		{Lo: 69632, Hi: 69701, Class: 22},
-		{Lo: 69702, Hi: 69744, Class: 1},
-		{Lo: 69745, Hi: 69749, Class: 22},
-		{Lo: 69750, Hi: 69759, Class: 1},
-		{Lo: 69760, Hi: 69816, Class: 22},
-		{Lo: 69817, Hi: 69825, Class: 1},
-		{Lo: 69826, Hi: 69826, Class: 22},
-		{Lo: 69827, Hi: 69839, Class: 1},
-		{Lo: 69840, Hi: 69864, Class: 22},
-		{Lo: 69865, Hi: 69887, Class: 1},
-		{Lo: 69888, Hi: 69938, Class: 22},
-		{Lo: 69939, Hi: 69955, Class: 1},
-		{Lo: 69956, Hi: 69959, Class: 22},
-		{Lo: 69960, Hi: 69967, Class: 1},
-		{Lo: 69968, Hi: 70002, Class: 22},
-		{Lo: 70003, Hi: 70005, Class: 1},
-		{Lo: 70006, Hi: 70006, Class: 22},
-		{Lo: 70007, Hi: 70015, Class: 1},
-		{Lo: 70016, Hi: 70079, Class: 22},
-		{Lo: 70080, Hi: 70080, Class: 1},
-		{Lo: 70081, Hi: 70084, Class: 22},
-		{Lo: 70085, Hi: 70093, Class: 1},
-		{Lo: 70094, Hi: 70095, Class: 22},
-		{Lo: 70096, Hi: 70105, Class: 1},
-		{Lo: 70106, Hi: 70106, Class: 22},
-		{Lo: 70107, Hi: 70107, Class: 1},
-		{Lo: 70108, Hi: 70108, Class: 22},
-		{Lo: 70109, Hi: 70143, Class: 1},
-		{Lo: 70144, Hi: 70161, Class: 22},
-		{Lo: 70162, Hi: 70162, Class: 1},
-		{Lo: 70163, Hi: 70196, Class: 22},
-		{Lo: 70197, Hi: 70198, Class: 1},
-		{Lo: 70199, Hi: 70199, Class: 22},
-		{Lo: 70200, Hi: 70205, Class: 1},
-		{Lo: 70206, Hi: 70209, Class: 22},
-		{Lo: 70210, Hi: 70271, Class: 1},
-		{Lo: 70272, Hi: 70278, Class: 22},
-		{Lo: 70279, Hi: 70279, Class: 1},
-		{Lo: 70280, Hi: 70280, Class: 22},
-		{Lo: 70281, Hi: 70281, Class: 1},
-		{Lo: 70282, Hi: 70285, Class: 22},
-		{Lo: 70286, Hi: 70286, Class: 1},
-		{Lo: 70287, Hi: 70301, Class: 22},
-		{Lo: 70302, Hi: 70302, Class: 1},
-		{Lo: 70303, Hi: 70312, Class: 22},
-		{Lo: 70313, Hi: 70319, Class: 1},
-		{Lo: 70320, Hi: 70376, Class: 22},
-		{Lo: 70377, Hi: 70399, Class: 1},
-		{Lo: 70400, Hi: 70403, Class: 22},
-		{Lo: 70404, Hi: 70404, Class: 1},
-		{Lo: 70405, Hi: 70412, Class: 22},
-		{Lo: 70413, Hi: 70414, Class: 1},
-		{Lo: 70415, Hi: 70416, Class: 22},
-		{Lo: 70417, Hi: 70418, Class: 1},
-		{Lo: 70419, Hi: 70440, Class: 22},
-		{Lo: 70441, Hi: 70441, Class: 1},
-		{Lo: 70442, Hi: 70448, Class: 22},
-		{Lo: 70449, Hi: 70449, Class: 1},
-		{Lo: 70450, Hi: 70451, Class: 22},
-		{Lo: 70452, Hi: 70452, Class: 1},
-		{Lo: 70453, Hi: 70457, Class: 22},
-		{Lo: 70458, Hi: 70460, Class: 1},
-		{Lo: 70461, Hi: 70468, Class: 22},
-		{Lo: 70469, Hi: 70470, Class: 1},
-		{Lo: 70471, Hi: 70472, Class: 22},
-		{Lo: 70473, Hi: 70474, Class: 1},
-		{Lo: 70475, Hi: 70476, Class: 22},
-		{Lo: 70477, Hi: 70479, Class: 1},
-		{Lo: 70480, Hi: 70480, Class: 22},
-		{Lo: 70481, Hi: 70486, Class: 1},
-		{Lo: 70487, Hi: 70487, Class: 22},
-		{Lo: 70488, Hi: 70492, Class: 1},
-		{Lo: 70493, Hi: 70499, Class: 22},
-		{Lo: 70500, Hi: 70527, Class: 1},
-		{Lo: 70528, Hi: 70537, Class: 22},
-		{Lo: 70538, Hi: 70538, Class: 1},
-		{Lo: 70539, Hi: 70539, Class: 22},
-		{Lo: 70540, Hi: 70541, Class: 1},
-		{Lo: 70542, Hi: 70542, Class: 22},
-		{Lo: 70543, Hi: 70543, Class: 1},
-		{Lo: 70544, Hi: 70581, Class: 22},
-		{Lo: 70582, Hi: 70582, Class: 1},
-		{Lo: 70583, Hi: 70592, Class: 22},
-		{Lo: 70593, Hi: 70593, Class: 1},
-		{Lo: 70594, Hi: 70594, Class: 22},
-		{Lo: 70595, Hi: 70596, Class: 1},
-		{Lo: 70597, Hi: 70597, Class: 22},
-		{Lo: 70598, Hi: 70598, Class: 1},
-		{Lo: 70599, Hi: 70602, Class: 22},
-		{Lo: 70603, Hi: 70603, Class: 1},
-		{Lo: 70604, Hi: 70605, Class: 22},
-		{Lo: 70606, Hi: 70608, Class: 1},
-		{Lo: 70609, Hi: 70609, Class: 22},
-		{Lo: 70610, Hi: 70610, Class: 1},
-		{Lo: 70611, Hi: 70611, Class: 22},
-		{Lo: 70612, Hi: 70655, Class: 1},
-		{Lo: 70656, Hi: 70721, Class: 22},
-		{Lo: 70722, Hi: 70722, Class: 1},
-		{Lo: 70723, Hi: 70725, Class: 22},
-		{Lo: 70726, Hi: 70726, Class: 1},
-		{Lo: 70727, Hi: 70730, Class: 22},
-		{Lo: 70731, Hi: 70750, Class: 1},
-		{Lo: 70751, Hi: 70753, Class: 22},
-		{Lo: 70754, Hi: 70783, Class: 1},
-		{Lo: 70784, Hi: 70849, Class: 22},
-		{Lo: 70850, Hi: 70851, Class: 1},
-		{Lo: 70852, Hi: 70853, Class: 22},
-		{Lo: 70854, Hi: 70854, Class: 1},
-		{Lo: 70855, Hi: 70855, Class: 22},
-		{Lo: 70856, Hi: 71039, Class: 1},
-		{Lo: 71040, Hi: 71093, Class: 22},
-		{Lo: 71094, Hi: 71095, Class: 1},
-		{Lo: 71096, Hi: 71102, Class: 22},
-		{Lo: 71103, Hi: 71127, Class: 1},
-		{Lo: 71128, Hi: 71133, Class: 22},
-		{Lo: 71134, Hi: 71167, Class: 1},
-		{Lo: 71168, Hi: 71230, Class: 22},
-		{Lo: 71231, Hi: 71231, Class: 1},
-		{Lo: 71232, Hi: 71232, Class: 22},
-		{Lo: 71233, Hi: 71235, Class: 1},
-		{Lo: 71236, Hi: 71236, Class: 22},
-		{Lo: 71237, Hi: 71295, Class: 1},
-		{Lo: 71296, Hi: 71349, Class: 22},
-		{Lo: 71350, Hi: 71351, Class: 1},
-		{Lo: 71352, Hi: 71352, Class: 22},
-		{Lo: 71353, Hi: 71423, Class: 1},
-		{Lo: 71424, Hi: 71450, Class: 22},
-		{Lo: 71451, Hi: 71452, Class: 1},
-		{Lo: 71453, Hi: 71466, Class: 22},
-		{Lo: 71467, Hi: 71487, Class: 1},
-		{Lo: 71488, Hi: 71494, Class: 22},
-		{Lo: 71495, Hi: 71679, Class: 1},
-		{Lo: 71680, Hi: 71736, Class: 22},
-		{Lo: 71737, Hi: 71839, Class: 1},
-		{Lo: 71840, Hi: 71903, Class: 22},
-		{Lo: 71904, Hi: 71934, Class: 1},
-		{Lo: 71935, Hi: 71942, Class: 22},
-		{Lo: 71943, Hi: 71944, Class: 1},
-		{Lo: 71945, Hi: 71945, Class: 22},
-		{Lo: 71946, Hi: 71947, Class: 1},
-		{Lo: 71948, Hi: 71955, Class: 22},
-		{Lo: 71956, Hi: 71956, Class: 1},
-		{Lo: 71957, Hi: 71958, Class: 22},
-		{Lo: 71959, Hi: 71959, Class: 1},
-		{Lo: 71960, Hi: 71989, Class: 22},
-		{Lo: 71990, Hi: 71990, Class: 1},
-		{Lo: 71991, Hi: 71992, Class: 22},
-		{Lo: 71993, Hi: 71994, Class: 1},
-		{Lo: 71995, Hi: 71996, Class: 22},
-		{Lo: 71997, Hi: 71998, Class: 1},
-		{Lo: 71999, Hi: 72002, Class: 22},
-		{Lo: 72003, Hi: 72095, Class: 1},
-		{Lo: 72096, Hi: 72103, Class: 22},
-		{Lo: 72104, Hi: 72105, Class: 1},
-		{Lo: 72106, Hi: 72151, Class: 22},
-		{Lo: 72152, Hi: 72153, Class: 1},
-		{Lo: 72154, Hi: 72159, Class: 22},
-		{Lo: 72160, Hi: 72160, Class: 1},
-		{Lo: 72161, Hi: 72161, Class: 22},
-		{Lo: 72162, Hi: 72162, Class: 1},
-		{Lo: 72163, Hi: 72164, Class: 22},
-		{Lo: 72165, Hi: 72191, Class: 1},
-		{Lo: 72192, Hi: 72242, Class: 22},
-		{Lo: 72243, Hi: 72244, Class: 1},
-		{Lo: 72245, Hi: 72254, Class: 22},
-		{Lo: 72255, Hi: 72271, Class: 1},
-		{Lo: 72272, Hi: 72343, Class: 22},
-		{Lo: 72344, Hi: 72348, Class: 1},
-		{Lo: 72349, Hi: 72349, Class: 22},
-		{Lo: 72350, Hi: 72367, Class: 1},
-		{Lo: 72368, Hi: 72440, Class: 22},
-		{Lo: 72441, Hi: 72543, Class: 1},
-		{Lo: 72544, Hi: 72551, Class: 22},
-		{Lo: 72552, Hi: 72639, Class: 1},
-		{Lo: 72640, Hi: 72672, Class: 22},
-		{Lo: 72673, Hi: 72703, Class: 1},
-		{Lo: 72704, Hi: 72712, Class: 22},
-		{Lo: 72713, Hi: 72713, Class: 1},
-		{Lo: 72714, Hi: 72758, Class: 22},
-		{Lo: 72759, Hi: 72759, Class: 1},
-		{Lo: 72760, Hi: 72766, Class: 22},
-		{Lo: 72767, Hi: 72767, Class: 1},
-		{Lo: 72768, Hi: 72768, Class: 22},
-		{Lo: 72769, Hi: 72817, Class: 1},
-		{Lo: 72818, Hi: 72847, Class: 22},
-		{Lo: 72848, Hi: 72849, Class: 1},
-		{Lo: 72850, Hi: 72871, Class: 22},
-		{Lo: 72872, Hi: 72872, Class: 1},
-		{Lo: 72873, Hi: 72886, Class: 22},
-		{Lo: 72887, Hi: 72959, Class: 1},
-		{Lo: 72960, Hi: 72966, Class: 22},
-		{Lo: 72967, Hi: 72967, Class: 1},
-		{Lo: 72968, Hi: 72969, Class: 22},
-		{Lo: 72970, Hi: 72970, Class: 1},
-		{Lo: 72971, Hi: 73014, Class: 22},
-		{Lo: 73015, Hi: 73017, Class: 1},
-		{Lo: 73018, Hi: 73018, Class: 22},
-		{Lo: 73019, Hi: 73019, Class: 1},
-		{Lo: 73020, Hi: 73021, Class: 22},
-		{Lo: 73022, Hi: 73022, Class: 1},
-		{Lo: 73023, Hi: 73025, Class: 22},
-		{Lo: 73026, Hi: 73026, Class: 1},
-		{Lo: 73027, Hi: 73027, Class: 22},
-		{Lo: 73028, Hi: 73029, Class: 1},
-		{Lo: 73030, Hi: 73031, Class: 22},
-		{Lo: 73032, Hi: 73055, Class: 1},
-		{Lo: 73056, Hi: 73061, Class: 22},
-		{Lo: 73062, Hi: 73062, Class: 1},
-		{Lo: 73063, Hi: 73064, Class: 22},
-		{Lo: 73065, Hi: 73065, Class: 1},
-		{Lo: 73066, Hi: 73102, Class: 22},
-		{Lo: 73103, Hi: 73103, Class: 1},
-		{Lo: 73104, Hi: 73105, Class: 22},
-		{Lo: 73106, Hi: 73106, Class: 1},
-		{Lo: 73107, Hi: 73110, Class: 22},
-		{Lo: 73111, Hi: 73111, Class: 1},
-		{Lo: 73112, Hi: 73112, Class: 22},
-		{Lo: 73113, Hi: 73135, Class: 1},
-		{Lo: 73136, Hi: 73179, Class: 22},
-		{Lo: 73180, Hi: 73439, Class: 1},
-		{Lo: 73440, Hi: 73462, Class: 22},
-		{Lo: 73463, Hi: 73471, Class: 1},
-		{Lo: 73472, Hi: 73488, Class: 22},
-		{Lo: 73489, Hi: 73489, Class: 1},
-		{Lo: 73490, Hi: 73530, Class: 22},
-		{Lo: 73531, Hi: 73533, Class: 1},
-		{Lo: 73534, Hi: 73536, Class: 22},
-		{Lo: 73537, Hi: 73647, Class: 1},
-		{Lo: 73648, Hi: 73648, Class: 22},
-		{Lo: 73649, Hi: 73727, Class: 1},
-		{Lo: 73728, Hi: 74649, Class: 22},
-		{Lo: 74650, Hi: 74751, Class: 1},
-		{Lo: 74752, Hi: 74862, Class: 22},
-		{Lo: 74863, Hi: 74879, Class: 1},
-		{Lo: 74880, Hi: 75075, Class: 22},
-		{Lo: 75076, Hi: 77711, Class: 1},
-		{Lo: 77712, Hi: 77808, Class: 22},
-		{Lo: 77809, Hi: 77823, Class: 1},
-		{Lo: 77824, Hi: 78895, Class: 22},
-		{Lo: 78896, Hi: 78912, Class: 1},
-		{Lo: 78913, Hi: 78918, Class: 22},
-		{Lo: 78919, Hi: 78943, Class: 1},
-		{Lo: 78944, Hi: 82938, Class: 22},
-		{Lo: 82939, Hi: 82943, Class: 1},
-		{Lo: 82944, Hi: 83526, Class: 22},
-		{Lo: 83527, Hi: 90367, Class: 1},
-		{Lo: 90368, Hi: 90414, Class: 22},
-		{Lo: 90415, Hi: 92159, Class: 1},
-		{Lo: 92160, Hi: 92728, Class: 22},
-		{Lo: 92729, Hi: 92735, Class: 1},
-		{Lo: 92736, Hi: 92766, Class: 22},
-		{Lo: 92767, Hi: 92783, Class: 1},
-		{Lo: 92784, Hi: 92862, Class: 22},
-		{Lo: 92863, Hi: 92879, Class: 1},
-		{Lo: 92880, Hi: 92909, Class: 22},
-		{Lo: 92910, Hi: 92927, Class: 1},
-		{Lo: 92928, Hi: 92975, Class: 22},
-		{Lo: 92976, Hi: 92991, Class: 1},
-		{Lo: 92992, Hi: 92995, Class: 22},
-		{Lo: 92996, Hi: 93026, Class: 1},
-		{Lo: 93027, Hi: 93047, Class: 22},
-		{Lo: 93048, Hi: 93052, Class: 1},
-		{Lo: 93053, Hi: 93071, Class: 22},
-		{Lo: 93072, Hi: 93503, Class: 1},
-		{Lo: 93504, Hi: 93548, Class: 22},
-		{Lo: 93549, Hi: 93759, Class: 1},
-		{Lo: 93760, Hi: 93823, Class: 22},
-		{Lo: 93824, Hi: 93855, Class: 1},
-		{Lo: 93856, Hi: 93880, Class: 22},
-		{Lo: 93881, Hi: 93882, Class: 1},
-		{Lo: 93883, Hi: 93907, Class: 22},
-		{Lo: 93908, Hi: 93951, Class: 1},
-		{Lo: 93952, Hi: 94026, Class: 22},
-		{Lo: 94027, Hi: 94030, Class: 1},
-		{Lo: 94031, Hi: 94087, Class: 22},
-		{Lo: 94088, Hi: 94094, Class: 1},
-		{Lo: 94095, Hi: 94111, Class: 22},
-		{Lo: 94112, Hi: 94175, Class: 1},
-		{Lo: 94176, Hi: 94177, Class: 22},
-		{Lo: 94178, Hi: 94178, Class: 1},
-		{Lo: 94179, Hi: 94179, Class: 22},
-		{Lo: 94180, Hi: 94191, Class: 1},
-		{Lo: 94192, Hi: 94198, Class: 22},
-		{Lo: 94199, Hi: 94207, Class: 1},
-		{Lo: 94208, Hi: 101589, Class: 22},
-		{Lo: 101590, Hi: 101630, Class: 1},
-		{Lo: 101631, Hi: 101662, Class: 22},
-		{Lo: 101663, Hi: 101759, Class: 1},
-		{Lo: 101760, Hi: 101874, Class: 22},
-		{Lo: 101875, Hi: 110575, Class: 1},
-		{Lo: 110576, Hi: 110579, Class: 22},
-		{Lo: 110580, Hi: 110580, Class: 1},
-		{Lo: 110581, Hi: 110587, Class: 22},
-		{Lo: 110588, Hi: 110588, Class: 1},
-		{Lo: 110589, Hi: 110590, Class: 22},
-		{Lo: 110591, Hi: 110591, Class: 1},
-		{Lo: 110592, Hi: 110882, Class: 22},
-		{Lo: 110883, Hi: 110897, Class: 1},
-		{Lo: 110898, Hi: 110898, Class: 22},
-		{Lo: 110899, Hi: 110927, Class: 1},
-		{Lo: 110928, Hi: 110930, Class: 22},
-		{Lo: 110931, Hi: 110932, Class: 1},
-		{Lo: 110933, Hi: 110933, Class: 22},
-		{Lo: 110934, Hi: 110947, Class: 1},
-		{Lo: 110948, Hi: 110951, Class: 22},
-		{Lo: 110952, Hi: 110959, Class: 1},
-		{Lo: 110960, Hi: 111355, Class: 22},
-		{Lo: 111356, Hi: 113663, Class: 1},
-		{Lo: 113664, Hi: 113770, Class: 22},
-		{Lo: 113771, Hi: 113775, Class: 1},
-		{Lo: 113776, Hi: 113788, Class: 22},
-		{Lo: 113789, Hi: 113791, Class: 1},
-		{Lo: 113792, Hi: 113800, Class: 22},
-		{Lo: 113801, Hi: 113807, Class: 1},
-		{Lo: 113808, Hi: 113817, Class: 22},
-		{Lo: 113818, Hi: 113821, Class: 1},
-		{Lo: 113822, Hi: 113822, Class: 22},
-		{Lo: 113823, Hi: 119807, Class: 1},
-		{Lo: 119808, Hi: 119892, Class: 22},
-		{Lo: 119893, Hi: 119893, Class: 1},
-		{Lo: 119894, Hi: 119964, Class: 22},
-		{Lo: 119965, Hi: 119965, Class: 1},
-		{Lo: 119966, Hi: 119967, Class: 22},
-		{Lo: 119968, Hi: 119969, Class: 1},
-		{Lo: 119970, Hi: 119970, Class: 22},
-		{Lo: 119971, Hi: 119972, Class: 1},
-		{Lo: 119973, Hi: 119974, Class: 22},
-		{Lo: 119975, Hi: 119976, Class: 1},
-		{Lo: 119977, Hi: 119980, Class: 22},
-		{Lo: 119981, Hi: 119981, Class: 1},
-		{Lo: 119982, Hi: 119993, Class: 22},
-		{Lo: 119994, Hi: 119994, Class: 1},
-		{Lo: 119995, Hi: 119995, Class: 22},
-		{Lo: 119996, Hi: 119996, Class: 1},
-		{Lo: 119997, Hi: 120003, Class: 22},
-		{Lo: 120004, Hi: 120004, Class: 1},
-		{Lo: 120005, Hi: 120069, Class: 22},
-		{Lo: 120070, Hi: 120070, Class: 1},
-		{Lo: 120071, Hi: 120074, Class: 22},
-		{Lo: 120075, Hi: 120076, Class: 1},
-		{Lo: 120077, Hi: 120084, Class: 22},
-		{Lo: 120085, Hi: 120085, Class: 1},
-		{Lo: 120086, Hi: 120092, Class: 22},
-		{Lo: 120093, Hi: 120093, Class: 1},
-		{Lo: 120094, Hi: 120121, Class: 22},
-		{Lo: 120122, Hi: 120122, Class: 1},
-		{Lo: 120123, Hi: 120126, Class: 22},
-		{Lo: 120127, Hi: 120127, Class: 1},
-		{Lo: 120128, Hi: 120132, Class: 22},
-		{Lo: 120133, Hi: 120133, Class: 1},
-		{Lo: 120134, Hi: 120134, Class: 22},
-		{Lo: 120135, Hi: 120137, Class: 1},
-		{Lo: 120138, Hi: 120144, Class: 22},
-		{Lo: 120145, Hi: 120145, Class: 1},
-		{Lo: 120146, Hi: 120485, Class: 22},
-		{Lo: 120486, Hi: 120487, Class: 1},
-		{Lo: 120488, Hi: 120512, Class: 22},
-		{Lo: 120513, Hi: 120513, Class: 1},
-		{Lo: 120514, Hi: 120538, Class: 22},
-		{Lo: 120539, Hi: 120539, Class: 1},
-		{Lo: 120540, Hi: 120570, Class: 22},
-		{Lo: 120571, Hi: 120571, Class: 1},
-		{Lo: 120572, Hi: 120596, Class: 22},
-		{Lo: 120597, Hi: 120597, Class: 1},
-		{Lo: 120598, Hi: 120628, Class: 22},
-		{Lo: 120629, Hi: 120629, Class: 1},
-		{Lo: 120630, Hi: 120654, Class: 22},
-		{Lo: 120655, Hi: 120655, Class: 1},
-		{Lo: 120656, Hi: 120686, Class: 22},
-		{Lo: 120687, Hi: 120687, Class: 1},
-		{Lo: 120688, Hi: 120712, Class: 22},
-		{Lo: 120713, Hi: 120713, Class: 1},
-		{Lo: 120714, Hi: 120744, Class: 22},
-		{Lo: 120745, Hi: 120745, Class: 1},
-		{Lo: 120746, Hi: 120770, Class: 22},
-		{Lo: 120771, Hi: 120771, Class: 1},
-		{Lo: 120772, Hi: 120779, Class: 22},
-		{Lo: 120780, Hi: 122623, Class: 1},
-		{Lo: 122624, Hi: 122654, Class: 22},
-		{Lo: 122655, Hi: 122660, Class: 1},
-		{Lo: 122661, Hi: 122666, Class: 22},
-		{Lo: 122667, Hi: 122879, Class: 1},
-		{Lo: 122880, Hi: 122886, Class: 22},
-		{Lo: 122887, Hi: 122887, Class: 1},
-		{Lo: 122888, Hi: 122904, Class: 22},
-		{Lo: 122905, Hi: 122906, Class: 1},
-		{Lo: 122907, Hi: 122913, Class: 22},
-		{Lo: 122914, Hi: 122914, Class: 1},
-		{Lo: 122915, Hi: 122916, Class: 22},
-		{Lo: 122917, Hi: 122917, Class: 1},
-		{Lo: 122918, Hi: 122922, Class: 22},
-		{Lo: 122923, Hi: 122927, Class: 1},
-		{Lo: 122928, Hi: 122989, Class: 22},
-		{Lo: 122990, Hi: 123022, Class: 1},
-		{Lo: 123023, Hi: 123023, Class: 22},
-		{Lo: 123024, Hi: 123135, Class: 1},
-		{Lo: 123136, Hi: 123180, Class: 22},
-		{Lo: 123181, Hi: 123190, Class: 1},
-		{Lo: 123191, Hi: 123197, Class: 22},
-		{Lo: 123198, Hi: 123213, Class: 1},
-		{Lo: 123214, Hi: 123214, Class: 22},
-		{Lo: 123215, Hi: 123535, Class: 1},
-		{Lo: 123536, Hi: 123565, Class: 22},
-		{Lo: 123566, Hi: 123583, Class: 1},
-		{Lo: 123584, Hi: 123627, Class: 22},
-		{Lo: 123628, Hi: 124111, Class: 1},
-		{Lo: 124112, Hi: 124139, Class: 22},
-		{Lo: 124140, Hi: 124367, Class: 1},
-		{Lo: 124368, Hi: 124397, Class: 22},
-		{Lo: 124398, Hi: 124399, Class: 1},
-		{Lo: 124400, Hi: 124400, Class: 22},
-		{Lo: 124401, Hi: 124607, Class: 1},
-		{Lo: 124608, Hi: 124638, Class: 22},
-		{Lo: 124639, Hi: 124639, Class: 1},
-		{Lo: 124640, Hi: 124661, Class: 22},
-		{Lo: 124662, Hi: 124669, Class: 1},
-		{Lo: 124670, Hi: 124671, Class: 22},
-		{Lo: 124672, Hi: 124895, Class: 1},
-		{Lo: 124896, Hi: 124902, Class: 22},
-		{Lo: 124903, Hi: 124903, Class: 1},
-		{Lo: 124904, Hi: 124907, Class: 22},
-		{Lo: 124908, Hi: 124908, Class: 1},
-		{Lo: 124909, Hi: 124910, Class: 22},
-		{Lo: 124911, Hi: 124911, Class: 1},
-		{Lo: 124912, Hi: 124926, Class: 22},
-		{Lo: 124927, Hi: 124927, Class: 1},
-		{Lo: 124928, Hi: 125124, Class: 22},
-		{Lo: 125125, Hi: 125183, Class: 1},
-		{Lo: 125184, Hi: 125251, Class: 22},
-		{Lo: 125252, Hi: 125254, Class: 1},
-		{Lo: 125255, Hi: 125255, Class: 22},
-		{Lo: 125256, Hi: 125258, Class: 1},
-		{Lo: 125259, Hi: 125259, Class: 22},
-		{Lo: 125260, Hi: 126463, Class: 1},
-		{Lo: 126464, Hi: 126467, Class: 22},
-		{Lo: 126468, Hi: 126468, Class: 1},
-		{Lo: 126469, Hi: 126495, Class: 22},
-		{Lo: 126496, Hi: 126496, Class: 1},
-		{Lo: 126497, Hi: 126498, Class: 22},
-		{Lo: 126499, Hi: 126499, Class: 1},
-		{Lo: 126500, Hi: 126500, Class: 22},
-		{Lo: 126501, Hi: 126502, Class: 1},
-		{Lo: 126503, Hi: 126503, Class: 22},
-		{Lo: 126504, Hi: 126504, Class: 1},
-		{Lo: 126505, Hi: 126514, Class: 22},
-		{Lo: 126515, Hi: 126515, Class: 1},
-		{Lo: 126516, Hi: 126519, Class: 22},
-		{Lo: 126520, Hi: 126520, Class: 1},
-		{Lo: 126521, Hi: 126521, Class: 22},
-		{Lo: 126522, Hi: 126522, Class: 1},
-		{Lo: 126523, Hi: 126523, Class: 22},
-		{Lo: 126524, Hi: 126529, Class: 1},
-		{Lo: 126530, Hi: 126530, Class: 22},
-		{Lo: 126531, Hi: 126534, Class: 1},
-		{Lo: 126535, Hi: 126535, Class: 22},
-		{Lo: 126536, Hi: 126536, Class: 1},
-		{Lo: 126537, Hi: 126537, Class: 22},
-		{Lo: 126538, Hi: 126538, Class: 1},
-		{Lo: 126539, Hi: 126539, Class: 22},
-		{Lo: 126540, Hi: 126540, Class: 1},
-		{Lo: 126541, Hi: 126543, Class: 22},
-		{Lo: 126544, Hi: 126544, Class: 1},
-		{Lo: 126545, Hi: 126546, Class: 22},
-		{Lo: 126547, Hi: 126547, Class: 1},
-		{Lo: 126548, Hi: 126548, Class: 22},
-		{Lo: 126549, Hi: 126550, Class: 1},
-		{Lo: 126551, Hi: 126551, Class: 22},
-		{Lo: 126552, Hi: 126552, Class: 1},
-		{Lo: 126553, Hi: 126553, Class: 22},
-		{Lo: 126554, Hi: 126554, Class: 1},
-		{Lo: 126555, Hi: 126555, Class: 22},
-		{Lo: 126556, Hi: 126556, Class: 1},
-		{Lo: 126557, Hi: 126557, Class: 22},
-		{Lo: 126558, Hi: 126558, Class: 1},
-		{Lo: 126559, Hi: 126559, Class: 22},
-		{Lo: 126560, Hi: 126560, Class: 1},
-		{Lo: 126561, Hi: 126562, Class: 22},
-		{Lo: 126563, Hi: 126563, Class: 1},
-		{Lo: 126564, Hi: 126564, Class: 22},
-		{Lo: 126565, Hi: 126566, Class: 1},
-		{Lo: 126567, Hi: 126570, Class: 22},
-		{Lo: 126571, Hi: 126571, Class: 1},
-		{Lo: 126572, Hi: 126578, Class: 22},
-		{Lo: 126579, Hi: 126579, Class: 1},
-		{Lo: 126580, Hi: 126583, Class: 22},
-		{Lo: 126584, Hi: 126584, Class: 1},
-		{Lo: 126585, Hi: 126588, Class: 22},
-		{Lo: 126589, Hi: 126589, Class: 1},
-		{Lo: 126590, Hi: 126590, Class: 22},
-		{Lo: 126591, Hi: 126591, Class: 1},
-		{Lo: 126592, Hi: 126601, Class: 22},
-		{Lo: 126602, Hi: 126602, Class: 1},
-		{Lo: 126603, Hi: 126619, Class: 22},
-		{Lo: 126620, Hi: 126624, Class: 1},
-		{Lo: 126625, Hi: 126627, Class: 22},
-		{Lo: 126628, Hi: 126628, Class: 1},
-		{Lo: 126629, Hi: 126633, Class: 22},
-		{Lo: 126634, Hi: 126634, Class: 1},
-		{Lo: 126635, Hi: 126651, Class: 22},
-		{Lo: 126652, Hi: 127279, Class: 1},
-		{Lo: 127280, Hi: 127305, Class: 22},
-		{Lo: 127306, Hi: 127311, Class: 1},
-		{Lo: 127312, Hi: 127337, Class: 22},
-		{Lo: 127338, Hi: 127343, Class: 1},
-		{Lo: 127344, Hi: 127369, Class: 22},
-		{Lo: 127370, Hi: 131071, Class: 1},
-		{Lo: 131072, Hi: 173791, Class: 22},
-		{Lo: 173792, Hi: 173823, Class: 1},
-		{Lo: 173824, Hi: 178205, Class: 22},
-		{Lo: 178206, Hi: 178207, Class: 1},
-		{Lo: 178208, Hi: 183981, Class: 22},
-		{Lo: 183982, Hi: 183983, Class: 1},
-		{Lo: 183984, Hi: 191456, Class: 22},
-		{Lo: 191457, Hi: 191471, Class: 1},
-		{Lo: 191472, Hi: 192093, Class: 22},
-		{Lo: 192094, Hi: 194559, Class: 1},
-		{Lo: 194560, Hi: 195101, Class: 22},
-		{Lo: 195102, Hi: 196607, Class: 1},
-		{Lo: 196608, Hi: 201546, Class: 22},
-		{Lo: 201547, Hi: 201551, Class: 1},
-		{Lo: 201552, Hi: 210041, Class: 22},
-		{Lo: 210042, Hi: 1114111, Class: 1},
-	},
-	Scopes: []lex.Scope{
-		{
-			Name: "start", Start: 1,
-			States: []lex.State{
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
-				{Next: []int{0, 0, 2, 3, 0, 4, 5, 6, 0, 0, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 0, 16, 14, 17, 14, 14, 14, 14, 14, 14, 14, 18, 14, 19, 20, 0, 0}},
-				{Next: []int{0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 2},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 3},
-				{Next: []int{0, 21, 21, 0, 21, 0, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21}},
-				{Next: []int{0, 5, 5, 0, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5}, Accept: 1},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 22, 0, 0, 0, 0, 0, 0, 23, 0, 0, 0}},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 12},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 13},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 14},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 15},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 14, 0, 14, 0, 0, 24, 0, 14, 0, 14, 14, 14, 14, 14, 14, 14, 14, 14, 0, 0, 0, 0}},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 25, 26, 0, 14, 0, 0, 0, 0, 14, 0, 14, 14, 14, 14, 14, 14, 14, 14, 14, 0, 0, 0, 0}, Accept: 20},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 17},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 25, 14, 0, 14, 0, 0, 0, 0, 14, 0, 14, 14, 14, 14, 14, 14, 14, 14, 14, 0, 0, 0, 0}, Accept: 20},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 8},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 16},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 18},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 25, 14, 0, 14, 0, 0, 0, 0, 14, 0, 14, 14, 14, 14, 27, 14, 14, 14, 14, 0, 0, 0, 0}, Accept: 20},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 9},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 11},
-				{Next: []int{0, 21, 21, 0, 21, 28, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21}},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 29, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
-				{Next: []int{0, 0, 23, 30, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 7},
-				{Next: []int{0, 31, 0, 0, 31, 0, 0, 31, 31, 31, 31, 31, 31, 31, 31, 14, 31, 14, 0, 31, 31, 31, 14, 31, 14, 14, 14, 14, 14, 14, 14, 14, 14, 0, 31, 0, 31}},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 25, 32, 0, 14, 0, 0, 0, 0, 14, 0, 14, 14, 14, 14, 14, 14, 14, 14, 14, 0, 0, 0, 0}, Accept: 20},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 25, 14, 0, 14, 0, 0, 0, 0, 14, 0, 14, 14, 14, 33, 14, 14, 14, 14, 14, 0, 0, 0, 0}, Accept: 20},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 19},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 34, 0, 0, 0, 0, 0, 0, 0}},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 4},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 20},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 25, 14, 0, 14, 0, 0, 0, 0, 14, 0, 14, 14, 14, 14, 14, 14, 14, 14, 14, 0, 0, 0, 0}, Accept: 6},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 25, 14, 0, 14, 0, 0, 0, 0, 14, 0, 14, 14, 14, 14, 14, 14, 35, 14, 14, 0, 0, 0, 0}, Accept: 20},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 36, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 25, 14, 0, 14, 0, 0, 0, 0, 14, 0, 14, 14, 14, 14, 14, 14, 14, 14, 14, 0, 0, 0, 0}, Accept: 10},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 37, 0, 0, 0, 0}},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 5},
-			},
-			Acts: []lex.Act{
-				{Emit: 6},
-				{},
-				{Emit: 17},
-				{Emit: 19, Goto: 3},
-				{Emit: 7},
-				{Emit: 8},
-				{Emit: 2},
-				{Emit: 5},
-				{Emit: 12, Goto: 4, Push: 1},
-				{Emit: 29, Goto: 2},
-				{Emit: 3},
-				{Emit: 13},
-				{Emit: 24},
-				{Emit: 26},
-				{Emit: 22},
-				{Emit: 20},
-				{Emit: 25},
-				{Emit: 15},
-				{Emit: 11},
-				{Emit: 30},
-			},
-		},
-		{
-			Name: "cond", Start: 1,
-			States: []lex.State{
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
-				{Next: []int{0, 0, 2, 3, 4, 5, 6, 0, 7, 8, 9, 10, 0, 0, 0, 0, 0, 0, 0, 11, 0, 0, 12, 0, 12, 12, 12, 12, 12, 12, 12, 12, 12, 0, 13, 0, 14}},
-				{Next: []int{0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 2},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 3},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 9},
-				{Next: []int{0, 5, 5, 0, 5, 16, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5}},
-				{Next: []int{0, 6, 6, 0, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6}, Accept: 1},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 17, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
-				{Next: []int{0, 8, 8, 0, 8, 8, 8, 8, 8, 16, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8}},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 10},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 11},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 18, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 12, 0, 0, 0, 0, 12, 0, 12, 12, 12, 12, 12, 12, 12, 12, 12, 0, 0, 0, 0}, Accept: 13},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 19, 0, 0}},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 6},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 5},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 12},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 7},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 4},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 8},
-			},
-			Acts: []lex.Act{
-				{Emit: 6},
-				{},
-				{Emit: 17, Goto: 1},
-				{Emit: 9},
-				{Emit: 16},
-				{Emit: 14},
-				{Emit: 1},
-				{Emit: 21},
-				{Emit: 18},
-				{Emit: 13},
-				{Emit: 24},
-				{Emit: 27},
-				{Emit: 10},
-			},
-		},
-		{
-			Name: "prelude", Start: 1,
-			States: []lex.State{
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
-				{Next: []int{0, 2, 2, 3, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2}},
-				{Next: []int{0, 2, 2, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2}},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 2},
-				{Next: []int{0, 2, 2, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 5, 2}},
-				{Next: []int{0, 2, 5, 6, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2}, Accept: 1},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 1},
-			},
-			Acts: []lex.Act{
-				{Emit: 4, Goto: 1},
-				{Emit: 28},
-			},
-		},
-		{
-			Name: "block", Start: 1,
-			States: []lex.State{
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
-				{Next: []int{0, 2, 2, 2, 2, 2, 3, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 5, 2, 6, 2}},
-				{Next: []int{0, 2, 2, 2, 2, 2, 0, 2, 2, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 2, 0, 2}, Accept: 5},
-				{Next: []int{0, 3, 3, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3}, Accept: 4},
-				{Next: []int{0, 4, 4, 4, 4, 4, 4, 4, 4, 7, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4}},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 1},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 2},
-				{Next: []int{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, Accept: 3},
-			},
-			Acts: []lex.Act{
-				{Emit: 12, Goto: 4, Push: 4},
-				{Emit: 23, Pop: true},
-				{Emit: 28},
-				{Emit: 28},
-				{Emit: 28},
-			},
-		},
-	},
+type Tok int
+
+const (
+	TokAnd     Tok = 1
+	TokArrow   Tok = 2
+	TokBar     Tok = 3
+	TokClose   Tok = 4
+	TokColon   Tok = 5
+	TokComment Tok = 6
+	TokDelay   Tok = 7
+	TokDots    Tok = 8
+	TokEq      Tok = 9
+	TokIdent   Tok = 10
+	TokKey     Tok = 11
+	TokLbrace  Tok = 12
+	TokLparen  Tok = 13
+	TokMatch   Tok = 14
+	TokMinus   Tok = 15
+	TokNe      Tok = 16
+	TokNewline Tok = 17
+	TokNot     Tok = 18
+	TokOpen    Tok = 19
+	TokOpt     Tok = 20
+	TokOr      Tok = 21
+	TokPlus    Tok = 22
+	TokRbrace  Tok = 23
+	TokRparen  Tok = 24
+	TokSlash   Tok = 25
+	TokStar    Tok = 26
+	TokString  Tok = 27
+	TokText    Tok = 28
+	TokWhen    Tok = 29
+	TokWord    Tok = 30
+)
+
+var tokNames = []string{"", "and", "arrow", "bar", "close", "colon", "comment", "delay", "dots", "eq", "ident", "key", "lbrace", "lparen", "match", "minus", "ne", "newline", "not", "open", "opt", "or", "plus", "rbrace", "rparen", "slash", "star", "string", "text", "when", "word"}
+
+func (t Tok) String() string {
+	if t < 1 || int(t) >= len(tokNames) {
+		return ""
+	}
+
+	return tokNames[t]
 }
+
+type stateFn func(*lexer) stateFn
+
+type lexer struct {
+	lex.Emitter[Tok, stateFn]
+}
+
+func Lex(ctx context.Context, r io.Reader) <-chan lex.Token[Tok] {
+	l := &lexer{Emitter: lex.NewEmitter[Tok, stateFn](ctx, r)}
+
+	go l.run()
+
+	return l.Items()
+}
+
+func (l *lexer) run() {
+	defer l.Close()
+
+	for state := stateFn(lexStart); state != nil; {
+		state = state(l)
+	}
+}
+
+func lexStart(l *lexer) stateFn {
+	if l.Begin() {
+		l.End("start")
+
+		return nil
+	}
+
+	var r rune
+
+	l.Quiet(false)
+	r = l.Next()
+	switch {
+	case r == 0x9 || r == ' ':
+		goto s2
+	case r == 0xa:
+		goto s3
+	case r == '"':
+		goto s4
+	case r == '#':
+		goto s5
+	case r == '%':
+		goto s6
+	case r == '(':
+		goto s7
+	case r == ')':
+		goto s8
+	case r == '*':
+		goto s9
+	case r == '+':
+		goto s10
+	case r == '-':
+		goto s11
+	case r == '.':
+		goto s12
+	case r == '/':
+		goto s13
+	case lex.In(ranges1, r):
+		goto s14
+	case r == ':':
+		goto s15
+	case r == '?':
+		goto s16
+	case r == '\\':
+		goto s17
+	case r == 'w':
+		goto s18
+	case r == '{':
+		goto s19
+	case r == '|':
+		goto s20
+	}
+	goto done
+s2:
+	l.Quiet(true)
+	l.Mark(2)
+	r = l.Next()
+	switch {
+	case r == 0x9 || r == ' ':
+		goto s2
+	}
+	goto done
+s3:
+	l.Quiet(false)
+	l.Mark(3)
+	goto done
+s4:
+	l.Quiet(false)
+	r = l.Next()
+	switch {
+	case 0x0 <= r && r <= 0x9 || 0xb <= r && r <= '!' || '#' <= r && r <= 0x10ffff:
+		goto s21
+	}
+	goto done
+s5:
+	l.Quiet(false)
+	l.Mark(1)
+	r = l.Next()
+	switch {
+	case 0x0 <= r && r <= 0x9 || 0xb <= r && r <= 0x10ffff:
+		goto s5
+	}
+	goto done
+s6:
+	l.Quiet(false)
+	r = l.Next()
+	switch {
+	case r == 'd':
+		goto s22
+	case r == '{':
+		goto s23
+	}
+	goto done
+s7:
+	l.Quiet(false)
+	l.Mark(12)
+	goto done
+s8:
+	l.Quiet(false)
+	l.Mark(13)
+	goto done
+s9:
+	l.Quiet(false)
+	l.Mark(14)
+	goto done
+s10:
+	l.Quiet(false)
+	l.Mark(15)
+	goto done
+s11:
+	l.Quiet(false)
+	r = l.Next()
+	switch {
+	case lex.In(ranges2, r):
+		goto s14
+	case r == '>':
+		goto s24
+	}
+	goto done
+s12:
+	l.Quiet(false)
+	l.Mark(20)
+	r = l.Next()
+	switch {
+	case lex.In(ranges3, r):
+		goto s14
+	case r == '-':
+		goto s25
+	case r == '.':
+		goto s26
+	}
+	goto done
+s13:
+	l.Quiet(false)
+	l.Mark(17)
+	goto done
+s14:
+	l.Quiet(false)
+	l.Mark(20)
+	r = l.Next()
+	switch {
+	case lex.In(ranges2, r):
+		goto s14
+	case r == '-':
+		goto s25
+	}
+	goto done
+s15:
+	l.Quiet(false)
+	l.Mark(8)
+	goto done
+s16:
+	l.Quiet(false)
+	l.Mark(16)
+	goto done
+s17:
+	l.Quiet(false)
+	l.Mark(18)
+	goto done
+s18:
+	l.Quiet(false)
+	l.Mark(20)
+	r = l.Next()
+	switch {
+	case lex.In(ranges4, r):
+		goto s14
+	case r == '-':
+		goto s25
+	case r == 'h':
+		goto s27
+	}
+	goto done
+s19:
+	l.Quiet(false)
+	l.Mark(9)
+	goto done
+s20:
+	l.Quiet(false)
+	l.Mark(11)
+	goto done
+s21:
+	l.Quiet(false)
+	r = l.Next()
+	switch {
+	case 0x0 <= r && r <= 0x9 || 0xb <= r && r <= '!' || '#' <= r && r <= 0x10ffff:
+		goto s21
+	case r == '"':
+		goto s28
+	}
+	goto done
+s22:
+	l.Quiet(false)
+	r = l.Next()
+	switch {
+	case r == 'e':
+		goto s29
+	}
+	goto done
+s23:
+	l.Quiet(false)
+	r = l.Next()
+	switch {
+	case r == 0x9 || r == ' ':
+		goto s23
+	case r == 0xa:
+		goto s30
+	}
+	goto done
+s24:
+	l.Quiet(false)
+	l.Mark(7)
+	goto done
+s25:
+	l.Quiet(false)
+	r = l.Next()
+	switch {
+	case lex.In(ranges2, r):
+		goto s14
+	case lex.In(ranges5, r):
+		goto s31
+	}
+	goto done
+s26:
+	l.Quiet(false)
+	l.Mark(20)
+	r = l.Next()
+	switch {
+	case lex.In(ranges3, r):
+		goto s14
+	case r == '-':
+		goto s25
+	case r == '.':
+		goto s32
+	}
+	goto done
+s27:
+	l.Quiet(false)
+	l.Mark(20)
+	r = l.Next()
+	switch {
+	case lex.In(ranges6, r):
+		goto s14
+	case r == '-':
+		goto s25
+	case r == 'e':
+		goto s33
+	}
+	goto done
+s28:
+	l.Quiet(false)
+	l.Mark(19)
+	goto done
+s29:
+	l.Quiet(false)
+	r = l.Next()
+	switch {
+	case r == 'l':
+		goto s34
+	}
+	goto done
+s30:
+	l.Quiet(false)
+	l.Mark(4)
+	goto done
+s31:
+	l.Quiet(false)
+	l.Mark(20)
+	r = l.Next()
+	switch {
+	case r == '-':
+		goto s25
+	}
+	goto done
+s32:
+	l.Quiet(false)
+	l.Mark(6)
+	r = l.Next()
+	switch {
+	case lex.In(ranges2, r):
+		goto s14
+	case r == '-':
+		goto s25
+	}
+	goto done
+s33:
+	l.Quiet(false)
+	l.Mark(20)
+	r = l.Next()
+	switch {
+	case lex.In(ranges7, r):
+		goto s14
+	case r == '-':
+		goto s25
+	case r == 'n':
+		goto s35
+	}
+	goto done
+s34:
+	l.Quiet(false)
+	r = l.Next()
+	switch {
+	case r == 'a':
+		goto s36
+	}
+	goto done
+s35:
+	l.Quiet(false)
+	l.Mark(10)
+	r = l.Next()
+	switch {
+	case lex.In(ranges2, r):
+		goto s14
+	case r == '-':
+		goto s25
+	}
+	goto done
+s36:
+	l.Quiet(false)
+	r = l.Next()
+	switch {
+	case r == 'y':
+		goto s37
+	}
+	goto done
+s37:
+	l.Quiet(false)
+	l.Mark(5)
+	goto done
+done:
+	switch l.Back() {
+	case 1:
+		if !l.Emit(TokComment, 0) {
+			return nil
+		}
+
+		return lexStart
+	case 2:
+		l.Skip()
+
+		return lexStart
+	case 3:
+		if !l.Emit(TokNewline, 0) {
+			return nil
+		}
+
+		return lexStart
+	case 4:
+		if !l.Emit(TokOpen, 0) {
+			return nil
+		}
+
+		return lexPrelude
+	case 5:
+		if !l.Emit(TokDelay, 0) {
+			return nil
+		}
+
+		return lexStart
+	case 6:
+		if !l.Emit(TokDots, 0) {
+			return nil
+		}
+
+		return lexStart
+	case 7:
+		if !l.Emit(TokArrow, 0) {
+			return nil
+		}
+
+		return lexStart
+	case 8:
+		if !l.Emit(TokColon, 0) {
+			return nil
+		}
+
+		return lexStart
+	case 9:
+		l.Push(lexStart)
+		if !l.Emit(TokLbrace, 0) {
+			return nil
+		}
+
+		return lexBlock
+	case 10:
+		if !l.Emit(TokWhen, 0) {
+			return nil
+		}
+
+		return lexCond
+	case 11:
+		if !l.Emit(TokBar, 0) {
+			return nil
+		}
+
+		return lexStart
+	case 12:
+		if !l.Emit(TokLparen, 0) {
+			return nil
+		}
+
+		return lexStart
+	case 13:
+		if !l.Emit(TokRparen, 0) {
+			return nil
+		}
+
+		return lexStart
+	case 14:
+		if !l.Emit(TokStar, 0) {
+			return nil
+		}
+
+		return lexStart
+	case 15:
+		if !l.Emit(TokPlus, 0) {
+			return nil
+		}
+
+		return lexStart
+	case 16:
+		if !l.Emit(TokOpt, 0) {
+			return nil
+		}
+
+		return lexStart
+	case 17:
+		if !l.Emit(TokSlash, 0) {
+			return nil
+		}
+
+		return lexStart
+	case 18:
+		if !l.Emit(TokMinus, 0) {
+			return nil
+		}
+
+		return lexStart
+	case 19:
+		if !l.Emit(TokKey, 0) {
+			return nil
+		}
+
+		return lexStart
+	case 20:
+		if !l.Emit(TokWord, 0) {
+			return nil
+		}
+
+		return lexStart
+	}
+
+	l.Fail("start")
+
+	return nil
+}
+
+func lexCond(l *lexer) stateFn {
+	if l.Begin() {
+		l.End("cond")
+
+		return nil
+	}
+
+	var r rune
+
+	l.Quiet(false)
+	r = l.Next()
+	switch {
+	case r == 0x9 || r == ' ':
+		goto s2
+	case r == 0xa:
+		goto s3
+	case r == '!':
+		goto s4
+	case r == '"':
+		goto s5
+	case r == '#':
+		goto s6
+	case r == '&':
+		goto s7
+	case r == '\'':
+		goto s8
+	case r == '(':
+		goto s9
+	case r == ')':
+		goto s10
+	case r == '=':
+		goto s11
+	case lex.In(ranges8, r):
+		goto s12
+	case r == '|':
+		goto s13
+	case r == '~':
+		goto s14
+	}
+	goto done
+s2:
+	l.Quiet(true)
+	l.Mark(2)
+	r = l.Next()
+	switch {
+	case r == 0x9 || r == ' ':
+		goto s2
+	}
+	goto done
+s3:
+	l.Quiet(false)
+	l.Mark(3)
+	goto done
+s4:
+	l.Quiet(false)
+	l.Mark(9)
+	r = l.Next()
+	switch {
+	case r == '=':
+		goto s15
+	}
+	goto done
+s5:
+	l.Quiet(false)
+	r = l.Next()
+	switch {
+	case 0x0 <= r && r <= 0x9 || 0xb <= r && r <= '!' || '#' <= r && r <= 0x10ffff:
+		goto s5
+	case r == '"':
+		goto s16
+	}
+	goto done
+s6:
+	l.Quiet(false)
+	l.Mark(1)
+	r = l.Next()
+	switch {
+	case 0x0 <= r && r <= 0x9 || 0xb <= r && r <= 0x10ffff:
+		goto s6
+	}
+	goto done
+s7:
+	l.Quiet(false)
+	r = l.Next()
+	switch {
+	case r == '&':
+		goto s17
+	}
+	goto done
+s8:
+	l.Quiet(false)
+	r = l.Next()
+	switch {
+	case 0x0 <= r && r <= 0x9 || 0xb <= r && r <= '&' || '(' <= r && r <= 0x10ffff:
+		goto s8
+	case r == '\'':
+		goto s16
+	}
+	goto done
+s9:
+	l.Quiet(false)
+	l.Mark(10)
+	goto done
+s10:
+	l.Quiet(false)
+	l.Mark(11)
+	goto done
+s11:
+	l.Quiet(false)
+	r = l.Next()
+	switch {
+	case r == '=':
+		goto s18
+	}
+	goto done
+s12:
+	l.Quiet(false)
+	l.Mark(13)
+	r = l.Next()
+	switch {
+	case lex.In(ranges3, r):
+		goto s12
+	}
+	goto done
+s13:
+	l.Quiet(false)
+	r = l.Next()
+	switch {
+	case r == '|':
+		goto s19
+	}
+	goto done
+s14:
+	l.Quiet(false)
+	l.Mark(6)
+	goto done
+s15:
+	l.Quiet(false)
+	l.Mark(5)
+	goto done
+s16:
+	l.Quiet(false)
+	l.Mark(12)
+	goto done
+s17:
+	l.Quiet(false)
+	l.Mark(7)
+	goto done
+s18:
+	l.Quiet(false)
+	l.Mark(4)
+	goto done
+s19:
+	l.Quiet(false)
+	l.Mark(8)
+	goto done
+done:
+	switch l.Back() {
+	case 1:
+		if !l.Emit(TokComment, 0) {
+			return nil
+		}
+
+		return lexCond
+	case 2:
+		l.Skip()
+
+		return lexCond
+	case 3:
+		if !l.Emit(TokNewline, 0) {
+			return nil
+		}
+
+		return lexStart
+	case 4:
+		if !l.Emit(TokEq, 0) {
+			return nil
+		}
+
+		return lexCond
+	case 5:
+		if !l.Emit(TokNe, 0) {
+			return nil
+		}
+
+		return lexCond
+	case 6:
+		if !l.Emit(TokMatch, 0) {
+			return nil
+		}
+
+		return lexCond
+	case 7:
+		if !l.Emit(TokAnd, 0) {
+			return nil
+		}
+
+		return lexCond
+	case 8:
+		if !l.Emit(TokOr, 0) {
+			return nil
+		}
+
+		return lexCond
+	case 9:
+		if !l.Emit(TokNot, 0) {
+			return nil
+		}
+
+		return lexCond
+	case 10:
+		if !l.Emit(TokLparen, 0) {
+			return nil
+		}
+
+		return lexCond
+	case 11:
+		if !l.Emit(TokRparen, 0) {
+			return nil
+		}
+
+		return lexCond
+	case 12:
+		if !l.Emit(TokString, 0) {
+			return nil
+		}
+
+		return lexCond
+	case 13:
+		if !l.Emit(TokIdent, 0) {
+			return nil
+		}
+
+		return lexCond
+	}
+
+	l.Fail("cond")
+
+	return nil
+}
+
+func lexPrelude(l *lexer) stateFn {
+	if l.Begin() {
+		l.End("prelude")
+
+		return nil
+	}
+
+	var r rune
+
+	l.Quiet(false)
+	r = l.Next()
+	switch {
+	case 0x0 <= r && r <= 0x9 || 0xb <= r && r <= '$' || '&' <= r && r <= 0x10ffff:
+		goto s2
+	case r == 0xa:
+		goto s3
+	case r == '%':
+		goto s4
+	}
+	goto done
+s2:
+	l.Quiet(false)
+	r = l.Next()
+	switch {
+	case 0x0 <= r && r <= 0x9 || 0xb <= r && r <= 0x10ffff:
+		goto s2
+	case r == 0xa:
+		goto s3
+	}
+	goto done
+s3:
+	l.Quiet(false)
+	l.Mark(2)
+	goto done
+s4:
+	l.Quiet(false)
+	r = l.Next()
+	switch {
+	case 0x0 <= r && r <= 0x9 || 0xb <= r && r <= '|' || '~' <= r && r <= 0x10ffff:
+		goto s2
+	case r == 0xa:
+		goto s3
+	case r == '}':
+		goto s5
+	}
+	goto done
+s5:
+	l.Quiet(false)
+	l.Mark(1)
+	r = l.Next()
+	switch {
+	case 0x0 <= r && r <= 0x8 || 0xb <= r && r <= 0x1f || '!' <= r && r <= 0x10ffff:
+		goto s2
+	case r == 0x9 || r == ' ':
+		goto s5
+	case r == 0xa:
+		goto s6
+	}
+	goto done
+s6:
+	l.Quiet(false)
+	l.Mark(1)
+	goto done
+done:
+	switch l.Back() {
+	case 1:
+		if !l.Emit(TokClose, 0) {
+			return nil
+		}
+
+		return lexStart
+	case 2:
+		if !l.Emit(TokText, 0) {
+			return nil
+		}
+
+		return lexPrelude
+	}
+
+	l.Fail("prelude")
+
+	return nil
+}
+
+func lexBlock(l *lexer) stateFn {
+	if l.Begin() {
+		l.End("block")
+
+		return nil
+	}
+
+	var r rune
+
+	l.Quiet(false)
+	r = l.Next()
+	switch {
+	case lex.In(ranges9, r):
+		goto s2
+	case r == '#':
+		goto s3
+	case r == '\'':
+		goto s4
+	case r == '{':
+		goto s5
+	case r == '}':
+		goto s6
+	}
+	goto done
+s2:
+	l.Quiet(false)
+	l.Mark(5)
+	r = l.Next()
+	switch {
+	case lex.In(ranges9, r):
+		goto s2
+	}
+	goto done
+s3:
+	l.Quiet(false)
+	l.Mark(4)
+	r = l.Next()
+	switch {
+	case 0x0 <= r && r <= 0x9 || 0xb <= r && r <= 0x10ffff:
+		goto s3
+	}
+	goto done
+s4:
+	l.Quiet(false)
+	r = l.Next()
+	switch {
+	case 0x0 <= r && r <= '&' || '(' <= r && r <= 0x10ffff:
+		goto s4
+	case r == '\'':
+		goto s7
+	}
+	goto done
+s5:
+	l.Quiet(false)
+	l.Mark(1)
+	goto done
+s6:
+	l.Quiet(false)
+	l.Mark(2)
+	goto done
+s7:
+	l.Quiet(false)
+	l.Mark(3)
+	goto done
+done:
+	switch l.Back() {
+	case 1:
+		l.Push(lexBlock)
+		if !l.Emit(TokLbrace, 0) {
+			return nil
+		}
+
+		return lexBlock
+	case 2:
+		next, ok := l.Pop("block")
+
+		if !ok {
+			return nil
+		}
+
+		if !l.Emit(TokRbrace, 0) {
+			return nil
+		}
+
+		return next
+	case 3:
+		if !l.Emit(TokText, 0) {
+			return nil
+		}
+
+		return lexBlock
+	case 4:
+		if !l.Emit(TokText, 0) {
+			return nil
+		}
+
+		return lexBlock
+	case 5:
+		if !l.Emit(TokText, 0) {
+			return nil
+		}
+
+		return lexBlock
+	}
+
+	l.Fail("block")
+
+	return nil
+}
+
+var ranges1 = []lex.Range{{Lo: '0', Hi: '9'}, {Lo: 'A', Hi: 'Z'}, {Lo: '_', Hi: '_'}, {Lo: 'a', Hi: 'v'}, {Lo: 'x', Hi: 'z'}, {Lo: 0xaa, Hi: 0xaa}, {Lo: 0xb5, Hi: 0xb5}, {Lo: 0xba, Hi: 0xba}, {Lo: 0xc0, Hi: 0xd6}, {Lo: 0xd8, Hi: 0xf6}, {Lo: 0xf8, Hi: 0x2c1}, {Lo: 0x2c6, Hi: 0x2d1}, {Lo: 0x2e0, Hi: 0x2e4}, {Lo: 0x2ec, Hi: 0x2ec}, {Lo: 0x2ee, Hi: 0x2ee}, {Lo: 0x345, Hi: 0x345}, {Lo: 0x363, Hi: 0x374}, {Lo: 0x376, Hi: 0x377}, {Lo: 0x37a, Hi: 0x37d}, {Lo: 0x37f, Hi: 0x37f}, {Lo: 0x386, Hi: 0x386}, {Lo: 0x388, Hi: 0x38a}, {Lo: 0x38c, Hi: 0x38c}, {Lo: 0x38e, Hi: 0x3a1}, {Lo: 0x3a3, Hi: 0x3f5}, {Lo: 0x3f7, Hi: 0x481}, {Lo: 0x48a, Hi: 0x52f}, {Lo: 0x531, Hi: 0x556}, {Lo: 0x559, Hi: 0x559}, {Lo: 0x560, Hi: 0x588}, {Lo: 0x5b0, Hi: 0x5bd}, {Lo: 0x5bf, Hi: 0x5bf}, {Lo: 0x5c1, Hi: 0x5c2}, {Lo: 0x5c4, Hi: 0x5c5}, {Lo: 0x5c7, Hi: 0x5c7}, {Lo: 0x5d0, Hi: 0x5ea}, {Lo: 0x5ef, Hi: 0x5f2}, {Lo: 0x610, Hi: 0x61a}, {Lo: 0x620, Hi: 0x657}, {Lo: 0x659, Hi: 0x65f}, {Lo: 0x66e, Hi: 0x6d3}, {Lo: 0x6d5, Hi: 0x6dc}, {Lo: 0x6e1, Hi: 0x6e8}, {Lo: 0x6ed, Hi: 0x6ef}, {Lo: 0x6fa, Hi: 0x6fc}, {Lo: 0x6ff, Hi: 0x6ff}, {Lo: 0x710, Hi: 0x73f}, {Lo: 0x74d, Hi: 0x7b1}, {Lo: 0x7ca, Hi: 0x7ea}, {Lo: 0x7f4, Hi: 0x7f5}, {Lo: 0x7fa, Hi: 0x7fa}, {Lo: 0x800, Hi: 0x817}, {Lo: 0x81a, Hi: 0x82c}, {Lo: 0x840, Hi: 0x858}, {Lo: 0x860, Hi: 0x86a}, {Lo: 0x870, Hi: 0x887}, {Lo: 0x889, Hi: 0x88f}, {Lo: 0x897, Hi: 0x897}, {Lo: 0x8a0, Hi: 0x8c9}, {Lo: 0x8d4, Hi: 0x8df}, {Lo: 0x8e3, Hi: 0x8e9}, {Lo: 0x8f0, Hi: 0x93b}, {Lo: 0x93d, Hi: 0x94c}, {Lo: 0x94e, Hi: 0x950}, {Lo: 0x955, Hi: 0x963}, {Lo: 0x971, Hi: 0x983}, {Lo: 0x985, Hi: 0x98c}, {Lo: 0x98f, Hi: 0x990}, {Lo: 0x993, Hi: 0x9a8}, {Lo: 0x9aa, Hi: 0x9b0}, {Lo: 0x9b2, Hi: 0x9b2}, {Lo: 0x9b6, Hi: 0x9b9}, {Lo: 0x9bd, Hi: 0x9c4}, {Lo: 0x9c7, Hi: 0x9c8}, {Lo: 0x9cb, Hi: 0x9cc}, {Lo: 0x9ce, Hi: 0x9ce}, {Lo: 0x9d7, Hi: 0x9d7}, {Lo: 0x9dc, Hi: 0x9dd}, {Lo: 0x9df, Hi: 0x9e3}, {Lo: 0x9f0, Hi: 0x9f1}, {Lo: 0x9fc, Hi: 0x9fc}, {Lo: 0xa01, Hi: 0xa03}, {Lo: 0xa05, Hi: 0xa0a}, {Lo: 0xa0f, Hi: 0xa10}, {Lo: 0xa13, Hi: 0xa28}, {Lo: 0xa2a, Hi: 0xa30}, {Lo: 0xa32, Hi: 0xa33}, {Lo: 0xa35, Hi: 0xa36}, {Lo: 0xa38, Hi: 0xa39}, {Lo: 0xa3e, Hi: 0xa42}, {Lo: 0xa47, Hi: 0xa48}, {Lo: 0xa4b, Hi: 0xa4c}, {Lo: 0xa51, Hi: 0xa51}, {Lo: 0xa59, Hi: 0xa5c}, {Lo: 0xa5e, Hi: 0xa5e}, {Lo: 0xa70, Hi: 0xa75}, {Lo: 0xa81, Hi: 0xa83}, {Lo: 0xa85, Hi: 0xa8d}, {Lo: 0xa8f, Hi: 0xa91}, {Lo: 0xa93, Hi: 0xaa8}, {Lo: 0xaaa, Hi: 0xab0}, {Lo: 0xab2, Hi: 0xab3}, {Lo: 0xab5, Hi: 0xab9}, {Lo: 0xabd, Hi: 0xac5}, {Lo: 0xac7, Hi: 0xac9}, {Lo: 0xacb, Hi: 0xacc}, {Lo: 0xad0, Hi: 0xad0}, {Lo: 0xae0, Hi: 0xae3}, {Lo: 0xaf9, Hi: 0xafc}, {Lo: 0xb01, Hi: 0xb03}, {Lo: 0xb05, Hi: 0xb0c}, {Lo: 0xb0f, Hi: 0xb10}, {Lo: 0xb13, Hi: 0xb28}, {Lo: 0xb2a, Hi: 0xb30}, {Lo: 0xb32, Hi: 0xb33}, {Lo: 0xb35, Hi: 0xb39}, {Lo: 0xb3d, Hi: 0xb44}, {Lo: 0xb47, Hi: 0xb48}, {Lo: 0xb4b, Hi: 0xb4c}, {Lo: 0xb56, Hi: 0xb57}, {Lo: 0xb5c, Hi: 0xb5d}, {Lo: 0xb5f, Hi: 0xb63}, {Lo: 0xb71, Hi: 0xb71}, {Lo: 0xb82, Hi: 0xb83}, {Lo: 0xb85, Hi: 0xb8a}, {Lo: 0xb8e, Hi: 0xb90}, {Lo: 0xb92, Hi: 0xb95}, {Lo: 0xb99, Hi: 0xb9a}, {Lo: 0xb9c, Hi: 0xb9c}, {Lo: 0xb9e, Hi: 0xb9f}, {Lo: 0xba3, Hi: 0xba4}, {Lo: 0xba8, Hi: 0xbaa}, {Lo: 0xbae, Hi: 0xbb9}, {Lo: 0xbbe, Hi: 0xbc2}, {Lo: 0xbc6, Hi: 0xbc8}, {Lo: 0xbca, Hi: 0xbcc}, {Lo: 0xbd0, Hi: 0xbd0}, {Lo: 0xbd7, Hi: 0xbd7}, {Lo: 0xc00, Hi: 0xc0c}, {Lo: 0xc0e, Hi: 0xc10}, {Lo: 0xc12, Hi: 0xc28}, {Lo: 0xc2a, Hi: 0xc39}, {Lo: 0xc3d, Hi: 0xc44}, {Lo: 0xc46, Hi: 0xc48}, {Lo: 0xc4a, Hi: 0xc4c}, {Lo: 0xc55, Hi: 0xc56}, {Lo: 0xc58, Hi: 0xc5a}, {Lo: 0xc5c, Hi: 0xc5d}, {Lo: 0xc60, Hi: 0xc63}, {Lo: 0xc80, Hi: 0xc83}, {Lo: 0xc85, Hi: 0xc8c}, {Lo: 0xc8e, Hi: 0xc90}, {Lo: 0xc92, Hi: 0xca8}, {Lo: 0xcaa, Hi: 0xcb3}, {Lo: 0xcb5, Hi: 0xcb9}, {Lo: 0xcbd, Hi: 0xcc4}, {Lo: 0xcc6, Hi: 0xcc8}, {Lo: 0xcca, Hi: 0xccc}, {Lo: 0xcd5, Hi: 0xcd6}, {Lo: 0xcdc, Hi: 0xcde}, {Lo: 0xce0, Hi: 0xce3}, {Lo: 0xcf1, Hi: 0xcf3}, {Lo: 0xd00, Hi: 0xd0c}, {Lo: 0xd0e, Hi: 0xd10}, {Lo: 0xd12, Hi: 0xd3a}, {Lo: 0xd3d, Hi: 0xd44}, {Lo: 0xd46, Hi: 0xd48}, {Lo: 0xd4a, Hi: 0xd4c}, {Lo: 0xd4e, Hi: 0xd4e}, {Lo: 0xd54, Hi: 0xd57}, {Lo: 0xd5f, Hi: 0xd63}, {Lo: 0xd7a, Hi: 0xd7f}, {Lo: 0xd81, Hi: 0xd83}, {Lo: 0xd85, Hi: 0xd96}, {Lo: 0xd9a, Hi: 0xdb1}, {Lo: 0xdb3, Hi: 0xdbb}, {Lo: 0xdbd, Hi: 0xdbd}, {Lo: 0xdc0, Hi: 0xdc6}, {Lo: 0xdcf, Hi: 0xdd4}, {Lo: 0xdd6, Hi: 0xdd6}, {Lo: 0xdd8, Hi: 0xddf}, {Lo: 0xdf2, Hi: 0xdf3}, {Lo: 0xe01, Hi: 0xe3a}, {Lo: 0xe40, Hi: 0xe46}, {Lo: 0xe4d, Hi: 0xe4d}, {Lo: 0xe81, Hi: 0xe82}, {Lo: 0xe84, Hi: 0xe84}, {Lo: 0xe86, Hi: 0xe8a}, {Lo: 0xe8c, Hi: 0xea3}, {Lo: 0xea5, Hi: 0xea5}, {Lo: 0xea7, Hi: 0xeb9}, {Lo: 0xebb, Hi: 0xebd}, {Lo: 0xec0, Hi: 0xec4}, {Lo: 0xec6, Hi: 0xec6}, {Lo: 0xecd, Hi: 0xecd}, {Lo: 0xedc, Hi: 0xedf}, {Lo: 0xf00, Hi: 0xf00}, {Lo: 0xf40, Hi: 0xf47}, {Lo: 0xf49, Hi: 0xf6c}, {Lo: 0xf71, Hi: 0xf83}, {Lo: 0xf88, Hi: 0xf97}, {Lo: 0xf99, Hi: 0xfbc}, {Lo: 0x1000, Hi: 0x1036}, {Lo: 0x1038, Hi: 0x1038}, {Lo: 0x103b, Hi: 0x103f}, {Lo: 0x1050, Hi: 0x108f}, {Lo: 0x109a, Hi: 0x109d}, {Lo: 0x10a0, Hi: 0x10c5}, {Lo: 0x10c7, Hi: 0x10c7}, {Lo: 0x10cd, Hi: 0x10cd}, {Lo: 0x10d0, Hi: 0x10fa}, {Lo: 0x10fc, Hi: 0x1248}, {Lo: 0x124a, Hi: 0x124d}, {Lo: 0x1250, Hi: 0x1256}, {Lo: 0x1258, Hi: 0x1258}, {Lo: 0x125a, Hi: 0x125d}, {Lo: 0x1260, Hi: 0x1288}, {Lo: 0x128a, Hi: 0x128d}, {Lo: 0x1290, Hi: 0x12b0}, {Lo: 0x12b2, Hi: 0x12b5}, {Lo: 0x12b8, Hi: 0x12be}, {Lo: 0x12c0, Hi: 0x12c0}, {Lo: 0x12c2, Hi: 0x12c5}, {Lo: 0x12c8, Hi: 0x12d6}, {Lo: 0x12d8, Hi: 0x1310}, {Lo: 0x1312, Hi: 0x1315}, {Lo: 0x1318, Hi: 0x135a}, {Lo: 0x1380, Hi: 0x138f}, {Lo: 0x13a0, Hi: 0x13f5}, {Lo: 0x13f8, Hi: 0x13fd}, {Lo: 0x1401, Hi: 0x166c}, {Lo: 0x166f, Hi: 0x167f}, {Lo: 0x1681, Hi: 0x169a}, {Lo: 0x16a0, Hi: 0x16ea}, {Lo: 0x16ee, Hi: 0x16f8}, {Lo: 0x1700, Hi: 0x1713}, {Lo: 0x171f, Hi: 0x1733}, {Lo: 0x1740, Hi: 0x1753}, {Lo: 0x1760, Hi: 0x176c}, {Lo: 0x176e, Hi: 0x1770}, {Lo: 0x1772, Hi: 0x1773}, {Lo: 0x1780, Hi: 0x17b3}, {Lo: 0x17b6, Hi: 0x17c8}, {Lo: 0x17d7, Hi: 0x17d7}, {Lo: 0x17dc, Hi: 0x17dc}, {Lo: 0x1820, Hi: 0x1878}, {Lo: 0x1880, Hi: 0x18aa}, {Lo: 0x18b0, Hi: 0x18f5}, {Lo: 0x1900, Hi: 0x191e}, {Lo: 0x1920, Hi: 0x192b}, {Lo: 0x1930, Hi: 0x1938}, {Lo: 0x1950, Hi: 0x196d}, {Lo: 0x1970, Hi: 0x1974}, {Lo: 0x1980, Hi: 0x19ab}, {Lo: 0x19b0, Hi: 0x19c9}, {Lo: 0x1a00, Hi: 0x1a1b}, {Lo: 0x1a20, Hi: 0x1a5e}, {Lo: 0x1a61, Hi: 0x1a74}, {Lo: 0x1aa7, Hi: 0x1aa7}, {Lo: 0x1abf, Hi: 0x1ac0}, {Lo: 0x1acc, Hi: 0x1ace}, {Lo: 0x1b00, Hi: 0x1b33}, {Lo: 0x1b35, Hi: 0x1b43}, {Lo: 0x1b45, Hi: 0x1b4c}, {Lo: 0x1b80, Hi: 0x1ba9}, {Lo: 0x1bac, Hi: 0x1baf}, {Lo: 0x1bba, Hi: 0x1be5}, {Lo: 0x1be7, Hi: 0x1bf1}, {Lo: 0x1c00, Hi: 0x1c36}, {Lo: 0x1c4d, Hi: 0x1c4f}, {Lo: 0x1c5a, Hi: 0x1c7d}, {Lo: 0x1c80, Hi: 0x1c8a}, {Lo: 0x1c90, Hi: 0x1cba}, {Lo: 0x1cbd, Hi: 0x1cbf}, {Lo: 0x1ce9, Hi: 0x1cec}, {Lo: 0x1cee, Hi: 0x1cf3}, {Lo: 0x1cf5, Hi: 0x1cf6}, {Lo: 0x1cfa, Hi: 0x1cfa}, {Lo: 0x1d00, Hi: 0x1dbf}, {Lo: 0x1dd3, Hi: 0x1df4}, {Lo: 0x1e00, Hi: 0x1f15}, {Lo: 0x1f18, Hi: 0x1f1d}, {Lo: 0x1f20, Hi: 0x1f45}, {Lo: 0x1f48, Hi: 0x1f4d}, {Lo: 0x1f50, Hi: 0x1f57}, {Lo: 0x1f59, Hi: 0x1f59}, {Lo: 0x1f5b, Hi: 0x1f5b}, {Lo: 0x1f5d, Hi: 0x1f5d}, {Lo: 0x1f5f, Hi: 0x1f7d}, {Lo: 0x1f80, Hi: 0x1fb4}, {Lo: 0x1fb6, Hi: 0x1fbc}, {Lo: 0x1fbe, Hi: 0x1fbe}, {Lo: 0x1fc2, Hi: 0x1fc4}, {Lo: 0x1fc6, Hi: 0x1fcc}, {Lo: 0x1fd0, Hi: 0x1fd3}, {Lo: 0x1fd6, Hi: 0x1fdb}, {Lo: 0x1fe0, Hi: 0x1fec}, {Lo: 0x1ff2, Hi: 0x1ff4}, {Lo: 0x1ff6, Hi: 0x1ffc}, {Lo: 0x2071, Hi: 0x2071}, {Lo: 0x207f, Hi: 0x207f}, {Lo: 0x2090, Hi: 0x209c}, {Lo: 0x2102, Hi: 0x2102}, {Lo: 0x2107, Hi: 0x2107}, {Lo: 0x210a, Hi: 0x2113}, {Lo: 0x2115, Hi: 0x2115}, {Lo: 0x2119, Hi: 0x211d}, {Lo: 0x2124, Hi: 0x2124}, {Lo: 0x2126, Hi: 0x2126}, {Lo: 0x2128, Hi: 0x2128}, {Lo: 0x212a, Hi: 0x212d}, {Lo: 0x212f, Hi: 0x2139}, {Lo: 0x213c, Hi: 0x213f}, {Lo: 0x2145, Hi: 0x2149}, {Lo: 0x214e, Hi: 0x214e}, {Lo: 0x2160, Hi: 0x2188}, {Lo: 0x24b6, Hi: 0x24e9}, {Lo: 0x2c00, Hi: 0x2ce4}, {Lo: 0x2ceb, Hi: 0x2cee}, {Lo: 0x2cf2, Hi: 0x2cf3}, {Lo: 0x2d00, Hi: 0x2d25}, {Lo: 0x2d27, Hi: 0x2d27}, {Lo: 0x2d2d, Hi: 0x2d2d}, {Lo: 0x2d30, Hi: 0x2d67}, {Lo: 0x2d6f, Hi: 0x2d6f}, {Lo: 0x2d80, Hi: 0x2d96}, {Lo: 0x2da0, Hi: 0x2da6}, {Lo: 0x2da8, Hi: 0x2dae}, {Lo: 0x2db0, Hi: 0x2db6}, {Lo: 0x2db8, Hi: 0x2dbe}, {Lo: 0x2dc0, Hi: 0x2dc6}, {Lo: 0x2dc8, Hi: 0x2dce}, {Lo: 0x2dd0, Hi: 0x2dd6}, {Lo: 0x2dd8, Hi: 0x2dde}, {Lo: 0x2de0, Hi: 0x2dff}, {Lo: 0x2e2f, Hi: 0x2e2f}, {Lo: 0x3005, Hi: 0x3007}, {Lo: 0x3021, Hi: 0x3029}, {Lo: 0x3031, Hi: 0x3035}, {Lo: 0x3038, Hi: 0x303c}, {Lo: 0x3041, Hi: 0x3096}, {Lo: 0x309d, Hi: 0x309f}, {Lo: 0x30a1, Hi: 0x30fa}, {Lo: 0x30fc, Hi: 0x30ff}, {Lo: 0x3105, Hi: 0x312f}, {Lo: 0x3131, Hi: 0x318e}, {Lo: 0x31a0, Hi: 0x31bf}, {Lo: 0x31f0, Hi: 0x31ff}, {Lo: 0x3400, Hi: 0x4dbf}, {Lo: 0x4e00, Hi: 0xa48c}, {Lo: 0xa4d0, Hi: 0xa4fd}, {Lo: 0xa500, Hi: 0xa60c}, {Lo: 0xa610, Hi: 0xa61f}, {Lo: 0xa62a, Hi: 0xa62b}, {Lo: 0xa640, Hi: 0xa66e}, {Lo: 0xa674, Hi: 0xa67b}, {Lo: 0xa67f, Hi: 0xa6ef}, {Lo: 0xa717, Hi: 0xa71f}, {Lo: 0xa722, Hi: 0xa788}, {Lo: 0xa78b, Hi: 0xa7dc}, {Lo: 0xa7f1, Hi: 0xa805}, {Lo: 0xa807, Hi: 0xa827}, {Lo: 0xa840, Hi: 0xa873}, {Lo: 0xa880, Hi: 0xa8c3}, {Lo: 0xa8c5, Hi: 0xa8c5}, {Lo: 0xa8f2, Hi: 0xa8f7}, {Lo: 0xa8fb, Hi: 0xa8fb}, {Lo: 0xa8fd, Hi: 0xa8ff}, {Lo: 0xa90a, Hi: 0xa92a}, {Lo: 0xa930, Hi: 0xa952}, {Lo: 0xa960, Hi: 0xa97c}, {Lo: 0xa980, Hi: 0xa9b2}, {Lo: 0xa9b4, Hi: 0xa9bf}, {Lo: 0xa9cf, Hi: 0xa9cf}, {Lo: 0xa9e0, Hi: 0xa9ef}, {Lo: 0xa9fa, Hi: 0xa9fe}, {Lo: 0xaa00, Hi: 0xaa36}, {Lo: 0xaa40, Hi: 0xaa4d}, {Lo: 0xaa60, Hi: 0xaa76}, {Lo: 0xaa7a, Hi: 0xaabe}, {Lo: 0xaac0, Hi: 0xaac0}, {Lo: 0xaac2, Hi: 0xaac2}, {Lo: 0xaadb, Hi: 0xaadd}, {Lo: 0xaae0, Hi: 0xaaef}, {Lo: 0xaaf2, Hi: 0xaaf5}, {Lo: 0xab01, Hi: 0xab06}, {Lo: 0xab09, Hi: 0xab0e}, {Lo: 0xab11, Hi: 0xab16}, {Lo: 0xab20, Hi: 0xab26}, {Lo: 0xab28, Hi: 0xab2e}, {Lo: 0xab30, Hi: 0xab5a}, {Lo: 0xab5c, Hi: 0xab69}, {Lo: 0xab70, Hi: 0xabea}, {Lo: 0xac00, Hi: 0xd7a3}, {Lo: 0xd7b0, Hi: 0xd7c6}, {Lo: 0xd7cb, Hi: 0xd7fb}, {Lo: 0xf900, Hi: 0xfa6d}, {Lo: 0xfa70, Hi: 0xfad9}, {Lo: 0xfb00, Hi: 0xfb06}, {Lo: 0xfb13, Hi: 0xfb17}, {Lo: 0xfb1d, Hi: 0xfb28}, {Lo: 0xfb2a, Hi: 0xfb36}, {Lo: 0xfb38, Hi: 0xfb3c}, {Lo: 0xfb3e, Hi: 0xfb3e}, {Lo: 0xfb40, Hi: 0xfb41}, {Lo: 0xfb43, Hi: 0xfb44}, {Lo: 0xfb46, Hi: 0xfbb1}, {Lo: 0xfbd3, Hi: 0xfd3d}, {Lo: 0xfd50, Hi: 0xfd8f}, {Lo: 0xfd92, Hi: 0xfdc7}, {Lo: 0xfdf0, Hi: 0xfdfb}, {Lo: 0xfe70, Hi: 0xfe74}, {Lo: 0xfe76, Hi: 0xfefc}, {Lo: 0xff21, Hi: 0xff3a}, {Lo: 0xff41, Hi: 0xff5a}, {Lo: 0xff66, Hi: 0xffbe}, {Lo: 0xffc2, Hi: 0xffc7}, {Lo: 0xffca, Hi: 0xffcf}, {Lo: 0xffd2, Hi: 0xffd7}, {Lo: 0xffda, Hi: 0xffdc}, {Lo: 0x10000, Hi: 0x1000b}, {Lo: 0x1000d, Hi: 0x10026}, {Lo: 0x10028, Hi: 0x1003a}, {Lo: 0x1003c, Hi: 0x1003d}, {Lo: 0x1003f, Hi: 0x1004d}, {Lo: 0x10050, Hi: 0x1005d}, {Lo: 0x10080, Hi: 0x100fa}, {Lo: 0x10140, Hi: 0x10174}, {Lo: 0x10280, Hi: 0x1029c}, {Lo: 0x102a0, Hi: 0x102d0}, {Lo: 0x10300, Hi: 0x1031f}, {Lo: 0x1032d, Hi: 0x1034a}, {Lo: 0x10350, Hi: 0x1037a}, {Lo: 0x10380, Hi: 0x1039d}, {Lo: 0x103a0, Hi: 0x103c3}, {Lo: 0x103c8, Hi: 0x103cf}, {Lo: 0x103d1, Hi: 0x103d5}, {Lo: 0x10400, Hi: 0x1049d}, {Lo: 0x104b0, Hi: 0x104d3}, {Lo: 0x104d8, Hi: 0x104fb}, {Lo: 0x10500, Hi: 0x10527}, {Lo: 0x10530, Hi: 0x10563}, {Lo: 0x10570, Hi: 0x1057a}, {Lo: 0x1057c, Hi: 0x1058a}, {Lo: 0x1058c, Hi: 0x10592}, {Lo: 0x10594, Hi: 0x10595}, {Lo: 0x10597, Hi: 0x105a1}, {Lo: 0x105a3, Hi: 0x105b1}, {Lo: 0x105b3, Hi: 0x105b9}, {Lo: 0x105bb, Hi: 0x105bc}, {Lo: 0x105c0, Hi: 0x105f3}, {Lo: 0x10600, Hi: 0x10736}, {Lo: 0x10740, Hi: 0x10755}, {Lo: 0x10760, Hi: 0x10767}, {Lo: 0x10780, Hi: 0x10785}, {Lo: 0x10787, Hi: 0x107b0}, {Lo: 0x107b2, Hi: 0x107ba}, {Lo: 0x10800, Hi: 0x10805}, {Lo: 0x10808, Hi: 0x10808}, {Lo: 0x1080a, Hi: 0x10835}, {Lo: 0x10837, Hi: 0x10838}, {Lo: 0x1083c, Hi: 0x1083c}, {Lo: 0x1083f, Hi: 0x10855}, {Lo: 0x10860, Hi: 0x10876}, {Lo: 0x10880, Hi: 0x1089e}, {Lo: 0x108e0, Hi: 0x108f2}, {Lo: 0x108f4, Hi: 0x108f5}, {Lo: 0x10900, Hi: 0x10915}, {Lo: 0x10920, Hi: 0x10939}, {Lo: 0x10940, Hi: 0x10959}, {Lo: 0x10980, Hi: 0x109b7}, {Lo: 0x109be, Hi: 0x109bf}, {Lo: 0x10a00, Hi: 0x10a03}, {Lo: 0x10a05, Hi: 0x10a06}, {Lo: 0x10a0c, Hi: 0x10a13}, {Lo: 0x10a15, Hi: 0x10a17}, {Lo: 0x10a19, Hi: 0x10a35}, {Lo: 0x10a60, Hi: 0x10a7c}, {Lo: 0x10a80, Hi: 0x10a9c}, {Lo: 0x10ac0, Hi: 0x10ac7}, {Lo: 0x10ac9, Hi: 0x10ae4}, {Lo: 0x10b00, Hi: 0x10b35}, {Lo: 0x10b40, Hi: 0x10b55}, {Lo: 0x10b60, Hi: 0x10b72}, {Lo: 0x10b80, Hi: 0x10b91}, {Lo: 0x10c00, Hi: 0x10c48}, {Lo: 0x10c80, Hi: 0x10cb2}, {Lo: 0x10cc0, Hi: 0x10cf2}, {Lo: 0x10d00, Hi: 0x10d27}, {Lo: 0x10d4a, Hi: 0x10d65}, {Lo: 0x10d69, Hi: 0x10d69}, {Lo: 0x10d6f, Hi: 0x10d85}, {Lo: 0x10e80, Hi: 0x10ea9}, {Lo: 0x10eab, Hi: 0x10eac}, {Lo: 0x10eb0, Hi: 0x10eb1}, {Lo: 0x10ec2, Hi: 0x10ec7}, {Lo: 0x10efa, Hi: 0x10efc}, {Lo: 0x10f00, Hi: 0x10f1c}, {Lo: 0x10f27, Hi: 0x10f27}, {Lo: 0x10f30, Hi: 0x10f45}, {Lo: 0x10f70, Hi: 0x10f81}, {Lo: 0x10fb0, Hi: 0x10fc4}, {Lo: 0x10fe0, Hi: 0x10ff6}, {Lo: 0x11000, Hi: 0x11045}, {Lo: 0x11071, Hi: 0x11075}, {Lo: 0x11080, Hi: 0x110b8}, {Lo: 0x110c2, Hi: 0x110c2}, {Lo: 0x110d0, Hi: 0x110e8}, {Lo: 0x11100, Hi: 0x11132}, {Lo: 0x11144, Hi: 0x11147}, {Lo: 0x11150, Hi: 0x11172}, {Lo: 0x11176, Hi: 0x11176}, {Lo: 0x11180, Hi: 0x111bf}, {Lo: 0x111c1, Hi: 0x111c4}, {Lo: 0x111ce, Hi: 0x111cf}, {Lo: 0x111da, Hi: 0x111da}, {Lo: 0x111dc, Hi: 0x111dc}, {Lo: 0x11200, Hi: 0x11211}, {Lo: 0x11213, Hi: 0x11234}, {Lo: 0x11237, Hi: 0x11237}, {Lo: 0x1123e, Hi: 0x11241}, {Lo: 0x11280, Hi: 0x11286}, {Lo: 0x11288, Hi: 0x11288}, {Lo: 0x1128a, Hi: 0x1128d}, {Lo: 0x1128f, Hi: 0x1129d}, {Lo: 0x1129f, Hi: 0x112a8}, {Lo: 0x112b0, Hi: 0x112e8}, {Lo: 0x11300, Hi: 0x11303}, {Lo: 0x11305, Hi: 0x1130c}, {Lo: 0x1130f, Hi: 0x11310}, {Lo: 0x11313, Hi: 0x11328}, {Lo: 0x1132a, Hi: 0x11330}, {Lo: 0x11332, Hi: 0x11333}, {Lo: 0x11335, Hi: 0x11339}, {Lo: 0x1133d, Hi: 0x11344}, {Lo: 0x11347, Hi: 0x11348}, {Lo: 0x1134b, Hi: 0x1134c}, {Lo: 0x11350, Hi: 0x11350}, {Lo: 0x11357, Hi: 0x11357}, {Lo: 0x1135d, Hi: 0x11363}, {Lo: 0x11380, Hi: 0x11389}, {Lo: 0x1138b, Hi: 0x1138b}, {Lo: 0x1138e, Hi: 0x1138e}, {Lo: 0x11390, Hi: 0x113b5}, {Lo: 0x113b7, Hi: 0x113c0}, {Lo: 0x113c2, Hi: 0x113c2}, {Lo: 0x113c5, Hi: 0x113c5}, {Lo: 0x113c7, Hi: 0x113ca}, {Lo: 0x113cc, Hi: 0x113cd}, {Lo: 0x113d1, Hi: 0x113d1}, {Lo: 0x113d3, Hi: 0x113d3}, {Lo: 0x11400, Hi: 0x11441}, {Lo: 0x11443, Hi: 0x11445}, {Lo: 0x11447, Hi: 0x1144a}, {Lo: 0x1145f, Hi: 0x11461}, {Lo: 0x11480, Hi: 0x114c1}, {Lo: 0x114c4, Hi: 0x114c5}, {Lo: 0x114c7, Hi: 0x114c7}, {Lo: 0x11580, Hi: 0x115b5}, {Lo: 0x115b8, Hi: 0x115be}, {Lo: 0x115d8, Hi: 0x115dd}, {Lo: 0x11600, Hi: 0x1163e}, {Lo: 0x11640, Hi: 0x11640}, {Lo: 0x11644, Hi: 0x11644}, {Lo: 0x11680, Hi: 0x116b5}, {Lo: 0x116b8, Hi: 0x116b8}, {Lo: 0x11700, Hi: 0x1171a}, {Lo: 0x1171d, Hi: 0x1172a}, {Lo: 0x11740, Hi: 0x11746}, {Lo: 0x11800, Hi: 0x11838}, {Lo: 0x118a0, Hi: 0x118df}, {Lo: 0x118ff, Hi: 0x11906}, {Lo: 0x11909, Hi: 0x11909}, {Lo: 0x1190c, Hi: 0x11913}, {Lo: 0x11915, Hi: 0x11916}, {Lo: 0x11918, Hi: 0x11935}, {Lo: 0x11937, Hi: 0x11938}, {Lo: 0x1193b, Hi: 0x1193c}, {Lo: 0x1193f, Hi: 0x11942}, {Lo: 0x119a0, Hi: 0x119a7}, {Lo: 0x119aa, Hi: 0x119d7}, {Lo: 0x119da, Hi: 0x119df}, {Lo: 0x119e1, Hi: 0x119e1}, {Lo: 0x119e3, Hi: 0x119e4}, {Lo: 0x11a00, Hi: 0x11a32}, {Lo: 0x11a35, Hi: 0x11a3e}, {Lo: 0x11a50, Hi: 0x11a97}, {Lo: 0x11a9d, Hi: 0x11a9d}, {Lo: 0x11ab0, Hi: 0x11af8}, {Lo: 0x11b60, Hi: 0x11b67}, {Lo: 0x11bc0, Hi: 0x11be0}, {Lo: 0x11c00, Hi: 0x11c08}, {Lo: 0x11c0a, Hi: 0x11c36}, {Lo: 0x11c38, Hi: 0x11c3e}, {Lo: 0x11c40, Hi: 0x11c40}, {Lo: 0x11c72, Hi: 0x11c8f}, {Lo: 0x11c92, Hi: 0x11ca7}, {Lo: 0x11ca9, Hi: 0x11cb6}, {Lo: 0x11d00, Hi: 0x11d06}, {Lo: 0x11d08, Hi: 0x11d09}, {Lo: 0x11d0b, Hi: 0x11d36}, {Lo: 0x11d3a, Hi: 0x11d3a}, {Lo: 0x11d3c, Hi: 0x11d3d}, {Lo: 0x11d3f, Hi: 0x11d41}, {Lo: 0x11d43, Hi: 0x11d43}, {Lo: 0x11d46, Hi: 0x11d47}, {Lo: 0x11d60, Hi: 0x11d65}, {Lo: 0x11d67, Hi: 0x11d68}, {Lo: 0x11d6a, Hi: 0x11d8e}, {Lo: 0x11d90, Hi: 0x11d91}, {Lo: 0x11d93, Hi: 0x11d96}, {Lo: 0x11d98, Hi: 0x11d98}, {Lo: 0x11db0, Hi: 0x11ddb}, {Lo: 0x11ee0, Hi: 0x11ef6}, {Lo: 0x11f00, Hi: 0x11f10}, {Lo: 0x11f12, Hi: 0x11f3a}, {Lo: 0x11f3e, Hi: 0x11f40}, {Lo: 0x11fb0, Hi: 0x11fb0}, {Lo: 0x12000, Hi: 0x12399}, {Lo: 0x12400, Hi: 0x1246e}, {Lo: 0x12480, Hi: 0x12543}, {Lo: 0x12f90, Hi: 0x12ff0}, {Lo: 0x13000, Hi: 0x1342f}, {Lo: 0x13441, Hi: 0x13446}, {Lo: 0x13460, Hi: 0x143fa}, {Lo: 0x14400, Hi: 0x14646}, {Lo: 0x16100, Hi: 0x1612e}, {Lo: 0x16800, Hi: 0x16a38}, {Lo: 0x16a40, Hi: 0x16a5e}, {Lo: 0x16a70, Hi: 0x16abe}, {Lo: 0x16ad0, Hi: 0x16aed}, {Lo: 0x16b00, Hi: 0x16b2f}, {Lo: 0x16b40, Hi: 0x16b43}, {Lo: 0x16b63, Hi: 0x16b77}, {Lo: 0x16b7d, Hi: 0x16b8f}, {Lo: 0x16d40, Hi: 0x16d6c}, {Lo: 0x16e40, Hi: 0x16e7f}, {Lo: 0x16ea0, Hi: 0x16eb8}, {Lo: 0x16ebb, Hi: 0x16ed3}, {Lo: 0x16f00, Hi: 0x16f4a}, {Lo: 0x16f4f, Hi: 0x16f87}, {Lo: 0x16f8f, Hi: 0x16f9f}, {Lo: 0x16fe0, Hi: 0x16fe1}, {Lo: 0x16fe3, Hi: 0x16fe3}, {Lo: 0x16ff0, Hi: 0x16ff6}, {Lo: 0x17000, Hi: 0x18cd5}, {Lo: 0x18cff, Hi: 0x18d1e}, {Lo: 0x18d80, Hi: 0x18df2}, {Lo: 0x1aff0, Hi: 0x1aff3}, {Lo: 0x1aff5, Hi: 0x1affb}, {Lo: 0x1affd, Hi: 0x1affe}, {Lo: 0x1b000, Hi: 0x1b122}, {Lo: 0x1b132, Hi: 0x1b132}, {Lo: 0x1b150, Hi: 0x1b152}, {Lo: 0x1b155, Hi: 0x1b155}, {Lo: 0x1b164, Hi: 0x1b167}, {Lo: 0x1b170, Hi: 0x1b2fb}, {Lo: 0x1bc00, Hi: 0x1bc6a}, {Lo: 0x1bc70, Hi: 0x1bc7c}, {Lo: 0x1bc80, Hi: 0x1bc88}, {Lo: 0x1bc90, Hi: 0x1bc99}, {Lo: 0x1bc9e, Hi: 0x1bc9e}, {Lo: 0x1d400, Hi: 0x1d454}, {Lo: 0x1d456, Hi: 0x1d49c}, {Lo: 0x1d49e, Hi: 0x1d49f}, {Lo: 0x1d4a2, Hi: 0x1d4a2}, {Lo: 0x1d4a5, Hi: 0x1d4a6}, {Lo: 0x1d4a9, Hi: 0x1d4ac}, {Lo: 0x1d4ae, Hi: 0x1d4b9}, {Lo: 0x1d4bb, Hi: 0x1d4bb}, {Lo: 0x1d4bd, Hi: 0x1d4c3}, {Lo: 0x1d4c5, Hi: 0x1d505}, {Lo: 0x1d507, Hi: 0x1d50a}, {Lo: 0x1d50d, Hi: 0x1d514}, {Lo: 0x1d516, Hi: 0x1d51c}, {Lo: 0x1d51e, Hi: 0x1d539}, {Lo: 0x1d53b, Hi: 0x1d53e}, {Lo: 0x1d540, Hi: 0x1d544}, {Lo: 0x1d546, Hi: 0x1d546}, {Lo: 0x1d54a, Hi: 0x1d550}, {Lo: 0x1d552, Hi: 0x1d6a5}, {Lo: 0x1d6a8, Hi: 0x1d6c0}, {Lo: 0x1d6c2, Hi: 0x1d6da}, {Lo: 0x1d6dc, Hi: 0x1d6fa}, {Lo: 0x1d6fc, Hi: 0x1d714}, {Lo: 0x1d716, Hi: 0x1d734}, {Lo: 0x1d736, Hi: 0x1d74e}, {Lo: 0x1d750, Hi: 0x1d76e}, {Lo: 0x1d770, Hi: 0x1d788}, {Lo: 0x1d78a, Hi: 0x1d7a8}, {Lo: 0x1d7aa, Hi: 0x1d7c2}, {Lo: 0x1d7c4, Hi: 0x1d7cb}, {Lo: 0x1df00, Hi: 0x1df1e}, {Lo: 0x1df25, Hi: 0x1df2a}, {Lo: 0x1e000, Hi: 0x1e006}, {Lo: 0x1e008, Hi: 0x1e018}, {Lo: 0x1e01b, Hi: 0x1e021}, {Lo: 0x1e023, Hi: 0x1e024}, {Lo: 0x1e026, Hi: 0x1e02a}, {Lo: 0x1e030, Hi: 0x1e06d}, {Lo: 0x1e08f, Hi: 0x1e08f}, {Lo: 0x1e100, Hi: 0x1e12c}, {Lo: 0x1e137, Hi: 0x1e13d}, {Lo: 0x1e14e, Hi: 0x1e14e}, {Lo: 0x1e290, Hi: 0x1e2ad}, {Lo: 0x1e2c0, Hi: 0x1e2eb}, {Lo: 0x1e4d0, Hi: 0x1e4eb}, {Lo: 0x1e5d0, Hi: 0x1e5ed}, {Lo: 0x1e5f0, Hi: 0x1e5f0}, {Lo: 0x1e6c0, Hi: 0x1e6de}, {Lo: 0x1e6e0, Hi: 0x1e6f5}, {Lo: 0x1e6fe, Hi: 0x1e6ff}, {Lo: 0x1e7e0, Hi: 0x1e7e6}, {Lo: 0x1e7e8, Hi: 0x1e7eb}, {Lo: 0x1e7ed, Hi: 0x1e7ee}, {Lo: 0x1e7f0, Hi: 0x1e7fe}, {Lo: 0x1e800, Hi: 0x1e8c4}, {Lo: 0x1e900, Hi: 0x1e943}, {Lo: 0x1e947, Hi: 0x1e947}, {Lo: 0x1e94b, Hi: 0x1e94b}, {Lo: 0x1ee00, Hi: 0x1ee03}, {Lo: 0x1ee05, Hi: 0x1ee1f}, {Lo: 0x1ee21, Hi: 0x1ee22}, {Lo: 0x1ee24, Hi: 0x1ee24}, {Lo: 0x1ee27, Hi: 0x1ee27}, {Lo: 0x1ee29, Hi: 0x1ee32}, {Lo: 0x1ee34, Hi: 0x1ee37}, {Lo: 0x1ee39, Hi: 0x1ee39}, {Lo: 0x1ee3b, Hi: 0x1ee3b}, {Lo: 0x1ee42, Hi: 0x1ee42}, {Lo: 0x1ee47, Hi: 0x1ee47}, {Lo: 0x1ee49, Hi: 0x1ee49}, {Lo: 0x1ee4b, Hi: 0x1ee4b}, {Lo: 0x1ee4d, Hi: 0x1ee4f}, {Lo: 0x1ee51, Hi: 0x1ee52}, {Lo: 0x1ee54, Hi: 0x1ee54}, {Lo: 0x1ee57, Hi: 0x1ee57}, {Lo: 0x1ee59, Hi: 0x1ee59}, {Lo: 0x1ee5b, Hi: 0x1ee5b}, {Lo: 0x1ee5d, Hi: 0x1ee5d}, {Lo: 0x1ee5f, Hi: 0x1ee5f}, {Lo: 0x1ee61, Hi: 0x1ee62}, {Lo: 0x1ee64, Hi: 0x1ee64}, {Lo: 0x1ee67, Hi: 0x1ee6a}, {Lo: 0x1ee6c, Hi: 0x1ee72}, {Lo: 0x1ee74, Hi: 0x1ee77}, {Lo: 0x1ee79, Hi: 0x1ee7c}, {Lo: 0x1ee7e, Hi: 0x1ee7e}, {Lo: 0x1ee80, Hi: 0x1ee89}, {Lo: 0x1ee8b, Hi: 0x1ee9b}, {Lo: 0x1eea1, Hi: 0x1eea3}, {Lo: 0x1eea5, Hi: 0x1eea9}, {Lo: 0x1eeab, Hi: 0x1eebb}, {Lo: 0x1f130, Hi: 0x1f149}, {Lo: 0x1f150, Hi: 0x1f169}, {Lo: 0x1f170, Hi: 0x1f189}, {Lo: 0x20000, Hi: 0x2a6df}, {Lo: 0x2a700, Hi: 0x2b81d}, {Lo: 0x2b820, Hi: 0x2cead}, {Lo: 0x2ceb0, Hi: 0x2ebe0}, {Lo: 0x2ebf0, Hi: 0x2ee5d}, {Lo: 0x2f800, Hi: 0x2fa1d}, {Lo: 0x30000, Hi: 0x3134a}, {Lo: 0x31350, Hi: 0x33479}}
+
+var ranges2 = []lex.Range{{Lo: '.', Hi: '.'}, {Lo: '0', Hi: '9'}, {Lo: 'A', Hi: 'Z'}, {Lo: '_', Hi: '_'}, {Lo: 'a', Hi: 'z'}, {Lo: 0xaa, Hi: 0xaa}, {Lo: 0xb5, Hi: 0xb5}, {Lo: 0xba, Hi: 0xba}, {Lo: 0xc0, Hi: 0xd6}, {Lo: 0xd8, Hi: 0xf6}, {Lo: 0xf8, Hi: 0x2c1}, {Lo: 0x2c6, Hi: 0x2d1}, {Lo: 0x2e0, Hi: 0x2e4}, {Lo: 0x2ec, Hi: 0x2ec}, {Lo: 0x2ee, Hi: 0x2ee}, {Lo: 0x345, Hi: 0x345}, {Lo: 0x363, Hi: 0x374}, {Lo: 0x376, Hi: 0x377}, {Lo: 0x37a, Hi: 0x37d}, {Lo: 0x37f, Hi: 0x37f}, {Lo: 0x386, Hi: 0x386}, {Lo: 0x388, Hi: 0x38a}, {Lo: 0x38c, Hi: 0x38c}, {Lo: 0x38e, Hi: 0x3a1}, {Lo: 0x3a3, Hi: 0x3f5}, {Lo: 0x3f7, Hi: 0x481}, {Lo: 0x48a, Hi: 0x52f}, {Lo: 0x531, Hi: 0x556}, {Lo: 0x559, Hi: 0x559}, {Lo: 0x560, Hi: 0x588}, {Lo: 0x5b0, Hi: 0x5bd}, {Lo: 0x5bf, Hi: 0x5bf}, {Lo: 0x5c1, Hi: 0x5c2}, {Lo: 0x5c4, Hi: 0x5c5}, {Lo: 0x5c7, Hi: 0x5c7}, {Lo: 0x5d0, Hi: 0x5ea}, {Lo: 0x5ef, Hi: 0x5f2}, {Lo: 0x610, Hi: 0x61a}, {Lo: 0x620, Hi: 0x657}, {Lo: 0x659, Hi: 0x65f}, {Lo: 0x66e, Hi: 0x6d3}, {Lo: 0x6d5, Hi: 0x6dc}, {Lo: 0x6e1, Hi: 0x6e8}, {Lo: 0x6ed, Hi: 0x6ef}, {Lo: 0x6fa, Hi: 0x6fc}, {Lo: 0x6ff, Hi: 0x6ff}, {Lo: 0x710, Hi: 0x73f}, {Lo: 0x74d, Hi: 0x7b1}, {Lo: 0x7ca, Hi: 0x7ea}, {Lo: 0x7f4, Hi: 0x7f5}, {Lo: 0x7fa, Hi: 0x7fa}, {Lo: 0x800, Hi: 0x817}, {Lo: 0x81a, Hi: 0x82c}, {Lo: 0x840, Hi: 0x858}, {Lo: 0x860, Hi: 0x86a}, {Lo: 0x870, Hi: 0x887}, {Lo: 0x889, Hi: 0x88f}, {Lo: 0x897, Hi: 0x897}, {Lo: 0x8a0, Hi: 0x8c9}, {Lo: 0x8d4, Hi: 0x8df}, {Lo: 0x8e3, Hi: 0x8e9}, {Lo: 0x8f0, Hi: 0x93b}, {Lo: 0x93d, Hi: 0x94c}, {Lo: 0x94e, Hi: 0x950}, {Lo: 0x955, Hi: 0x963}, {Lo: 0x971, Hi: 0x983}, {Lo: 0x985, Hi: 0x98c}, {Lo: 0x98f, Hi: 0x990}, {Lo: 0x993, Hi: 0x9a8}, {Lo: 0x9aa, Hi: 0x9b0}, {Lo: 0x9b2, Hi: 0x9b2}, {Lo: 0x9b6, Hi: 0x9b9}, {Lo: 0x9bd, Hi: 0x9c4}, {Lo: 0x9c7, Hi: 0x9c8}, {Lo: 0x9cb, Hi: 0x9cc}, {Lo: 0x9ce, Hi: 0x9ce}, {Lo: 0x9d7, Hi: 0x9d7}, {Lo: 0x9dc, Hi: 0x9dd}, {Lo: 0x9df, Hi: 0x9e3}, {Lo: 0x9f0, Hi: 0x9f1}, {Lo: 0x9fc, Hi: 0x9fc}, {Lo: 0xa01, Hi: 0xa03}, {Lo: 0xa05, Hi: 0xa0a}, {Lo: 0xa0f, Hi: 0xa10}, {Lo: 0xa13, Hi: 0xa28}, {Lo: 0xa2a, Hi: 0xa30}, {Lo: 0xa32, Hi: 0xa33}, {Lo: 0xa35, Hi: 0xa36}, {Lo: 0xa38, Hi: 0xa39}, {Lo: 0xa3e, Hi: 0xa42}, {Lo: 0xa47, Hi: 0xa48}, {Lo: 0xa4b, Hi: 0xa4c}, {Lo: 0xa51, Hi: 0xa51}, {Lo: 0xa59, Hi: 0xa5c}, {Lo: 0xa5e, Hi: 0xa5e}, {Lo: 0xa70, Hi: 0xa75}, {Lo: 0xa81, Hi: 0xa83}, {Lo: 0xa85, Hi: 0xa8d}, {Lo: 0xa8f, Hi: 0xa91}, {Lo: 0xa93, Hi: 0xaa8}, {Lo: 0xaaa, Hi: 0xab0}, {Lo: 0xab2, Hi: 0xab3}, {Lo: 0xab5, Hi: 0xab9}, {Lo: 0xabd, Hi: 0xac5}, {Lo: 0xac7, Hi: 0xac9}, {Lo: 0xacb, Hi: 0xacc}, {Lo: 0xad0, Hi: 0xad0}, {Lo: 0xae0, Hi: 0xae3}, {Lo: 0xaf9, Hi: 0xafc}, {Lo: 0xb01, Hi: 0xb03}, {Lo: 0xb05, Hi: 0xb0c}, {Lo: 0xb0f, Hi: 0xb10}, {Lo: 0xb13, Hi: 0xb28}, {Lo: 0xb2a, Hi: 0xb30}, {Lo: 0xb32, Hi: 0xb33}, {Lo: 0xb35, Hi: 0xb39}, {Lo: 0xb3d, Hi: 0xb44}, {Lo: 0xb47, Hi: 0xb48}, {Lo: 0xb4b, Hi: 0xb4c}, {Lo: 0xb56, Hi: 0xb57}, {Lo: 0xb5c, Hi: 0xb5d}, {Lo: 0xb5f, Hi: 0xb63}, {Lo: 0xb71, Hi: 0xb71}, {Lo: 0xb82, Hi: 0xb83}, {Lo: 0xb85, Hi: 0xb8a}, {Lo: 0xb8e, Hi: 0xb90}, {Lo: 0xb92, Hi: 0xb95}, {Lo: 0xb99, Hi: 0xb9a}, {Lo: 0xb9c, Hi: 0xb9c}, {Lo: 0xb9e, Hi: 0xb9f}, {Lo: 0xba3, Hi: 0xba4}, {Lo: 0xba8, Hi: 0xbaa}, {Lo: 0xbae, Hi: 0xbb9}, {Lo: 0xbbe, Hi: 0xbc2}, {Lo: 0xbc6, Hi: 0xbc8}, {Lo: 0xbca, Hi: 0xbcc}, {Lo: 0xbd0, Hi: 0xbd0}, {Lo: 0xbd7, Hi: 0xbd7}, {Lo: 0xc00, Hi: 0xc0c}, {Lo: 0xc0e, Hi: 0xc10}, {Lo: 0xc12, Hi: 0xc28}, {Lo: 0xc2a, Hi: 0xc39}, {Lo: 0xc3d, Hi: 0xc44}, {Lo: 0xc46, Hi: 0xc48}, {Lo: 0xc4a, Hi: 0xc4c}, {Lo: 0xc55, Hi: 0xc56}, {Lo: 0xc58, Hi: 0xc5a}, {Lo: 0xc5c, Hi: 0xc5d}, {Lo: 0xc60, Hi: 0xc63}, {Lo: 0xc80, Hi: 0xc83}, {Lo: 0xc85, Hi: 0xc8c}, {Lo: 0xc8e, Hi: 0xc90}, {Lo: 0xc92, Hi: 0xca8}, {Lo: 0xcaa, Hi: 0xcb3}, {Lo: 0xcb5, Hi: 0xcb9}, {Lo: 0xcbd, Hi: 0xcc4}, {Lo: 0xcc6, Hi: 0xcc8}, {Lo: 0xcca, Hi: 0xccc}, {Lo: 0xcd5, Hi: 0xcd6}, {Lo: 0xcdc, Hi: 0xcde}, {Lo: 0xce0, Hi: 0xce3}, {Lo: 0xcf1, Hi: 0xcf3}, {Lo: 0xd00, Hi: 0xd0c}, {Lo: 0xd0e, Hi: 0xd10}, {Lo: 0xd12, Hi: 0xd3a}, {Lo: 0xd3d, Hi: 0xd44}, {Lo: 0xd46, Hi: 0xd48}, {Lo: 0xd4a, Hi: 0xd4c}, {Lo: 0xd4e, Hi: 0xd4e}, {Lo: 0xd54, Hi: 0xd57}, {Lo: 0xd5f, Hi: 0xd63}, {Lo: 0xd7a, Hi: 0xd7f}, {Lo: 0xd81, Hi: 0xd83}, {Lo: 0xd85, Hi: 0xd96}, {Lo: 0xd9a, Hi: 0xdb1}, {Lo: 0xdb3, Hi: 0xdbb}, {Lo: 0xdbd, Hi: 0xdbd}, {Lo: 0xdc0, Hi: 0xdc6}, {Lo: 0xdcf, Hi: 0xdd4}, {Lo: 0xdd6, Hi: 0xdd6}, {Lo: 0xdd8, Hi: 0xddf}, {Lo: 0xdf2, Hi: 0xdf3}, {Lo: 0xe01, Hi: 0xe3a}, {Lo: 0xe40, Hi: 0xe46}, {Lo: 0xe4d, Hi: 0xe4d}, {Lo: 0xe81, Hi: 0xe82}, {Lo: 0xe84, Hi: 0xe84}, {Lo: 0xe86, Hi: 0xe8a}, {Lo: 0xe8c, Hi: 0xea3}, {Lo: 0xea5, Hi: 0xea5}, {Lo: 0xea7, Hi: 0xeb9}, {Lo: 0xebb, Hi: 0xebd}, {Lo: 0xec0, Hi: 0xec4}, {Lo: 0xec6, Hi: 0xec6}, {Lo: 0xecd, Hi: 0xecd}, {Lo: 0xedc, Hi: 0xedf}, {Lo: 0xf00, Hi: 0xf00}, {Lo: 0xf40, Hi: 0xf47}, {Lo: 0xf49, Hi: 0xf6c}, {Lo: 0xf71, Hi: 0xf83}, {Lo: 0xf88, Hi: 0xf97}, {Lo: 0xf99, Hi: 0xfbc}, {Lo: 0x1000, Hi: 0x1036}, {Lo: 0x1038, Hi: 0x1038}, {Lo: 0x103b, Hi: 0x103f}, {Lo: 0x1050, Hi: 0x108f}, {Lo: 0x109a, Hi: 0x109d}, {Lo: 0x10a0, Hi: 0x10c5}, {Lo: 0x10c7, Hi: 0x10c7}, {Lo: 0x10cd, Hi: 0x10cd}, {Lo: 0x10d0, Hi: 0x10fa}, {Lo: 0x10fc, Hi: 0x1248}, {Lo: 0x124a, Hi: 0x124d}, {Lo: 0x1250, Hi: 0x1256}, {Lo: 0x1258, Hi: 0x1258}, {Lo: 0x125a, Hi: 0x125d}, {Lo: 0x1260, Hi: 0x1288}, {Lo: 0x128a, Hi: 0x128d}, {Lo: 0x1290, Hi: 0x12b0}, {Lo: 0x12b2, Hi: 0x12b5}, {Lo: 0x12b8, Hi: 0x12be}, {Lo: 0x12c0, Hi: 0x12c0}, {Lo: 0x12c2, Hi: 0x12c5}, {Lo: 0x12c8, Hi: 0x12d6}, {Lo: 0x12d8, Hi: 0x1310}, {Lo: 0x1312, Hi: 0x1315}, {Lo: 0x1318, Hi: 0x135a}, {Lo: 0x1380, Hi: 0x138f}, {Lo: 0x13a0, Hi: 0x13f5}, {Lo: 0x13f8, Hi: 0x13fd}, {Lo: 0x1401, Hi: 0x166c}, {Lo: 0x166f, Hi: 0x167f}, {Lo: 0x1681, Hi: 0x169a}, {Lo: 0x16a0, Hi: 0x16ea}, {Lo: 0x16ee, Hi: 0x16f8}, {Lo: 0x1700, Hi: 0x1713}, {Lo: 0x171f, Hi: 0x1733}, {Lo: 0x1740, Hi: 0x1753}, {Lo: 0x1760, Hi: 0x176c}, {Lo: 0x176e, Hi: 0x1770}, {Lo: 0x1772, Hi: 0x1773}, {Lo: 0x1780, Hi: 0x17b3}, {Lo: 0x17b6, Hi: 0x17c8}, {Lo: 0x17d7, Hi: 0x17d7}, {Lo: 0x17dc, Hi: 0x17dc}, {Lo: 0x1820, Hi: 0x1878}, {Lo: 0x1880, Hi: 0x18aa}, {Lo: 0x18b0, Hi: 0x18f5}, {Lo: 0x1900, Hi: 0x191e}, {Lo: 0x1920, Hi: 0x192b}, {Lo: 0x1930, Hi: 0x1938}, {Lo: 0x1950, Hi: 0x196d}, {Lo: 0x1970, Hi: 0x1974}, {Lo: 0x1980, Hi: 0x19ab}, {Lo: 0x19b0, Hi: 0x19c9}, {Lo: 0x1a00, Hi: 0x1a1b}, {Lo: 0x1a20, Hi: 0x1a5e}, {Lo: 0x1a61, Hi: 0x1a74}, {Lo: 0x1aa7, Hi: 0x1aa7}, {Lo: 0x1abf, Hi: 0x1ac0}, {Lo: 0x1acc, Hi: 0x1ace}, {Lo: 0x1b00, Hi: 0x1b33}, {Lo: 0x1b35, Hi: 0x1b43}, {Lo: 0x1b45, Hi: 0x1b4c}, {Lo: 0x1b80, Hi: 0x1ba9}, {Lo: 0x1bac, Hi: 0x1baf}, {Lo: 0x1bba, Hi: 0x1be5}, {Lo: 0x1be7, Hi: 0x1bf1}, {Lo: 0x1c00, Hi: 0x1c36}, {Lo: 0x1c4d, Hi: 0x1c4f}, {Lo: 0x1c5a, Hi: 0x1c7d}, {Lo: 0x1c80, Hi: 0x1c8a}, {Lo: 0x1c90, Hi: 0x1cba}, {Lo: 0x1cbd, Hi: 0x1cbf}, {Lo: 0x1ce9, Hi: 0x1cec}, {Lo: 0x1cee, Hi: 0x1cf3}, {Lo: 0x1cf5, Hi: 0x1cf6}, {Lo: 0x1cfa, Hi: 0x1cfa}, {Lo: 0x1d00, Hi: 0x1dbf}, {Lo: 0x1dd3, Hi: 0x1df4}, {Lo: 0x1e00, Hi: 0x1f15}, {Lo: 0x1f18, Hi: 0x1f1d}, {Lo: 0x1f20, Hi: 0x1f45}, {Lo: 0x1f48, Hi: 0x1f4d}, {Lo: 0x1f50, Hi: 0x1f57}, {Lo: 0x1f59, Hi: 0x1f59}, {Lo: 0x1f5b, Hi: 0x1f5b}, {Lo: 0x1f5d, Hi: 0x1f5d}, {Lo: 0x1f5f, Hi: 0x1f7d}, {Lo: 0x1f80, Hi: 0x1fb4}, {Lo: 0x1fb6, Hi: 0x1fbc}, {Lo: 0x1fbe, Hi: 0x1fbe}, {Lo: 0x1fc2, Hi: 0x1fc4}, {Lo: 0x1fc6, Hi: 0x1fcc}, {Lo: 0x1fd0, Hi: 0x1fd3}, {Lo: 0x1fd6, Hi: 0x1fdb}, {Lo: 0x1fe0, Hi: 0x1fec}, {Lo: 0x1ff2, Hi: 0x1ff4}, {Lo: 0x1ff6, Hi: 0x1ffc}, {Lo: 0x2071, Hi: 0x2071}, {Lo: 0x207f, Hi: 0x207f}, {Lo: 0x2090, Hi: 0x209c}, {Lo: 0x2102, Hi: 0x2102}, {Lo: 0x2107, Hi: 0x2107}, {Lo: 0x210a, Hi: 0x2113}, {Lo: 0x2115, Hi: 0x2115}, {Lo: 0x2119, Hi: 0x211d}, {Lo: 0x2124, Hi: 0x2124}, {Lo: 0x2126, Hi: 0x2126}, {Lo: 0x2128, Hi: 0x2128}, {Lo: 0x212a, Hi: 0x212d}, {Lo: 0x212f, Hi: 0x2139}, {Lo: 0x213c, Hi: 0x213f}, {Lo: 0x2145, Hi: 0x2149}, {Lo: 0x214e, Hi: 0x214e}, {Lo: 0x2160, Hi: 0x2188}, {Lo: 0x24b6, Hi: 0x24e9}, {Lo: 0x2c00, Hi: 0x2ce4}, {Lo: 0x2ceb, Hi: 0x2cee}, {Lo: 0x2cf2, Hi: 0x2cf3}, {Lo: 0x2d00, Hi: 0x2d25}, {Lo: 0x2d27, Hi: 0x2d27}, {Lo: 0x2d2d, Hi: 0x2d2d}, {Lo: 0x2d30, Hi: 0x2d67}, {Lo: 0x2d6f, Hi: 0x2d6f}, {Lo: 0x2d80, Hi: 0x2d96}, {Lo: 0x2da0, Hi: 0x2da6}, {Lo: 0x2da8, Hi: 0x2dae}, {Lo: 0x2db0, Hi: 0x2db6}, {Lo: 0x2db8, Hi: 0x2dbe}, {Lo: 0x2dc0, Hi: 0x2dc6}, {Lo: 0x2dc8, Hi: 0x2dce}, {Lo: 0x2dd0, Hi: 0x2dd6}, {Lo: 0x2dd8, Hi: 0x2dde}, {Lo: 0x2de0, Hi: 0x2dff}, {Lo: 0x2e2f, Hi: 0x2e2f}, {Lo: 0x3005, Hi: 0x3007}, {Lo: 0x3021, Hi: 0x3029}, {Lo: 0x3031, Hi: 0x3035}, {Lo: 0x3038, Hi: 0x303c}, {Lo: 0x3041, Hi: 0x3096}, {Lo: 0x309d, Hi: 0x309f}, {Lo: 0x30a1, Hi: 0x30fa}, {Lo: 0x30fc, Hi: 0x30ff}, {Lo: 0x3105, Hi: 0x312f}, {Lo: 0x3131, Hi: 0x318e}, {Lo: 0x31a0, Hi: 0x31bf}, {Lo: 0x31f0, Hi: 0x31ff}, {Lo: 0x3400, Hi: 0x4dbf}, {Lo: 0x4e00, Hi: 0xa48c}, {Lo: 0xa4d0, Hi: 0xa4fd}, {Lo: 0xa500, Hi: 0xa60c}, {Lo: 0xa610, Hi: 0xa61f}, {Lo: 0xa62a, Hi: 0xa62b}, {Lo: 0xa640, Hi: 0xa66e}, {Lo: 0xa674, Hi: 0xa67b}, {Lo: 0xa67f, Hi: 0xa6ef}, {Lo: 0xa717, Hi: 0xa71f}, {Lo: 0xa722, Hi: 0xa788}, {Lo: 0xa78b, Hi: 0xa7dc}, {Lo: 0xa7f1, Hi: 0xa805}, {Lo: 0xa807, Hi: 0xa827}, {Lo: 0xa840, Hi: 0xa873}, {Lo: 0xa880, Hi: 0xa8c3}, {Lo: 0xa8c5, Hi: 0xa8c5}, {Lo: 0xa8f2, Hi: 0xa8f7}, {Lo: 0xa8fb, Hi: 0xa8fb}, {Lo: 0xa8fd, Hi: 0xa8ff}, {Lo: 0xa90a, Hi: 0xa92a}, {Lo: 0xa930, Hi: 0xa952}, {Lo: 0xa960, Hi: 0xa97c}, {Lo: 0xa980, Hi: 0xa9b2}, {Lo: 0xa9b4, Hi: 0xa9bf}, {Lo: 0xa9cf, Hi: 0xa9cf}, {Lo: 0xa9e0, Hi: 0xa9ef}, {Lo: 0xa9fa, Hi: 0xa9fe}, {Lo: 0xaa00, Hi: 0xaa36}, {Lo: 0xaa40, Hi: 0xaa4d}, {Lo: 0xaa60, Hi: 0xaa76}, {Lo: 0xaa7a, Hi: 0xaabe}, {Lo: 0xaac0, Hi: 0xaac0}, {Lo: 0xaac2, Hi: 0xaac2}, {Lo: 0xaadb, Hi: 0xaadd}, {Lo: 0xaae0, Hi: 0xaaef}, {Lo: 0xaaf2, Hi: 0xaaf5}, {Lo: 0xab01, Hi: 0xab06}, {Lo: 0xab09, Hi: 0xab0e}, {Lo: 0xab11, Hi: 0xab16}, {Lo: 0xab20, Hi: 0xab26}, {Lo: 0xab28, Hi: 0xab2e}, {Lo: 0xab30, Hi: 0xab5a}, {Lo: 0xab5c, Hi: 0xab69}, {Lo: 0xab70, Hi: 0xabea}, {Lo: 0xac00, Hi: 0xd7a3}, {Lo: 0xd7b0, Hi: 0xd7c6}, {Lo: 0xd7cb, Hi: 0xd7fb}, {Lo: 0xf900, Hi: 0xfa6d}, {Lo: 0xfa70, Hi: 0xfad9}, {Lo: 0xfb00, Hi: 0xfb06}, {Lo: 0xfb13, Hi: 0xfb17}, {Lo: 0xfb1d, Hi: 0xfb28}, {Lo: 0xfb2a, Hi: 0xfb36}, {Lo: 0xfb38, Hi: 0xfb3c}, {Lo: 0xfb3e, Hi: 0xfb3e}, {Lo: 0xfb40, Hi: 0xfb41}, {Lo: 0xfb43, Hi: 0xfb44}, {Lo: 0xfb46, Hi: 0xfbb1}, {Lo: 0xfbd3, Hi: 0xfd3d}, {Lo: 0xfd50, Hi: 0xfd8f}, {Lo: 0xfd92, Hi: 0xfdc7}, {Lo: 0xfdf0, Hi: 0xfdfb}, {Lo: 0xfe70, Hi: 0xfe74}, {Lo: 0xfe76, Hi: 0xfefc}, {Lo: 0xff21, Hi: 0xff3a}, {Lo: 0xff41, Hi: 0xff5a}, {Lo: 0xff66, Hi: 0xffbe}, {Lo: 0xffc2, Hi: 0xffc7}, {Lo: 0xffca, Hi: 0xffcf}, {Lo: 0xffd2, Hi: 0xffd7}, {Lo: 0xffda, Hi: 0xffdc}, {Lo: 0x10000, Hi: 0x1000b}, {Lo: 0x1000d, Hi: 0x10026}, {Lo: 0x10028, Hi: 0x1003a}, {Lo: 0x1003c, Hi: 0x1003d}, {Lo: 0x1003f, Hi: 0x1004d}, {Lo: 0x10050, Hi: 0x1005d}, {Lo: 0x10080, Hi: 0x100fa}, {Lo: 0x10140, Hi: 0x10174}, {Lo: 0x10280, Hi: 0x1029c}, {Lo: 0x102a0, Hi: 0x102d0}, {Lo: 0x10300, Hi: 0x1031f}, {Lo: 0x1032d, Hi: 0x1034a}, {Lo: 0x10350, Hi: 0x1037a}, {Lo: 0x10380, Hi: 0x1039d}, {Lo: 0x103a0, Hi: 0x103c3}, {Lo: 0x103c8, Hi: 0x103cf}, {Lo: 0x103d1, Hi: 0x103d5}, {Lo: 0x10400, Hi: 0x1049d}, {Lo: 0x104b0, Hi: 0x104d3}, {Lo: 0x104d8, Hi: 0x104fb}, {Lo: 0x10500, Hi: 0x10527}, {Lo: 0x10530, Hi: 0x10563}, {Lo: 0x10570, Hi: 0x1057a}, {Lo: 0x1057c, Hi: 0x1058a}, {Lo: 0x1058c, Hi: 0x10592}, {Lo: 0x10594, Hi: 0x10595}, {Lo: 0x10597, Hi: 0x105a1}, {Lo: 0x105a3, Hi: 0x105b1}, {Lo: 0x105b3, Hi: 0x105b9}, {Lo: 0x105bb, Hi: 0x105bc}, {Lo: 0x105c0, Hi: 0x105f3}, {Lo: 0x10600, Hi: 0x10736}, {Lo: 0x10740, Hi: 0x10755}, {Lo: 0x10760, Hi: 0x10767}, {Lo: 0x10780, Hi: 0x10785}, {Lo: 0x10787, Hi: 0x107b0}, {Lo: 0x107b2, Hi: 0x107ba}, {Lo: 0x10800, Hi: 0x10805}, {Lo: 0x10808, Hi: 0x10808}, {Lo: 0x1080a, Hi: 0x10835}, {Lo: 0x10837, Hi: 0x10838}, {Lo: 0x1083c, Hi: 0x1083c}, {Lo: 0x1083f, Hi: 0x10855}, {Lo: 0x10860, Hi: 0x10876}, {Lo: 0x10880, Hi: 0x1089e}, {Lo: 0x108e0, Hi: 0x108f2}, {Lo: 0x108f4, Hi: 0x108f5}, {Lo: 0x10900, Hi: 0x10915}, {Lo: 0x10920, Hi: 0x10939}, {Lo: 0x10940, Hi: 0x10959}, {Lo: 0x10980, Hi: 0x109b7}, {Lo: 0x109be, Hi: 0x109bf}, {Lo: 0x10a00, Hi: 0x10a03}, {Lo: 0x10a05, Hi: 0x10a06}, {Lo: 0x10a0c, Hi: 0x10a13}, {Lo: 0x10a15, Hi: 0x10a17}, {Lo: 0x10a19, Hi: 0x10a35}, {Lo: 0x10a60, Hi: 0x10a7c}, {Lo: 0x10a80, Hi: 0x10a9c}, {Lo: 0x10ac0, Hi: 0x10ac7}, {Lo: 0x10ac9, Hi: 0x10ae4}, {Lo: 0x10b00, Hi: 0x10b35}, {Lo: 0x10b40, Hi: 0x10b55}, {Lo: 0x10b60, Hi: 0x10b72}, {Lo: 0x10b80, Hi: 0x10b91}, {Lo: 0x10c00, Hi: 0x10c48}, {Lo: 0x10c80, Hi: 0x10cb2}, {Lo: 0x10cc0, Hi: 0x10cf2}, {Lo: 0x10d00, Hi: 0x10d27}, {Lo: 0x10d4a, Hi: 0x10d65}, {Lo: 0x10d69, Hi: 0x10d69}, {Lo: 0x10d6f, Hi: 0x10d85}, {Lo: 0x10e80, Hi: 0x10ea9}, {Lo: 0x10eab, Hi: 0x10eac}, {Lo: 0x10eb0, Hi: 0x10eb1}, {Lo: 0x10ec2, Hi: 0x10ec7}, {Lo: 0x10efa, Hi: 0x10efc}, {Lo: 0x10f00, Hi: 0x10f1c}, {Lo: 0x10f27, Hi: 0x10f27}, {Lo: 0x10f30, Hi: 0x10f45}, {Lo: 0x10f70, Hi: 0x10f81}, {Lo: 0x10fb0, Hi: 0x10fc4}, {Lo: 0x10fe0, Hi: 0x10ff6}, {Lo: 0x11000, Hi: 0x11045}, {Lo: 0x11071, Hi: 0x11075}, {Lo: 0x11080, Hi: 0x110b8}, {Lo: 0x110c2, Hi: 0x110c2}, {Lo: 0x110d0, Hi: 0x110e8}, {Lo: 0x11100, Hi: 0x11132}, {Lo: 0x11144, Hi: 0x11147}, {Lo: 0x11150, Hi: 0x11172}, {Lo: 0x11176, Hi: 0x11176}, {Lo: 0x11180, Hi: 0x111bf}, {Lo: 0x111c1, Hi: 0x111c4}, {Lo: 0x111ce, Hi: 0x111cf}, {Lo: 0x111da, Hi: 0x111da}, {Lo: 0x111dc, Hi: 0x111dc}, {Lo: 0x11200, Hi: 0x11211}, {Lo: 0x11213, Hi: 0x11234}, {Lo: 0x11237, Hi: 0x11237}, {Lo: 0x1123e, Hi: 0x11241}, {Lo: 0x11280, Hi: 0x11286}, {Lo: 0x11288, Hi: 0x11288}, {Lo: 0x1128a, Hi: 0x1128d}, {Lo: 0x1128f, Hi: 0x1129d}, {Lo: 0x1129f, Hi: 0x112a8}, {Lo: 0x112b0, Hi: 0x112e8}, {Lo: 0x11300, Hi: 0x11303}, {Lo: 0x11305, Hi: 0x1130c}, {Lo: 0x1130f, Hi: 0x11310}, {Lo: 0x11313, Hi: 0x11328}, {Lo: 0x1132a, Hi: 0x11330}, {Lo: 0x11332, Hi: 0x11333}, {Lo: 0x11335, Hi: 0x11339}, {Lo: 0x1133d, Hi: 0x11344}, {Lo: 0x11347, Hi: 0x11348}, {Lo: 0x1134b, Hi: 0x1134c}, {Lo: 0x11350, Hi: 0x11350}, {Lo: 0x11357, Hi: 0x11357}, {Lo: 0x1135d, Hi: 0x11363}, {Lo: 0x11380, Hi: 0x11389}, {Lo: 0x1138b, Hi: 0x1138b}, {Lo: 0x1138e, Hi: 0x1138e}, {Lo: 0x11390, Hi: 0x113b5}, {Lo: 0x113b7, Hi: 0x113c0}, {Lo: 0x113c2, Hi: 0x113c2}, {Lo: 0x113c5, Hi: 0x113c5}, {Lo: 0x113c7, Hi: 0x113ca}, {Lo: 0x113cc, Hi: 0x113cd}, {Lo: 0x113d1, Hi: 0x113d1}, {Lo: 0x113d3, Hi: 0x113d3}, {Lo: 0x11400, Hi: 0x11441}, {Lo: 0x11443, Hi: 0x11445}, {Lo: 0x11447, Hi: 0x1144a}, {Lo: 0x1145f, Hi: 0x11461}, {Lo: 0x11480, Hi: 0x114c1}, {Lo: 0x114c4, Hi: 0x114c5}, {Lo: 0x114c7, Hi: 0x114c7}, {Lo: 0x11580, Hi: 0x115b5}, {Lo: 0x115b8, Hi: 0x115be}, {Lo: 0x115d8, Hi: 0x115dd}, {Lo: 0x11600, Hi: 0x1163e}, {Lo: 0x11640, Hi: 0x11640}, {Lo: 0x11644, Hi: 0x11644}, {Lo: 0x11680, Hi: 0x116b5}, {Lo: 0x116b8, Hi: 0x116b8}, {Lo: 0x11700, Hi: 0x1171a}, {Lo: 0x1171d, Hi: 0x1172a}, {Lo: 0x11740, Hi: 0x11746}, {Lo: 0x11800, Hi: 0x11838}, {Lo: 0x118a0, Hi: 0x118df}, {Lo: 0x118ff, Hi: 0x11906}, {Lo: 0x11909, Hi: 0x11909}, {Lo: 0x1190c, Hi: 0x11913}, {Lo: 0x11915, Hi: 0x11916}, {Lo: 0x11918, Hi: 0x11935}, {Lo: 0x11937, Hi: 0x11938}, {Lo: 0x1193b, Hi: 0x1193c}, {Lo: 0x1193f, Hi: 0x11942}, {Lo: 0x119a0, Hi: 0x119a7}, {Lo: 0x119aa, Hi: 0x119d7}, {Lo: 0x119da, Hi: 0x119df}, {Lo: 0x119e1, Hi: 0x119e1}, {Lo: 0x119e3, Hi: 0x119e4}, {Lo: 0x11a00, Hi: 0x11a32}, {Lo: 0x11a35, Hi: 0x11a3e}, {Lo: 0x11a50, Hi: 0x11a97}, {Lo: 0x11a9d, Hi: 0x11a9d}, {Lo: 0x11ab0, Hi: 0x11af8}, {Lo: 0x11b60, Hi: 0x11b67}, {Lo: 0x11bc0, Hi: 0x11be0}, {Lo: 0x11c00, Hi: 0x11c08}, {Lo: 0x11c0a, Hi: 0x11c36}, {Lo: 0x11c38, Hi: 0x11c3e}, {Lo: 0x11c40, Hi: 0x11c40}, {Lo: 0x11c72, Hi: 0x11c8f}, {Lo: 0x11c92, Hi: 0x11ca7}, {Lo: 0x11ca9, Hi: 0x11cb6}, {Lo: 0x11d00, Hi: 0x11d06}, {Lo: 0x11d08, Hi: 0x11d09}, {Lo: 0x11d0b, Hi: 0x11d36}, {Lo: 0x11d3a, Hi: 0x11d3a}, {Lo: 0x11d3c, Hi: 0x11d3d}, {Lo: 0x11d3f, Hi: 0x11d41}, {Lo: 0x11d43, Hi: 0x11d43}, {Lo: 0x11d46, Hi: 0x11d47}, {Lo: 0x11d60, Hi: 0x11d65}, {Lo: 0x11d67, Hi: 0x11d68}, {Lo: 0x11d6a, Hi: 0x11d8e}, {Lo: 0x11d90, Hi: 0x11d91}, {Lo: 0x11d93, Hi: 0x11d96}, {Lo: 0x11d98, Hi: 0x11d98}, {Lo: 0x11db0, Hi: 0x11ddb}, {Lo: 0x11ee0, Hi: 0x11ef6}, {Lo: 0x11f00, Hi: 0x11f10}, {Lo: 0x11f12, Hi: 0x11f3a}, {Lo: 0x11f3e, Hi: 0x11f40}, {Lo: 0x11fb0, Hi: 0x11fb0}, {Lo: 0x12000, Hi: 0x12399}, {Lo: 0x12400, Hi: 0x1246e}, {Lo: 0x12480, Hi: 0x12543}, {Lo: 0x12f90, Hi: 0x12ff0}, {Lo: 0x13000, Hi: 0x1342f}, {Lo: 0x13441, Hi: 0x13446}, {Lo: 0x13460, Hi: 0x143fa}, {Lo: 0x14400, Hi: 0x14646}, {Lo: 0x16100, Hi: 0x1612e}, {Lo: 0x16800, Hi: 0x16a38}, {Lo: 0x16a40, Hi: 0x16a5e}, {Lo: 0x16a70, Hi: 0x16abe}, {Lo: 0x16ad0, Hi: 0x16aed}, {Lo: 0x16b00, Hi: 0x16b2f}, {Lo: 0x16b40, Hi: 0x16b43}, {Lo: 0x16b63, Hi: 0x16b77}, {Lo: 0x16b7d, Hi: 0x16b8f}, {Lo: 0x16d40, Hi: 0x16d6c}, {Lo: 0x16e40, Hi: 0x16e7f}, {Lo: 0x16ea0, Hi: 0x16eb8}, {Lo: 0x16ebb, Hi: 0x16ed3}, {Lo: 0x16f00, Hi: 0x16f4a}, {Lo: 0x16f4f, Hi: 0x16f87}, {Lo: 0x16f8f, Hi: 0x16f9f}, {Lo: 0x16fe0, Hi: 0x16fe1}, {Lo: 0x16fe3, Hi: 0x16fe3}, {Lo: 0x16ff0, Hi: 0x16ff6}, {Lo: 0x17000, Hi: 0x18cd5}, {Lo: 0x18cff, Hi: 0x18d1e}, {Lo: 0x18d80, Hi: 0x18df2}, {Lo: 0x1aff0, Hi: 0x1aff3}, {Lo: 0x1aff5, Hi: 0x1affb}, {Lo: 0x1affd, Hi: 0x1affe}, {Lo: 0x1b000, Hi: 0x1b122}, {Lo: 0x1b132, Hi: 0x1b132}, {Lo: 0x1b150, Hi: 0x1b152}, {Lo: 0x1b155, Hi: 0x1b155}, {Lo: 0x1b164, Hi: 0x1b167}, {Lo: 0x1b170, Hi: 0x1b2fb}, {Lo: 0x1bc00, Hi: 0x1bc6a}, {Lo: 0x1bc70, Hi: 0x1bc7c}, {Lo: 0x1bc80, Hi: 0x1bc88}, {Lo: 0x1bc90, Hi: 0x1bc99}, {Lo: 0x1bc9e, Hi: 0x1bc9e}, {Lo: 0x1d400, Hi: 0x1d454}, {Lo: 0x1d456, Hi: 0x1d49c}, {Lo: 0x1d49e, Hi: 0x1d49f}, {Lo: 0x1d4a2, Hi: 0x1d4a2}, {Lo: 0x1d4a5, Hi: 0x1d4a6}, {Lo: 0x1d4a9, Hi: 0x1d4ac}, {Lo: 0x1d4ae, Hi: 0x1d4b9}, {Lo: 0x1d4bb, Hi: 0x1d4bb}, {Lo: 0x1d4bd, Hi: 0x1d4c3}, {Lo: 0x1d4c5, Hi: 0x1d505}, {Lo: 0x1d507, Hi: 0x1d50a}, {Lo: 0x1d50d, Hi: 0x1d514}, {Lo: 0x1d516, Hi: 0x1d51c}, {Lo: 0x1d51e, Hi: 0x1d539}, {Lo: 0x1d53b, Hi: 0x1d53e}, {Lo: 0x1d540, Hi: 0x1d544}, {Lo: 0x1d546, Hi: 0x1d546}, {Lo: 0x1d54a, Hi: 0x1d550}, {Lo: 0x1d552, Hi: 0x1d6a5}, {Lo: 0x1d6a8, Hi: 0x1d6c0}, {Lo: 0x1d6c2, Hi: 0x1d6da}, {Lo: 0x1d6dc, Hi: 0x1d6fa}, {Lo: 0x1d6fc, Hi: 0x1d714}, {Lo: 0x1d716, Hi: 0x1d734}, {Lo: 0x1d736, Hi: 0x1d74e}, {Lo: 0x1d750, Hi: 0x1d76e}, {Lo: 0x1d770, Hi: 0x1d788}, {Lo: 0x1d78a, Hi: 0x1d7a8}, {Lo: 0x1d7aa, Hi: 0x1d7c2}, {Lo: 0x1d7c4, Hi: 0x1d7cb}, {Lo: 0x1df00, Hi: 0x1df1e}, {Lo: 0x1df25, Hi: 0x1df2a}, {Lo: 0x1e000, Hi: 0x1e006}, {Lo: 0x1e008, Hi: 0x1e018}, {Lo: 0x1e01b, Hi: 0x1e021}, {Lo: 0x1e023, Hi: 0x1e024}, {Lo: 0x1e026, Hi: 0x1e02a}, {Lo: 0x1e030, Hi: 0x1e06d}, {Lo: 0x1e08f, Hi: 0x1e08f}, {Lo: 0x1e100, Hi: 0x1e12c}, {Lo: 0x1e137, Hi: 0x1e13d}, {Lo: 0x1e14e, Hi: 0x1e14e}, {Lo: 0x1e290, Hi: 0x1e2ad}, {Lo: 0x1e2c0, Hi: 0x1e2eb}, {Lo: 0x1e4d0, Hi: 0x1e4eb}, {Lo: 0x1e5d0, Hi: 0x1e5ed}, {Lo: 0x1e5f0, Hi: 0x1e5f0}, {Lo: 0x1e6c0, Hi: 0x1e6de}, {Lo: 0x1e6e0, Hi: 0x1e6f5}, {Lo: 0x1e6fe, Hi: 0x1e6ff}, {Lo: 0x1e7e0, Hi: 0x1e7e6}, {Lo: 0x1e7e8, Hi: 0x1e7eb}, {Lo: 0x1e7ed, Hi: 0x1e7ee}, {Lo: 0x1e7f0, Hi: 0x1e7fe}, {Lo: 0x1e800, Hi: 0x1e8c4}, {Lo: 0x1e900, Hi: 0x1e943}, {Lo: 0x1e947, Hi: 0x1e947}, {Lo: 0x1e94b, Hi: 0x1e94b}, {Lo: 0x1ee00, Hi: 0x1ee03}, {Lo: 0x1ee05, Hi: 0x1ee1f}, {Lo: 0x1ee21, Hi: 0x1ee22}, {Lo: 0x1ee24, Hi: 0x1ee24}, {Lo: 0x1ee27, Hi: 0x1ee27}, {Lo: 0x1ee29, Hi: 0x1ee32}, {Lo: 0x1ee34, Hi: 0x1ee37}, {Lo: 0x1ee39, Hi: 0x1ee39}, {Lo: 0x1ee3b, Hi: 0x1ee3b}, {Lo: 0x1ee42, Hi: 0x1ee42}, {Lo: 0x1ee47, Hi: 0x1ee47}, {Lo: 0x1ee49, Hi: 0x1ee49}, {Lo: 0x1ee4b, Hi: 0x1ee4b}, {Lo: 0x1ee4d, Hi: 0x1ee4f}, {Lo: 0x1ee51, Hi: 0x1ee52}, {Lo: 0x1ee54, Hi: 0x1ee54}, {Lo: 0x1ee57, Hi: 0x1ee57}, {Lo: 0x1ee59, Hi: 0x1ee59}, {Lo: 0x1ee5b, Hi: 0x1ee5b}, {Lo: 0x1ee5d, Hi: 0x1ee5d}, {Lo: 0x1ee5f, Hi: 0x1ee5f}, {Lo: 0x1ee61, Hi: 0x1ee62}, {Lo: 0x1ee64, Hi: 0x1ee64}, {Lo: 0x1ee67, Hi: 0x1ee6a}, {Lo: 0x1ee6c, Hi: 0x1ee72}, {Lo: 0x1ee74, Hi: 0x1ee77}, {Lo: 0x1ee79, Hi: 0x1ee7c}, {Lo: 0x1ee7e, Hi: 0x1ee7e}, {Lo: 0x1ee80, Hi: 0x1ee89}, {Lo: 0x1ee8b, Hi: 0x1ee9b}, {Lo: 0x1eea1, Hi: 0x1eea3}, {Lo: 0x1eea5, Hi: 0x1eea9}, {Lo: 0x1eeab, Hi: 0x1eebb}, {Lo: 0x1f130, Hi: 0x1f149}, {Lo: 0x1f150, Hi: 0x1f169}, {Lo: 0x1f170, Hi: 0x1f189}, {Lo: 0x20000, Hi: 0x2a6df}, {Lo: 0x2a700, Hi: 0x2b81d}, {Lo: 0x2b820, Hi: 0x2cead}, {Lo: 0x2ceb0, Hi: 0x2ebe0}, {Lo: 0x2ebf0, Hi: 0x2ee5d}, {Lo: 0x2f800, Hi: 0x2fa1d}, {Lo: 0x30000, Hi: 0x3134a}, {Lo: 0x31350, Hi: 0x33479}}
+
+var ranges3 = []lex.Range{{Lo: '0', Hi: '9'}, {Lo: 'A', Hi: 'Z'}, {Lo: '_', Hi: '_'}, {Lo: 'a', Hi: 'z'}, {Lo: 0xaa, Hi: 0xaa}, {Lo: 0xb5, Hi: 0xb5}, {Lo: 0xba, Hi: 0xba}, {Lo: 0xc0, Hi: 0xd6}, {Lo: 0xd8, Hi: 0xf6}, {Lo: 0xf8, Hi: 0x2c1}, {Lo: 0x2c6, Hi: 0x2d1}, {Lo: 0x2e0, Hi: 0x2e4}, {Lo: 0x2ec, Hi: 0x2ec}, {Lo: 0x2ee, Hi: 0x2ee}, {Lo: 0x345, Hi: 0x345}, {Lo: 0x363, Hi: 0x374}, {Lo: 0x376, Hi: 0x377}, {Lo: 0x37a, Hi: 0x37d}, {Lo: 0x37f, Hi: 0x37f}, {Lo: 0x386, Hi: 0x386}, {Lo: 0x388, Hi: 0x38a}, {Lo: 0x38c, Hi: 0x38c}, {Lo: 0x38e, Hi: 0x3a1}, {Lo: 0x3a3, Hi: 0x3f5}, {Lo: 0x3f7, Hi: 0x481}, {Lo: 0x48a, Hi: 0x52f}, {Lo: 0x531, Hi: 0x556}, {Lo: 0x559, Hi: 0x559}, {Lo: 0x560, Hi: 0x588}, {Lo: 0x5b0, Hi: 0x5bd}, {Lo: 0x5bf, Hi: 0x5bf}, {Lo: 0x5c1, Hi: 0x5c2}, {Lo: 0x5c4, Hi: 0x5c5}, {Lo: 0x5c7, Hi: 0x5c7}, {Lo: 0x5d0, Hi: 0x5ea}, {Lo: 0x5ef, Hi: 0x5f2}, {Lo: 0x610, Hi: 0x61a}, {Lo: 0x620, Hi: 0x657}, {Lo: 0x659, Hi: 0x65f}, {Lo: 0x66e, Hi: 0x6d3}, {Lo: 0x6d5, Hi: 0x6dc}, {Lo: 0x6e1, Hi: 0x6e8}, {Lo: 0x6ed, Hi: 0x6ef}, {Lo: 0x6fa, Hi: 0x6fc}, {Lo: 0x6ff, Hi: 0x6ff}, {Lo: 0x710, Hi: 0x73f}, {Lo: 0x74d, Hi: 0x7b1}, {Lo: 0x7ca, Hi: 0x7ea}, {Lo: 0x7f4, Hi: 0x7f5}, {Lo: 0x7fa, Hi: 0x7fa}, {Lo: 0x800, Hi: 0x817}, {Lo: 0x81a, Hi: 0x82c}, {Lo: 0x840, Hi: 0x858}, {Lo: 0x860, Hi: 0x86a}, {Lo: 0x870, Hi: 0x887}, {Lo: 0x889, Hi: 0x88f}, {Lo: 0x897, Hi: 0x897}, {Lo: 0x8a0, Hi: 0x8c9}, {Lo: 0x8d4, Hi: 0x8df}, {Lo: 0x8e3, Hi: 0x8e9}, {Lo: 0x8f0, Hi: 0x93b}, {Lo: 0x93d, Hi: 0x94c}, {Lo: 0x94e, Hi: 0x950}, {Lo: 0x955, Hi: 0x963}, {Lo: 0x971, Hi: 0x983}, {Lo: 0x985, Hi: 0x98c}, {Lo: 0x98f, Hi: 0x990}, {Lo: 0x993, Hi: 0x9a8}, {Lo: 0x9aa, Hi: 0x9b0}, {Lo: 0x9b2, Hi: 0x9b2}, {Lo: 0x9b6, Hi: 0x9b9}, {Lo: 0x9bd, Hi: 0x9c4}, {Lo: 0x9c7, Hi: 0x9c8}, {Lo: 0x9cb, Hi: 0x9cc}, {Lo: 0x9ce, Hi: 0x9ce}, {Lo: 0x9d7, Hi: 0x9d7}, {Lo: 0x9dc, Hi: 0x9dd}, {Lo: 0x9df, Hi: 0x9e3}, {Lo: 0x9f0, Hi: 0x9f1}, {Lo: 0x9fc, Hi: 0x9fc}, {Lo: 0xa01, Hi: 0xa03}, {Lo: 0xa05, Hi: 0xa0a}, {Lo: 0xa0f, Hi: 0xa10}, {Lo: 0xa13, Hi: 0xa28}, {Lo: 0xa2a, Hi: 0xa30}, {Lo: 0xa32, Hi: 0xa33}, {Lo: 0xa35, Hi: 0xa36}, {Lo: 0xa38, Hi: 0xa39}, {Lo: 0xa3e, Hi: 0xa42}, {Lo: 0xa47, Hi: 0xa48}, {Lo: 0xa4b, Hi: 0xa4c}, {Lo: 0xa51, Hi: 0xa51}, {Lo: 0xa59, Hi: 0xa5c}, {Lo: 0xa5e, Hi: 0xa5e}, {Lo: 0xa70, Hi: 0xa75}, {Lo: 0xa81, Hi: 0xa83}, {Lo: 0xa85, Hi: 0xa8d}, {Lo: 0xa8f, Hi: 0xa91}, {Lo: 0xa93, Hi: 0xaa8}, {Lo: 0xaaa, Hi: 0xab0}, {Lo: 0xab2, Hi: 0xab3}, {Lo: 0xab5, Hi: 0xab9}, {Lo: 0xabd, Hi: 0xac5}, {Lo: 0xac7, Hi: 0xac9}, {Lo: 0xacb, Hi: 0xacc}, {Lo: 0xad0, Hi: 0xad0}, {Lo: 0xae0, Hi: 0xae3}, {Lo: 0xaf9, Hi: 0xafc}, {Lo: 0xb01, Hi: 0xb03}, {Lo: 0xb05, Hi: 0xb0c}, {Lo: 0xb0f, Hi: 0xb10}, {Lo: 0xb13, Hi: 0xb28}, {Lo: 0xb2a, Hi: 0xb30}, {Lo: 0xb32, Hi: 0xb33}, {Lo: 0xb35, Hi: 0xb39}, {Lo: 0xb3d, Hi: 0xb44}, {Lo: 0xb47, Hi: 0xb48}, {Lo: 0xb4b, Hi: 0xb4c}, {Lo: 0xb56, Hi: 0xb57}, {Lo: 0xb5c, Hi: 0xb5d}, {Lo: 0xb5f, Hi: 0xb63}, {Lo: 0xb71, Hi: 0xb71}, {Lo: 0xb82, Hi: 0xb83}, {Lo: 0xb85, Hi: 0xb8a}, {Lo: 0xb8e, Hi: 0xb90}, {Lo: 0xb92, Hi: 0xb95}, {Lo: 0xb99, Hi: 0xb9a}, {Lo: 0xb9c, Hi: 0xb9c}, {Lo: 0xb9e, Hi: 0xb9f}, {Lo: 0xba3, Hi: 0xba4}, {Lo: 0xba8, Hi: 0xbaa}, {Lo: 0xbae, Hi: 0xbb9}, {Lo: 0xbbe, Hi: 0xbc2}, {Lo: 0xbc6, Hi: 0xbc8}, {Lo: 0xbca, Hi: 0xbcc}, {Lo: 0xbd0, Hi: 0xbd0}, {Lo: 0xbd7, Hi: 0xbd7}, {Lo: 0xc00, Hi: 0xc0c}, {Lo: 0xc0e, Hi: 0xc10}, {Lo: 0xc12, Hi: 0xc28}, {Lo: 0xc2a, Hi: 0xc39}, {Lo: 0xc3d, Hi: 0xc44}, {Lo: 0xc46, Hi: 0xc48}, {Lo: 0xc4a, Hi: 0xc4c}, {Lo: 0xc55, Hi: 0xc56}, {Lo: 0xc58, Hi: 0xc5a}, {Lo: 0xc5c, Hi: 0xc5d}, {Lo: 0xc60, Hi: 0xc63}, {Lo: 0xc80, Hi: 0xc83}, {Lo: 0xc85, Hi: 0xc8c}, {Lo: 0xc8e, Hi: 0xc90}, {Lo: 0xc92, Hi: 0xca8}, {Lo: 0xcaa, Hi: 0xcb3}, {Lo: 0xcb5, Hi: 0xcb9}, {Lo: 0xcbd, Hi: 0xcc4}, {Lo: 0xcc6, Hi: 0xcc8}, {Lo: 0xcca, Hi: 0xccc}, {Lo: 0xcd5, Hi: 0xcd6}, {Lo: 0xcdc, Hi: 0xcde}, {Lo: 0xce0, Hi: 0xce3}, {Lo: 0xcf1, Hi: 0xcf3}, {Lo: 0xd00, Hi: 0xd0c}, {Lo: 0xd0e, Hi: 0xd10}, {Lo: 0xd12, Hi: 0xd3a}, {Lo: 0xd3d, Hi: 0xd44}, {Lo: 0xd46, Hi: 0xd48}, {Lo: 0xd4a, Hi: 0xd4c}, {Lo: 0xd4e, Hi: 0xd4e}, {Lo: 0xd54, Hi: 0xd57}, {Lo: 0xd5f, Hi: 0xd63}, {Lo: 0xd7a, Hi: 0xd7f}, {Lo: 0xd81, Hi: 0xd83}, {Lo: 0xd85, Hi: 0xd96}, {Lo: 0xd9a, Hi: 0xdb1}, {Lo: 0xdb3, Hi: 0xdbb}, {Lo: 0xdbd, Hi: 0xdbd}, {Lo: 0xdc0, Hi: 0xdc6}, {Lo: 0xdcf, Hi: 0xdd4}, {Lo: 0xdd6, Hi: 0xdd6}, {Lo: 0xdd8, Hi: 0xddf}, {Lo: 0xdf2, Hi: 0xdf3}, {Lo: 0xe01, Hi: 0xe3a}, {Lo: 0xe40, Hi: 0xe46}, {Lo: 0xe4d, Hi: 0xe4d}, {Lo: 0xe81, Hi: 0xe82}, {Lo: 0xe84, Hi: 0xe84}, {Lo: 0xe86, Hi: 0xe8a}, {Lo: 0xe8c, Hi: 0xea3}, {Lo: 0xea5, Hi: 0xea5}, {Lo: 0xea7, Hi: 0xeb9}, {Lo: 0xebb, Hi: 0xebd}, {Lo: 0xec0, Hi: 0xec4}, {Lo: 0xec6, Hi: 0xec6}, {Lo: 0xecd, Hi: 0xecd}, {Lo: 0xedc, Hi: 0xedf}, {Lo: 0xf00, Hi: 0xf00}, {Lo: 0xf40, Hi: 0xf47}, {Lo: 0xf49, Hi: 0xf6c}, {Lo: 0xf71, Hi: 0xf83}, {Lo: 0xf88, Hi: 0xf97}, {Lo: 0xf99, Hi: 0xfbc}, {Lo: 0x1000, Hi: 0x1036}, {Lo: 0x1038, Hi: 0x1038}, {Lo: 0x103b, Hi: 0x103f}, {Lo: 0x1050, Hi: 0x108f}, {Lo: 0x109a, Hi: 0x109d}, {Lo: 0x10a0, Hi: 0x10c5}, {Lo: 0x10c7, Hi: 0x10c7}, {Lo: 0x10cd, Hi: 0x10cd}, {Lo: 0x10d0, Hi: 0x10fa}, {Lo: 0x10fc, Hi: 0x1248}, {Lo: 0x124a, Hi: 0x124d}, {Lo: 0x1250, Hi: 0x1256}, {Lo: 0x1258, Hi: 0x1258}, {Lo: 0x125a, Hi: 0x125d}, {Lo: 0x1260, Hi: 0x1288}, {Lo: 0x128a, Hi: 0x128d}, {Lo: 0x1290, Hi: 0x12b0}, {Lo: 0x12b2, Hi: 0x12b5}, {Lo: 0x12b8, Hi: 0x12be}, {Lo: 0x12c0, Hi: 0x12c0}, {Lo: 0x12c2, Hi: 0x12c5}, {Lo: 0x12c8, Hi: 0x12d6}, {Lo: 0x12d8, Hi: 0x1310}, {Lo: 0x1312, Hi: 0x1315}, {Lo: 0x1318, Hi: 0x135a}, {Lo: 0x1380, Hi: 0x138f}, {Lo: 0x13a0, Hi: 0x13f5}, {Lo: 0x13f8, Hi: 0x13fd}, {Lo: 0x1401, Hi: 0x166c}, {Lo: 0x166f, Hi: 0x167f}, {Lo: 0x1681, Hi: 0x169a}, {Lo: 0x16a0, Hi: 0x16ea}, {Lo: 0x16ee, Hi: 0x16f8}, {Lo: 0x1700, Hi: 0x1713}, {Lo: 0x171f, Hi: 0x1733}, {Lo: 0x1740, Hi: 0x1753}, {Lo: 0x1760, Hi: 0x176c}, {Lo: 0x176e, Hi: 0x1770}, {Lo: 0x1772, Hi: 0x1773}, {Lo: 0x1780, Hi: 0x17b3}, {Lo: 0x17b6, Hi: 0x17c8}, {Lo: 0x17d7, Hi: 0x17d7}, {Lo: 0x17dc, Hi: 0x17dc}, {Lo: 0x1820, Hi: 0x1878}, {Lo: 0x1880, Hi: 0x18aa}, {Lo: 0x18b0, Hi: 0x18f5}, {Lo: 0x1900, Hi: 0x191e}, {Lo: 0x1920, Hi: 0x192b}, {Lo: 0x1930, Hi: 0x1938}, {Lo: 0x1950, Hi: 0x196d}, {Lo: 0x1970, Hi: 0x1974}, {Lo: 0x1980, Hi: 0x19ab}, {Lo: 0x19b0, Hi: 0x19c9}, {Lo: 0x1a00, Hi: 0x1a1b}, {Lo: 0x1a20, Hi: 0x1a5e}, {Lo: 0x1a61, Hi: 0x1a74}, {Lo: 0x1aa7, Hi: 0x1aa7}, {Lo: 0x1abf, Hi: 0x1ac0}, {Lo: 0x1acc, Hi: 0x1ace}, {Lo: 0x1b00, Hi: 0x1b33}, {Lo: 0x1b35, Hi: 0x1b43}, {Lo: 0x1b45, Hi: 0x1b4c}, {Lo: 0x1b80, Hi: 0x1ba9}, {Lo: 0x1bac, Hi: 0x1baf}, {Lo: 0x1bba, Hi: 0x1be5}, {Lo: 0x1be7, Hi: 0x1bf1}, {Lo: 0x1c00, Hi: 0x1c36}, {Lo: 0x1c4d, Hi: 0x1c4f}, {Lo: 0x1c5a, Hi: 0x1c7d}, {Lo: 0x1c80, Hi: 0x1c8a}, {Lo: 0x1c90, Hi: 0x1cba}, {Lo: 0x1cbd, Hi: 0x1cbf}, {Lo: 0x1ce9, Hi: 0x1cec}, {Lo: 0x1cee, Hi: 0x1cf3}, {Lo: 0x1cf5, Hi: 0x1cf6}, {Lo: 0x1cfa, Hi: 0x1cfa}, {Lo: 0x1d00, Hi: 0x1dbf}, {Lo: 0x1dd3, Hi: 0x1df4}, {Lo: 0x1e00, Hi: 0x1f15}, {Lo: 0x1f18, Hi: 0x1f1d}, {Lo: 0x1f20, Hi: 0x1f45}, {Lo: 0x1f48, Hi: 0x1f4d}, {Lo: 0x1f50, Hi: 0x1f57}, {Lo: 0x1f59, Hi: 0x1f59}, {Lo: 0x1f5b, Hi: 0x1f5b}, {Lo: 0x1f5d, Hi: 0x1f5d}, {Lo: 0x1f5f, Hi: 0x1f7d}, {Lo: 0x1f80, Hi: 0x1fb4}, {Lo: 0x1fb6, Hi: 0x1fbc}, {Lo: 0x1fbe, Hi: 0x1fbe}, {Lo: 0x1fc2, Hi: 0x1fc4}, {Lo: 0x1fc6, Hi: 0x1fcc}, {Lo: 0x1fd0, Hi: 0x1fd3}, {Lo: 0x1fd6, Hi: 0x1fdb}, {Lo: 0x1fe0, Hi: 0x1fec}, {Lo: 0x1ff2, Hi: 0x1ff4}, {Lo: 0x1ff6, Hi: 0x1ffc}, {Lo: 0x2071, Hi: 0x2071}, {Lo: 0x207f, Hi: 0x207f}, {Lo: 0x2090, Hi: 0x209c}, {Lo: 0x2102, Hi: 0x2102}, {Lo: 0x2107, Hi: 0x2107}, {Lo: 0x210a, Hi: 0x2113}, {Lo: 0x2115, Hi: 0x2115}, {Lo: 0x2119, Hi: 0x211d}, {Lo: 0x2124, Hi: 0x2124}, {Lo: 0x2126, Hi: 0x2126}, {Lo: 0x2128, Hi: 0x2128}, {Lo: 0x212a, Hi: 0x212d}, {Lo: 0x212f, Hi: 0x2139}, {Lo: 0x213c, Hi: 0x213f}, {Lo: 0x2145, Hi: 0x2149}, {Lo: 0x214e, Hi: 0x214e}, {Lo: 0x2160, Hi: 0x2188}, {Lo: 0x24b6, Hi: 0x24e9}, {Lo: 0x2c00, Hi: 0x2ce4}, {Lo: 0x2ceb, Hi: 0x2cee}, {Lo: 0x2cf2, Hi: 0x2cf3}, {Lo: 0x2d00, Hi: 0x2d25}, {Lo: 0x2d27, Hi: 0x2d27}, {Lo: 0x2d2d, Hi: 0x2d2d}, {Lo: 0x2d30, Hi: 0x2d67}, {Lo: 0x2d6f, Hi: 0x2d6f}, {Lo: 0x2d80, Hi: 0x2d96}, {Lo: 0x2da0, Hi: 0x2da6}, {Lo: 0x2da8, Hi: 0x2dae}, {Lo: 0x2db0, Hi: 0x2db6}, {Lo: 0x2db8, Hi: 0x2dbe}, {Lo: 0x2dc0, Hi: 0x2dc6}, {Lo: 0x2dc8, Hi: 0x2dce}, {Lo: 0x2dd0, Hi: 0x2dd6}, {Lo: 0x2dd8, Hi: 0x2dde}, {Lo: 0x2de0, Hi: 0x2dff}, {Lo: 0x2e2f, Hi: 0x2e2f}, {Lo: 0x3005, Hi: 0x3007}, {Lo: 0x3021, Hi: 0x3029}, {Lo: 0x3031, Hi: 0x3035}, {Lo: 0x3038, Hi: 0x303c}, {Lo: 0x3041, Hi: 0x3096}, {Lo: 0x309d, Hi: 0x309f}, {Lo: 0x30a1, Hi: 0x30fa}, {Lo: 0x30fc, Hi: 0x30ff}, {Lo: 0x3105, Hi: 0x312f}, {Lo: 0x3131, Hi: 0x318e}, {Lo: 0x31a0, Hi: 0x31bf}, {Lo: 0x31f0, Hi: 0x31ff}, {Lo: 0x3400, Hi: 0x4dbf}, {Lo: 0x4e00, Hi: 0xa48c}, {Lo: 0xa4d0, Hi: 0xa4fd}, {Lo: 0xa500, Hi: 0xa60c}, {Lo: 0xa610, Hi: 0xa61f}, {Lo: 0xa62a, Hi: 0xa62b}, {Lo: 0xa640, Hi: 0xa66e}, {Lo: 0xa674, Hi: 0xa67b}, {Lo: 0xa67f, Hi: 0xa6ef}, {Lo: 0xa717, Hi: 0xa71f}, {Lo: 0xa722, Hi: 0xa788}, {Lo: 0xa78b, Hi: 0xa7dc}, {Lo: 0xa7f1, Hi: 0xa805}, {Lo: 0xa807, Hi: 0xa827}, {Lo: 0xa840, Hi: 0xa873}, {Lo: 0xa880, Hi: 0xa8c3}, {Lo: 0xa8c5, Hi: 0xa8c5}, {Lo: 0xa8f2, Hi: 0xa8f7}, {Lo: 0xa8fb, Hi: 0xa8fb}, {Lo: 0xa8fd, Hi: 0xa8ff}, {Lo: 0xa90a, Hi: 0xa92a}, {Lo: 0xa930, Hi: 0xa952}, {Lo: 0xa960, Hi: 0xa97c}, {Lo: 0xa980, Hi: 0xa9b2}, {Lo: 0xa9b4, Hi: 0xa9bf}, {Lo: 0xa9cf, Hi: 0xa9cf}, {Lo: 0xa9e0, Hi: 0xa9ef}, {Lo: 0xa9fa, Hi: 0xa9fe}, {Lo: 0xaa00, Hi: 0xaa36}, {Lo: 0xaa40, Hi: 0xaa4d}, {Lo: 0xaa60, Hi: 0xaa76}, {Lo: 0xaa7a, Hi: 0xaabe}, {Lo: 0xaac0, Hi: 0xaac0}, {Lo: 0xaac2, Hi: 0xaac2}, {Lo: 0xaadb, Hi: 0xaadd}, {Lo: 0xaae0, Hi: 0xaaef}, {Lo: 0xaaf2, Hi: 0xaaf5}, {Lo: 0xab01, Hi: 0xab06}, {Lo: 0xab09, Hi: 0xab0e}, {Lo: 0xab11, Hi: 0xab16}, {Lo: 0xab20, Hi: 0xab26}, {Lo: 0xab28, Hi: 0xab2e}, {Lo: 0xab30, Hi: 0xab5a}, {Lo: 0xab5c, Hi: 0xab69}, {Lo: 0xab70, Hi: 0xabea}, {Lo: 0xac00, Hi: 0xd7a3}, {Lo: 0xd7b0, Hi: 0xd7c6}, {Lo: 0xd7cb, Hi: 0xd7fb}, {Lo: 0xf900, Hi: 0xfa6d}, {Lo: 0xfa70, Hi: 0xfad9}, {Lo: 0xfb00, Hi: 0xfb06}, {Lo: 0xfb13, Hi: 0xfb17}, {Lo: 0xfb1d, Hi: 0xfb28}, {Lo: 0xfb2a, Hi: 0xfb36}, {Lo: 0xfb38, Hi: 0xfb3c}, {Lo: 0xfb3e, Hi: 0xfb3e}, {Lo: 0xfb40, Hi: 0xfb41}, {Lo: 0xfb43, Hi: 0xfb44}, {Lo: 0xfb46, Hi: 0xfbb1}, {Lo: 0xfbd3, Hi: 0xfd3d}, {Lo: 0xfd50, Hi: 0xfd8f}, {Lo: 0xfd92, Hi: 0xfdc7}, {Lo: 0xfdf0, Hi: 0xfdfb}, {Lo: 0xfe70, Hi: 0xfe74}, {Lo: 0xfe76, Hi: 0xfefc}, {Lo: 0xff21, Hi: 0xff3a}, {Lo: 0xff41, Hi: 0xff5a}, {Lo: 0xff66, Hi: 0xffbe}, {Lo: 0xffc2, Hi: 0xffc7}, {Lo: 0xffca, Hi: 0xffcf}, {Lo: 0xffd2, Hi: 0xffd7}, {Lo: 0xffda, Hi: 0xffdc}, {Lo: 0x10000, Hi: 0x1000b}, {Lo: 0x1000d, Hi: 0x10026}, {Lo: 0x10028, Hi: 0x1003a}, {Lo: 0x1003c, Hi: 0x1003d}, {Lo: 0x1003f, Hi: 0x1004d}, {Lo: 0x10050, Hi: 0x1005d}, {Lo: 0x10080, Hi: 0x100fa}, {Lo: 0x10140, Hi: 0x10174}, {Lo: 0x10280, Hi: 0x1029c}, {Lo: 0x102a0, Hi: 0x102d0}, {Lo: 0x10300, Hi: 0x1031f}, {Lo: 0x1032d, Hi: 0x1034a}, {Lo: 0x10350, Hi: 0x1037a}, {Lo: 0x10380, Hi: 0x1039d}, {Lo: 0x103a0, Hi: 0x103c3}, {Lo: 0x103c8, Hi: 0x103cf}, {Lo: 0x103d1, Hi: 0x103d5}, {Lo: 0x10400, Hi: 0x1049d}, {Lo: 0x104b0, Hi: 0x104d3}, {Lo: 0x104d8, Hi: 0x104fb}, {Lo: 0x10500, Hi: 0x10527}, {Lo: 0x10530, Hi: 0x10563}, {Lo: 0x10570, Hi: 0x1057a}, {Lo: 0x1057c, Hi: 0x1058a}, {Lo: 0x1058c, Hi: 0x10592}, {Lo: 0x10594, Hi: 0x10595}, {Lo: 0x10597, Hi: 0x105a1}, {Lo: 0x105a3, Hi: 0x105b1}, {Lo: 0x105b3, Hi: 0x105b9}, {Lo: 0x105bb, Hi: 0x105bc}, {Lo: 0x105c0, Hi: 0x105f3}, {Lo: 0x10600, Hi: 0x10736}, {Lo: 0x10740, Hi: 0x10755}, {Lo: 0x10760, Hi: 0x10767}, {Lo: 0x10780, Hi: 0x10785}, {Lo: 0x10787, Hi: 0x107b0}, {Lo: 0x107b2, Hi: 0x107ba}, {Lo: 0x10800, Hi: 0x10805}, {Lo: 0x10808, Hi: 0x10808}, {Lo: 0x1080a, Hi: 0x10835}, {Lo: 0x10837, Hi: 0x10838}, {Lo: 0x1083c, Hi: 0x1083c}, {Lo: 0x1083f, Hi: 0x10855}, {Lo: 0x10860, Hi: 0x10876}, {Lo: 0x10880, Hi: 0x1089e}, {Lo: 0x108e0, Hi: 0x108f2}, {Lo: 0x108f4, Hi: 0x108f5}, {Lo: 0x10900, Hi: 0x10915}, {Lo: 0x10920, Hi: 0x10939}, {Lo: 0x10940, Hi: 0x10959}, {Lo: 0x10980, Hi: 0x109b7}, {Lo: 0x109be, Hi: 0x109bf}, {Lo: 0x10a00, Hi: 0x10a03}, {Lo: 0x10a05, Hi: 0x10a06}, {Lo: 0x10a0c, Hi: 0x10a13}, {Lo: 0x10a15, Hi: 0x10a17}, {Lo: 0x10a19, Hi: 0x10a35}, {Lo: 0x10a60, Hi: 0x10a7c}, {Lo: 0x10a80, Hi: 0x10a9c}, {Lo: 0x10ac0, Hi: 0x10ac7}, {Lo: 0x10ac9, Hi: 0x10ae4}, {Lo: 0x10b00, Hi: 0x10b35}, {Lo: 0x10b40, Hi: 0x10b55}, {Lo: 0x10b60, Hi: 0x10b72}, {Lo: 0x10b80, Hi: 0x10b91}, {Lo: 0x10c00, Hi: 0x10c48}, {Lo: 0x10c80, Hi: 0x10cb2}, {Lo: 0x10cc0, Hi: 0x10cf2}, {Lo: 0x10d00, Hi: 0x10d27}, {Lo: 0x10d4a, Hi: 0x10d65}, {Lo: 0x10d69, Hi: 0x10d69}, {Lo: 0x10d6f, Hi: 0x10d85}, {Lo: 0x10e80, Hi: 0x10ea9}, {Lo: 0x10eab, Hi: 0x10eac}, {Lo: 0x10eb0, Hi: 0x10eb1}, {Lo: 0x10ec2, Hi: 0x10ec7}, {Lo: 0x10efa, Hi: 0x10efc}, {Lo: 0x10f00, Hi: 0x10f1c}, {Lo: 0x10f27, Hi: 0x10f27}, {Lo: 0x10f30, Hi: 0x10f45}, {Lo: 0x10f70, Hi: 0x10f81}, {Lo: 0x10fb0, Hi: 0x10fc4}, {Lo: 0x10fe0, Hi: 0x10ff6}, {Lo: 0x11000, Hi: 0x11045}, {Lo: 0x11071, Hi: 0x11075}, {Lo: 0x11080, Hi: 0x110b8}, {Lo: 0x110c2, Hi: 0x110c2}, {Lo: 0x110d0, Hi: 0x110e8}, {Lo: 0x11100, Hi: 0x11132}, {Lo: 0x11144, Hi: 0x11147}, {Lo: 0x11150, Hi: 0x11172}, {Lo: 0x11176, Hi: 0x11176}, {Lo: 0x11180, Hi: 0x111bf}, {Lo: 0x111c1, Hi: 0x111c4}, {Lo: 0x111ce, Hi: 0x111cf}, {Lo: 0x111da, Hi: 0x111da}, {Lo: 0x111dc, Hi: 0x111dc}, {Lo: 0x11200, Hi: 0x11211}, {Lo: 0x11213, Hi: 0x11234}, {Lo: 0x11237, Hi: 0x11237}, {Lo: 0x1123e, Hi: 0x11241}, {Lo: 0x11280, Hi: 0x11286}, {Lo: 0x11288, Hi: 0x11288}, {Lo: 0x1128a, Hi: 0x1128d}, {Lo: 0x1128f, Hi: 0x1129d}, {Lo: 0x1129f, Hi: 0x112a8}, {Lo: 0x112b0, Hi: 0x112e8}, {Lo: 0x11300, Hi: 0x11303}, {Lo: 0x11305, Hi: 0x1130c}, {Lo: 0x1130f, Hi: 0x11310}, {Lo: 0x11313, Hi: 0x11328}, {Lo: 0x1132a, Hi: 0x11330}, {Lo: 0x11332, Hi: 0x11333}, {Lo: 0x11335, Hi: 0x11339}, {Lo: 0x1133d, Hi: 0x11344}, {Lo: 0x11347, Hi: 0x11348}, {Lo: 0x1134b, Hi: 0x1134c}, {Lo: 0x11350, Hi: 0x11350}, {Lo: 0x11357, Hi: 0x11357}, {Lo: 0x1135d, Hi: 0x11363}, {Lo: 0x11380, Hi: 0x11389}, {Lo: 0x1138b, Hi: 0x1138b}, {Lo: 0x1138e, Hi: 0x1138e}, {Lo: 0x11390, Hi: 0x113b5}, {Lo: 0x113b7, Hi: 0x113c0}, {Lo: 0x113c2, Hi: 0x113c2}, {Lo: 0x113c5, Hi: 0x113c5}, {Lo: 0x113c7, Hi: 0x113ca}, {Lo: 0x113cc, Hi: 0x113cd}, {Lo: 0x113d1, Hi: 0x113d1}, {Lo: 0x113d3, Hi: 0x113d3}, {Lo: 0x11400, Hi: 0x11441}, {Lo: 0x11443, Hi: 0x11445}, {Lo: 0x11447, Hi: 0x1144a}, {Lo: 0x1145f, Hi: 0x11461}, {Lo: 0x11480, Hi: 0x114c1}, {Lo: 0x114c4, Hi: 0x114c5}, {Lo: 0x114c7, Hi: 0x114c7}, {Lo: 0x11580, Hi: 0x115b5}, {Lo: 0x115b8, Hi: 0x115be}, {Lo: 0x115d8, Hi: 0x115dd}, {Lo: 0x11600, Hi: 0x1163e}, {Lo: 0x11640, Hi: 0x11640}, {Lo: 0x11644, Hi: 0x11644}, {Lo: 0x11680, Hi: 0x116b5}, {Lo: 0x116b8, Hi: 0x116b8}, {Lo: 0x11700, Hi: 0x1171a}, {Lo: 0x1171d, Hi: 0x1172a}, {Lo: 0x11740, Hi: 0x11746}, {Lo: 0x11800, Hi: 0x11838}, {Lo: 0x118a0, Hi: 0x118df}, {Lo: 0x118ff, Hi: 0x11906}, {Lo: 0x11909, Hi: 0x11909}, {Lo: 0x1190c, Hi: 0x11913}, {Lo: 0x11915, Hi: 0x11916}, {Lo: 0x11918, Hi: 0x11935}, {Lo: 0x11937, Hi: 0x11938}, {Lo: 0x1193b, Hi: 0x1193c}, {Lo: 0x1193f, Hi: 0x11942}, {Lo: 0x119a0, Hi: 0x119a7}, {Lo: 0x119aa, Hi: 0x119d7}, {Lo: 0x119da, Hi: 0x119df}, {Lo: 0x119e1, Hi: 0x119e1}, {Lo: 0x119e3, Hi: 0x119e4}, {Lo: 0x11a00, Hi: 0x11a32}, {Lo: 0x11a35, Hi: 0x11a3e}, {Lo: 0x11a50, Hi: 0x11a97}, {Lo: 0x11a9d, Hi: 0x11a9d}, {Lo: 0x11ab0, Hi: 0x11af8}, {Lo: 0x11b60, Hi: 0x11b67}, {Lo: 0x11bc0, Hi: 0x11be0}, {Lo: 0x11c00, Hi: 0x11c08}, {Lo: 0x11c0a, Hi: 0x11c36}, {Lo: 0x11c38, Hi: 0x11c3e}, {Lo: 0x11c40, Hi: 0x11c40}, {Lo: 0x11c72, Hi: 0x11c8f}, {Lo: 0x11c92, Hi: 0x11ca7}, {Lo: 0x11ca9, Hi: 0x11cb6}, {Lo: 0x11d00, Hi: 0x11d06}, {Lo: 0x11d08, Hi: 0x11d09}, {Lo: 0x11d0b, Hi: 0x11d36}, {Lo: 0x11d3a, Hi: 0x11d3a}, {Lo: 0x11d3c, Hi: 0x11d3d}, {Lo: 0x11d3f, Hi: 0x11d41}, {Lo: 0x11d43, Hi: 0x11d43}, {Lo: 0x11d46, Hi: 0x11d47}, {Lo: 0x11d60, Hi: 0x11d65}, {Lo: 0x11d67, Hi: 0x11d68}, {Lo: 0x11d6a, Hi: 0x11d8e}, {Lo: 0x11d90, Hi: 0x11d91}, {Lo: 0x11d93, Hi: 0x11d96}, {Lo: 0x11d98, Hi: 0x11d98}, {Lo: 0x11db0, Hi: 0x11ddb}, {Lo: 0x11ee0, Hi: 0x11ef6}, {Lo: 0x11f00, Hi: 0x11f10}, {Lo: 0x11f12, Hi: 0x11f3a}, {Lo: 0x11f3e, Hi: 0x11f40}, {Lo: 0x11fb0, Hi: 0x11fb0}, {Lo: 0x12000, Hi: 0x12399}, {Lo: 0x12400, Hi: 0x1246e}, {Lo: 0x12480, Hi: 0x12543}, {Lo: 0x12f90, Hi: 0x12ff0}, {Lo: 0x13000, Hi: 0x1342f}, {Lo: 0x13441, Hi: 0x13446}, {Lo: 0x13460, Hi: 0x143fa}, {Lo: 0x14400, Hi: 0x14646}, {Lo: 0x16100, Hi: 0x1612e}, {Lo: 0x16800, Hi: 0x16a38}, {Lo: 0x16a40, Hi: 0x16a5e}, {Lo: 0x16a70, Hi: 0x16abe}, {Lo: 0x16ad0, Hi: 0x16aed}, {Lo: 0x16b00, Hi: 0x16b2f}, {Lo: 0x16b40, Hi: 0x16b43}, {Lo: 0x16b63, Hi: 0x16b77}, {Lo: 0x16b7d, Hi: 0x16b8f}, {Lo: 0x16d40, Hi: 0x16d6c}, {Lo: 0x16e40, Hi: 0x16e7f}, {Lo: 0x16ea0, Hi: 0x16eb8}, {Lo: 0x16ebb, Hi: 0x16ed3}, {Lo: 0x16f00, Hi: 0x16f4a}, {Lo: 0x16f4f, Hi: 0x16f87}, {Lo: 0x16f8f, Hi: 0x16f9f}, {Lo: 0x16fe0, Hi: 0x16fe1}, {Lo: 0x16fe3, Hi: 0x16fe3}, {Lo: 0x16ff0, Hi: 0x16ff6}, {Lo: 0x17000, Hi: 0x18cd5}, {Lo: 0x18cff, Hi: 0x18d1e}, {Lo: 0x18d80, Hi: 0x18df2}, {Lo: 0x1aff0, Hi: 0x1aff3}, {Lo: 0x1aff5, Hi: 0x1affb}, {Lo: 0x1affd, Hi: 0x1affe}, {Lo: 0x1b000, Hi: 0x1b122}, {Lo: 0x1b132, Hi: 0x1b132}, {Lo: 0x1b150, Hi: 0x1b152}, {Lo: 0x1b155, Hi: 0x1b155}, {Lo: 0x1b164, Hi: 0x1b167}, {Lo: 0x1b170, Hi: 0x1b2fb}, {Lo: 0x1bc00, Hi: 0x1bc6a}, {Lo: 0x1bc70, Hi: 0x1bc7c}, {Lo: 0x1bc80, Hi: 0x1bc88}, {Lo: 0x1bc90, Hi: 0x1bc99}, {Lo: 0x1bc9e, Hi: 0x1bc9e}, {Lo: 0x1d400, Hi: 0x1d454}, {Lo: 0x1d456, Hi: 0x1d49c}, {Lo: 0x1d49e, Hi: 0x1d49f}, {Lo: 0x1d4a2, Hi: 0x1d4a2}, {Lo: 0x1d4a5, Hi: 0x1d4a6}, {Lo: 0x1d4a9, Hi: 0x1d4ac}, {Lo: 0x1d4ae, Hi: 0x1d4b9}, {Lo: 0x1d4bb, Hi: 0x1d4bb}, {Lo: 0x1d4bd, Hi: 0x1d4c3}, {Lo: 0x1d4c5, Hi: 0x1d505}, {Lo: 0x1d507, Hi: 0x1d50a}, {Lo: 0x1d50d, Hi: 0x1d514}, {Lo: 0x1d516, Hi: 0x1d51c}, {Lo: 0x1d51e, Hi: 0x1d539}, {Lo: 0x1d53b, Hi: 0x1d53e}, {Lo: 0x1d540, Hi: 0x1d544}, {Lo: 0x1d546, Hi: 0x1d546}, {Lo: 0x1d54a, Hi: 0x1d550}, {Lo: 0x1d552, Hi: 0x1d6a5}, {Lo: 0x1d6a8, Hi: 0x1d6c0}, {Lo: 0x1d6c2, Hi: 0x1d6da}, {Lo: 0x1d6dc, Hi: 0x1d6fa}, {Lo: 0x1d6fc, Hi: 0x1d714}, {Lo: 0x1d716, Hi: 0x1d734}, {Lo: 0x1d736, Hi: 0x1d74e}, {Lo: 0x1d750, Hi: 0x1d76e}, {Lo: 0x1d770, Hi: 0x1d788}, {Lo: 0x1d78a, Hi: 0x1d7a8}, {Lo: 0x1d7aa, Hi: 0x1d7c2}, {Lo: 0x1d7c4, Hi: 0x1d7cb}, {Lo: 0x1df00, Hi: 0x1df1e}, {Lo: 0x1df25, Hi: 0x1df2a}, {Lo: 0x1e000, Hi: 0x1e006}, {Lo: 0x1e008, Hi: 0x1e018}, {Lo: 0x1e01b, Hi: 0x1e021}, {Lo: 0x1e023, Hi: 0x1e024}, {Lo: 0x1e026, Hi: 0x1e02a}, {Lo: 0x1e030, Hi: 0x1e06d}, {Lo: 0x1e08f, Hi: 0x1e08f}, {Lo: 0x1e100, Hi: 0x1e12c}, {Lo: 0x1e137, Hi: 0x1e13d}, {Lo: 0x1e14e, Hi: 0x1e14e}, {Lo: 0x1e290, Hi: 0x1e2ad}, {Lo: 0x1e2c0, Hi: 0x1e2eb}, {Lo: 0x1e4d0, Hi: 0x1e4eb}, {Lo: 0x1e5d0, Hi: 0x1e5ed}, {Lo: 0x1e5f0, Hi: 0x1e5f0}, {Lo: 0x1e6c0, Hi: 0x1e6de}, {Lo: 0x1e6e0, Hi: 0x1e6f5}, {Lo: 0x1e6fe, Hi: 0x1e6ff}, {Lo: 0x1e7e0, Hi: 0x1e7e6}, {Lo: 0x1e7e8, Hi: 0x1e7eb}, {Lo: 0x1e7ed, Hi: 0x1e7ee}, {Lo: 0x1e7f0, Hi: 0x1e7fe}, {Lo: 0x1e800, Hi: 0x1e8c4}, {Lo: 0x1e900, Hi: 0x1e943}, {Lo: 0x1e947, Hi: 0x1e947}, {Lo: 0x1e94b, Hi: 0x1e94b}, {Lo: 0x1ee00, Hi: 0x1ee03}, {Lo: 0x1ee05, Hi: 0x1ee1f}, {Lo: 0x1ee21, Hi: 0x1ee22}, {Lo: 0x1ee24, Hi: 0x1ee24}, {Lo: 0x1ee27, Hi: 0x1ee27}, {Lo: 0x1ee29, Hi: 0x1ee32}, {Lo: 0x1ee34, Hi: 0x1ee37}, {Lo: 0x1ee39, Hi: 0x1ee39}, {Lo: 0x1ee3b, Hi: 0x1ee3b}, {Lo: 0x1ee42, Hi: 0x1ee42}, {Lo: 0x1ee47, Hi: 0x1ee47}, {Lo: 0x1ee49, Hi: 0x1ee49}, {Lo: 0x1ee4b, Hi: 0x1ee4b}, {Lo: 0x1ee4d, Hi: 0x1ee4f}, {Lo: 0x1ee51, Hi: 0x1ee52}, {Lo: 0x1ee54, Hi: 0x1ee54}, {Lo: 0x1ee57, Hi: 0x1ee57}, {Lo: 0x1ee59, Hi: 0x1ee59}, {Lo: 0x1ee5b, Hi: 0x1ee5b}, {Lo: 0x1ee5d, Hi: 0x1ee5d}, {Lo: 0x1ee5f, Hi: 0x1ee5f}, {Lo: 0x1ee61, Hi: 0x1ee62}, {Lo: 0x1ee64, Hi: 0x1ee64}, {Lo: 0x1ee67, Hi: 0x1ee6a}, {Lo: 0x1ee6c, Hi: 0x1ee72}, {Lo: 0x1ee74, Hi: 0x1ee77}, {Lo: 0x1ee79, Hi: 0x1ee7c}, {Lo: 0x1ee7e, Hi: 0x1ee7e}, {Lo: 0x1ee80, Hi: 0x1ee89}, {Lo: 0x1ee8b, Hi: 0x1ee9b}, {Lo: 0x1eea1, Hi: 0x1eea3}, {Lo: 0x1eea5, Hi: 0x1eea9}, {Lo: 0x1eeab, Hi: 0x1eebb}, {Lo: 0x1f130, Hi: 0x1f149}, {Lo: 0x1f150, Hi: 0x1f169}, {Lo: 0x1f170, Hi: 0x1f189}, {Lo: 0x20000, Hi: 0x2a6df}, {Lo: 0x2a700, Hi: 0x2b81d}, {Lo: 0x2b820, Hi: 0x2cead}, {Lo: 0x2ceb0, Hi: 0x2ebe0}, {Lo: 0x2ebf0, Hi: 0x2ee5d}, {Lo: 0x2f800, Hi: 0x2fa1d}, {Lo: 0x30000, Hi: 0x3134a}, {Lo: 0x31350, Hi: 0x33479}}
+
+var ranges4 = []lex.Range{{Lo: '.', Hi: '.'}, {Lo: '0', Hi: '9'}, {Lo: 'A', Hi: 'Z'}, {Lo: '_', Hi: '_'}, {Lo: 'a', Hi: 'g'}, {Lo: 'i', Hi: 'z'}, {Lo: 0xaa, Hi: 0xaa}, {Lo: 0xb5, Hi: 0xb5}, {Lo: 0xba, Hi: 0xba}, {Lo: 0xc0, Hi: 0xd6}, {Lo: 0xd8, Hi: 0xf6}, {Lo: 0xf8, Hi: 0x2c1}, {Lo: 0x2c6, Hi: 0x2d1}, {Lo: 0x2e0, Hi: 0x2e4}, {Lo: 0x2ec, Hi: 0x2ec}, {Lo: 0x2ee, Hi: 0x2ee}, {Lo: 0x345, Hi: 0x345}, {Lo: 0x363, Hi: 0x374}, {Lo: 0x376, Hi: 0x377}, {Lo: 0x37a, Hi: 0x37d}, {Lo: 0x37f, Hi: 0x37f}, {Lo: 0x386, Hi: 0x386}, {Lo: 0x388, Hi: 0x38a}, {Lo: 0x38c, Hi: 0x38c}, {Lo: 0x38e, Hi: 0x3a1}, {Lo: 0x3a3, Hi: 0x3f5}, {Lo: 0x3f7, Hi: 0x481}, {Lo: 0x48a, Hi: 0x52f}, {Lo: 0x531, Hi: 0x556}, {Lo: 0x559, Hi: 0x559}, {Lo: 0x560, Hi: 0x588}, {Lo: 0x5b0, Hi: 0x5bd}, {Lo: 0x5bf, Hi: 0x5bf}, {Lo: 0x5c1, Hi: 0x5c2}, {Lo: 0x5c4, Hi: 0x5c5}, {Lo: 0x5c7, Hi: 0x5c7}, {Lo: 0x5d0, Hi: 0x5ea}, {Lo: 0x5ef, Hi: 0x5f2}, {Lo: 0x610, Hi: 0x61a}, {Lo: 0x620, Hi: 0x657}, {Lo: 0x659, Hi: 0x65f}, {Lo: 0x66e, Hi: 0x6d3}, {Lo: 0x6d5, Hi: 0x6dc}, {Lo: 0x6e1, Hi: 0x6e8}, {Lo: 0x6ed, Hi: 0x6ef}, {Lo: 0x6fa, Hi: 0x6fc}, {Lo: 0x6ff, Hi: 0x6ff}, {Lo: 0x710, Hi: 0x73f}, {Lo: 0x74d, Hi: 0x7b1}, {Lo: 0x7ca, Hi: 0x7ea}, {Lo: 0x7f4, Hi: 0x7f5}, {Lo: 0x7fa, Hi: 0x7fa}, {Lo: 0x800, Hi: 0x817}, {Lo: 0x81a, Hi: 0x82c}, {Lo: 0x840, Hi: 0x858}, {Lo: 0x860, Hi: 0x86a}, {Lo: 0x870, Hi: 0x887}, {Lo: 0x889, Hi: 0x88f}, {Lo: 0x897, Hi: 0x897}, {Lo: 0x8a0, Hi: 0x8c9}, {Lo: 0x8d4, Hi: 0x8df}, {Lo: 0x8e3, Hi: 0x8e9}, {Lo: 0x8f0, Hi: 0x93b}, {Lo: 0x93d, Hi: 0x94c}, {Lo: 0x94e, Hi: 0x950}, {Lo: 0x955, Hi: 0x963}, {Lo: 0x971, Hi: 0x983}, {Lo: 0x985, Hi: 0x98c}, {Lo: 0x98f, Hi: 0x990}, {Lo: 0x993, Hi: 0x9a8}, {Lo: 0x9aa, Hi: 0x9b0}, {Lo: 0x9b2, Hi: 0x9b2}, {Lo: 0x9b6, Hi: 0x9b9}, {Lo: 0x9bd, Hi: 0x9c4}, {Lo: 0x9c7, Hi: 0x9c8}, {Lo: 0x9cb, Hi: 0x9cc}, {Lo: 0x9ce, Hi: 0x9ce}, {Lo: 0x9d7, Hi: 0x9d7}, {Lo: 0x9dc, Hi: 0x9dd}, {Lo: 0x9df, Hi: 0x9e3}, {Lo: 0x9f0, Hi: 0x9f1}, {Lo: 0x9fc, Hi: 0x9fc}, {Lo: 0xa01, Hi: 0xa03}, {Lo: 0xa05, Hi: 0xa0a}, {Lo: 0xa0f, Hi: 0xa10}, {Lo: 0xa13, Hi: 0xa28}, {Lo: 0xa2a, Hi: 0xa30}, {Lo: 0xa32, Hi: 0xa33}, {Lo: 0xa35, Hi: 0xa36}, {Lo: 0xa38, Hi: 0xa39}, {Lo: 0xa3e, Hi: 0xa42}, {Lo: 0xa47, Hi: 0xa48}, {Lo: 0xa4b, Hi: 0xa4c}, {Lo: 0xa51, Hi: 0xa51}, {Lo: 0xa59, Hi: 0xa5c}, {Lo: 0xa5e, Hi: 0xa5e}, {Lo: 0xa70, Hi: 0xa75}, {Lo: 0xa81, Hi: 0xa83}, {Lo: 0xa85, Hi: 0xa8d}, {Lo: 0xa8f, Hi: 0xa91}, {Lo: 0xa93, Hi: 0xaa8}, {Lo: 0xaaa, Hi: 0xab0}, {Lo: 0xab2, Hi: 0xab3}, {Lo: 0xab5, Hi: 0xab9}, {Lo: 0xabd, Hi: 0xac5}, {Lo: 0xac7, Hi: 0xac9}, {Lo: 0xacb, Hi: 0xacc}, {Lo: 0xad0, Hi: 0xad0}, {Lo: 0xae0, Hi: 0xae3}, {Lo: 0xaf9, Hi: 0xafc}, {Lo: 0xb01, Hi: 0xb03}, {Lo: 0xb05, Hi: 0xb0c}, {Lo: 0xb0f, Hi: 0xb10}, {Lo: 0xb13, Hi: 0xb28}, {Lo: 0xb2a, Hi: 0xb30}, {Lo: 0xb32, Hi: 0xb33}, {Lo: 0xb35, Hi: 0xb39}, {Lo: 0xb3d, Hi: 0xb44}, {Lo: 0xb47, Hi: 0xb48}, {Lo: 0xb4b, Hi: 0xb4c}, {Lo: 0xb56, Hi: 0xb57}, {Lo: 0xb5c, Hi: 0xb5d}, {Lo: 0xb5f, Hi: 0xb63}, {Lo: 0xb71, Hi: 0xb71}, {Lo: 0xb82, Hi: 0xb83}, {Lo: 0xb85, Hi: 0xb8a}, {Lo: 0xb8e, Hi: 0xb90}, {Lo: 0xb92, Hi: 0xb95}, {Lo: 0xb99, Hi: 0xb9a}, {Lo: 0xb9c, Hi: 0xb9c}, {Lo: 0xb9e, Hi: 0xb9f}, {Lo: 0xba3, Hi: 0xba4}, {Lo: 0xba8, Hi: 0xbaa}, {Lo: 0xbae, Hi: 0xbb9}, {Lo: 0xbbe, Hi: 0xbc2}, {Lo: 0xbc6, Hi: 0xbc8}, {Lo: 0xbca, Hi: 0xbcc}, {Lo: 0xbd0, Hi: 0xbd0}, {Lo: 0xbd7, Hi: 0xbd7}, {Lo: 0xc00, Hi: 0xc0c}, {Lo: 0xc0e, Hi: 0xc10}, {Lo: 0xc12, Hi: 0xc28}, {Lo: 0xc2a, Hi: 0xc39}, {Lo: 0xc3d, Hi: 0xc44}, {Lo: 0xc46, Hi: 0xc48}, {Lo: 0xc4a, Hi: 0xc4c}, {Lo: 0xc55, Hi: 0xc56}, {Lo: 0xc58, Hi: 0xc5a}, {Lo: 0xc5c, Hi: 0xc5d}, {Lo: 0xc60, Hi: 0xc63}, {Lo: 0xc80, Hi: 0xc83}, {Lo: 0xc85, Hi: 0xc8c}, {Lo: 0xc8e, Hi: 0xc90}, {Lo: 0xc92, Hi: 0xca8}, {Lo: 0xcaa, Hi: 0xcb3}, {Lo: 0xcb5, Hi: 0xcb9}, {Lo: 0xcbd, Hi: 0xcc4}, {Lo: 0xcc6, Hi: 0xcc8}, {Lo: 0xcca, Hi: 0xccc}, {Lo: 0xcd5, Hi: 0xcd6}, {Lo: 0xcdc, Hi: 0xcde}, {Lo: 0xce0, Hi: 0xce3}, {Lo: 0xcf1, Hi: 0xcf3}, {Lo: 0xd00, Hi: 0xd0c}, {Lo: 0xd0e, Hi: 0xd10}, {Lo: 0xd12, Hi: 0xd3a}, {Lo: 0xd3d, Hi: 0xd44}, {Lo: 0xd46, Hi: 0xd48}, {Lo: 0xd4a, Hi: 0xd4c}, {Lo: 0xd4e, Hi: 0xd4e}, {Lo: 0xd54, Hi: 0xd57}, {Lo: 0xd5f, Hi: 0xd63}, {Lo: 0xd7a, Hi: 0xd7f}, {Lo: 0xd81, Hi: 0xd83}, {Lo: 0xd85, Hi: 0xd96}, {Lo: 0xd9a, Hi: 0xdb1}, {Lo: 0xdb3, Hi: 0xdbb}, {Lo: 0xdbd, Hi: 0xdbd}, {Lo: 0xdc0, Hi: 0xdc6}, {Lo: 0xdcf, Hi: 0xdd4}, {Lo: 0xdd6, Hi: 0xdd6}, {Lo: 0xdd8, Hi: 0xddf}, {Lo: 0xdf2, Hi: 0xdf3}, {Lo: 0xe01, Hi: 0xe3a}, {Lo: 0xe40, Hi: 0xe46}, {Lo: 0xe4d, Hi: 0xe4d}, {Lo: 0xe81, Hi: 0xe82}, {Lo: 0xe84, Hi: 0xe84}, {Lo: 0xe86, Hi: 0xe8a}, {Lo: 0xe8c, Hi: 0xea3}, {Lo: 0xea5, Hi: 0xea5}, {Lo: 0xea7, Hi: 0xeb9}, {Lo: 0xebb, Hi: 0xebd}, {Lo: 0xec0, Hi: 0xec4}, {Lo: 0xec6, Hi: 0xec6}, {Lo: 0xecd, Hi: 0xecd}, {Lo: 0xedc, Hi: 0xedf}, {Lo: 0xf00, Hi: 0xf00}, {Lo: 0xf40, Hi: 0xf47}, {Lo: 0xf49, Hi: 0xf6c}, {Lo: 0xf71, Hi: 0xf83}, {Lo: 0xf88, Hi: 0xf97}, {Lo: 0xf99, Hi: 0xfbc}, {Lo: 0x1000, Hi: 0x1036}, {Lo: 0x1038, Hi: 0x1038}, {Lo: 0x103b, Hi: 0x103f}, {Lo: 0x1050, Hi: 0x108f}, {Lo: 0x109a, Hi: 0x109d}, {Lo: 0x10a0, Hi: 0x10c5}, {Lo: 0x10c7, Hi: 0x10c7}, {Lo: 0x10cd, Hi: 0x10cd}, {Lo: 0x10d0, Hi: 0x10fa}, {Lo: 0x10fc, Hi: 0x1248}, {Lo: 0x124a, Hi: 0x124d}, {Lo: 0x1250, Hi: 0x1256}, {Lo: 0x1258, Hi: 0x1258}, {Lo: 0x125a, Hi: 0x125d}, {Lo: 0x1260, Hi: 0x1288}, {Lo: 0x128a, Hi: 0x128d}, {Lo: 0x1290, Hi: 0x12b0}, {Lo: 0x12b2, Hi: 0x12b5}, {Lo: 0x12b8, Hi: 0x12be}, {Lo: 0x12c0, Hi: 0x12c0}, {Lo: 0x12c2, Hi: 0x12c5}, {Lo: 0x12c8, Hi: 0x12d6}, {Lo: 0x12d8, Hi: 0x1310}, {Lo: 0x1312, Hi: 0x1315}, {Lo: 0x1318, Hi: 0x135a}, {Lo: 0x1380, Hi: 0x138f}, {Lo: 0x13a0, Hi: 0x13f5}, {Lo: 0x13f8, Hi: 0x13fd}, {Lo: 0x1401, Hi: 0x166c}, {Lo: 0x166f, Hi: 0x167f}, {Lo: 0x1681, Hi: 0x169a}, {Lo: 0x16a0, Hi: 0x16ea}, {Lo: 0x16ee, Hi: 0x16f8}, {Lo: 0x1700, Hi: 0x1713}, {Lo: 0x171f, Hi: 0x1733}, {Lo: 0x1740, Hi: 0x1753}, {Lo: 0x1760, Hi: 0x176c}, {Lo: 0x176e, Hi: 0x1770}, {Lo: 0x1772, Hi: 0x1773}, {Lo: 0x1780, Hi: 0x17b3}, {Lo: 0x17b6, Hi: 0x17c8}, {Lo: 0x17d7, Hi: 0x17d7}, {Lo: 0x17dc, Hi: 0x17dc}, {Lo: 0x1820, Hi: 0x1878}, {Lo: 0x1880, Hi: 0x18aa}, {Lo: 0x18b0, Hi: 0x18f5}, {Lo: 0x1900, Hi: 0x191e}, {Lo: 0x1920, Hi: 0x192b}, {Lo: 0x1930, Hi: 0x1938}, {Lo: 0x1950, Hi: 0x196d}, {Lo: 0x1970, Hi: 0x1974}, {Lo: 0x1980, Hi: 0x19ab}, {Lo: 0x19b0, Hi: 0x19c9}, {Lo: 0x1a00, Hi: 0x1a1b}, {Lo: 0x1a20, Hi: 0x1a5e}, {Lo: 0x1a61, Hi: 0x1a74}, {Lo: 0x1aa7, Hi: 0x1aa7}, {Lo: 0x1abf, Hi: 0x1ac0}, {Lo: 0x1acc, Hi: 0x1ace}, {Lo: 0x1b00, Hi: 0x1b33}, {Lo: 0x1b35, Hi: 0x1b43}, {Lo: 0x1b45, Hi: 0x1b4c}, {Lo: 0x1b80, Hi: 0x1ba9}, {Lo: 0x1bac, Hi: 0x1baf}, {Lo: 0x1bba, Hi: 0x1be5}, {Lo: 0x1be7, Hi: 0x1bf1}, {Lo: 0x1c00, Hi: 0x1c36}, {Lo: 0x1c4d, Hi: 0x1c4f}, {Lo: 0x1c5a, Hi: 0x1c7d}, {Lo: 0x1c80, Hi: 0x1c8a}, {Lo: 0x1c90, Hi: 0x1cba}, {Lo: 0x1cbd, Hi: 0x1cbf}, {Lo: 0x1ce9, Hi: 0x1cec}, {Lo: 0x1cee, Hi: 0x1cf3}, {Lo: 0x1cf5, Hi: 0x1cf6}, {Lo: 0x1cfa, Hi: 0x1cfa}, {Lo: 0x1d00, Hi: 0x1dbf}, {Lo: 0x1dd3, Hi: 0x1df4}, {Lo: 0x1e00, Hi: 0x1f15}, {Lo: 0x1f18, Hi: 0x1f1d}, {Lo: 0x1f20, Hi: 0x1f45}, {Lo: 0x1f48, Hi: 0x1f4d}, {Lo: 0x1f50, Hi: 0x1f57}, {Lo: 0x1f59, Hi: 0x1f59}, {Lo: 0x1f5b, Hi: 0x1f5b}, {Lo: 0x1f5d, Hi: 0x1f5d}, {Lo: 0x1f5f, Hi: 0x1f7d}, {Lo: 0x1f80, Hi: 0x1fb4}, {Lo: 0x1fb6, Hi: 0x1fbc}, {Lo: 0x1fbe, Hi: 0x1fbe}, {Lo: 0x1fc2, Hi: 0x1fc4}, {Lo: 0x1fc6, Hi: 0x1fcc}, {Lo: 0x1fd0, Hi: 0x1fd3}, {Lo: 0x1fd6, Hi: 0x1fdb}, {Lo: 0x1fe0, Hi: 0x1fec}, {Lo: 0x1ff2, Hi: 0x1ff4}, {Lo: 0x1ff6, Hi: 0x1ffc}, {Lo: 0x2071, Hi: 0x2071}, {Lo: 0x207f, Hi: 0x207f}, {Lo: 0x2090, Hi: 0x209c}, {Lo: 0x2102, Hi: 0x2102}, {Lo: 0x2107, Hi: 0x2107}, {Lo: 0x210a, Hi: 0x2113}, {Lo: 0x2115, Hi: 0x2115}, {Lo: 0x2119, Hi: 0x211d}, {Lo: 0x2124, Hi: 0x2124}, {Lo: 0x2126, Hi: 0x2126}, {Lo: 0x2128, Hi: 0x2128}, {Lo: 0x212a, Hi: 0x212d}, {Lo: 0x212f, Hi: 0x2139}, {Lo: 0x213c, Hi: 0x213f}, {Lo: 0x2145, Hi: 0x2149}, {Lo: 0x214e, Hi: 0x214e}, {Lo: 0x2160, Hi: 0x2188}, {Lo: 0x24b6, Hi: 0x24e9}, {Lo: 0x2c00, Hi: 0x2ce4}, {Lo: 0x2ceb, Hi: 0x2cee}, {Lo: 0x2cf2, Hi: 0x2cf3}, {Lo: 0x2d00, Hi: 0x2d25}, {Lo: 0x2d27, Hi: 0x2d27}, {Lo: 0x2d2d, Hi: 0x2d2d}, {Lo: 0x2d30, Hi: 0x2d67}, {Lo: 0x2d6f, Hi: 0x2d6f}, {Lo: 0x2d80, Hi: 0x2d96}, {Lo: 0x2da0, Hi: 0x2da6}, {Lo: 0x2da8, Hi: 0x2dae}, {Lo: 0x2db0, Hi: 0x2db6}, {Lo: 0x2db8, Hi: 0x2dbe}, {Lo: 0x2dc0, Hi: 0x2dc6}, {Lo: 0x2dc8, Hi: 0x2dce}, {Lo: 0x2dd0, Hi: 0x2dd6}, {Lo: 0x2dd8, Hi: 0x2dde}, {Lo: 0x2de0, Hi: 0x2dff}, {Lo: 0x2e2f, Hi: 0x2e2f}, {Lo: 0x3005, Hi: 0x3007}, {Lo: 0x3021, Hi: 0x3029}, {Lo: 0x3031, Hi: 0x3035}, {Lo: 0x3038, Hi: 0x303c}, {Lo: 0x3041, Hi: 0x3096}, {Lo: 0x309d, Hi: 0x309f}, {Lo: 0x30a1, Hi: 0x30fa}, {Lo: 0x30fc, Hi: 0x30ff}, {Lo: 0x3105, Hi: 0x312f}, {Lo: 0x3131, Hi: 0x318e}, {Lo: 0x31a0, Hi: 0x31bf}, {Lo: 0x31f0, Hi: 0x31ff}, {Lo: 0x3400, Hi: 0x4dbf}, {Lo: 0x4e00, Hi: 0xa48c}, {Lo: 0xa4d0, Hi: 0xa4fd}, {Lo: 0xa500, Hi: 0xa60c}, {Lo: 0xa610, Hi: 0xa61f}, {Lo: 0xa62a, Hi: 0xa62b}, {Lo: 0xa640, Hi: 0xa66e}, {Lo: 0xa674, Hi: 0xa67b}, {Lo: 0xa67f, Hi: 0xa6ef}, {Lo: 0xa717, Hi: 0xa71f}, {Lo: 0xa722, Hi: 0xa788}, {Lo: 0xa78b, Hi: 0xa7dc}, {Lo: 0xa7f1, Hi: 0xa805}, {Lo: 0xa807, Hi: 0xa827}, {Lo: 0xa840, Hi: 0xa873}, {Lo: 0xa880, Hi: 0xa8c3}, {Lo: 0xa8c5, Hi: 0xa8c5}, {Lo: 0xa8f2, Hi: 0xa8f7}, {Lo: 0xa8fb, Hi: 0xa8fb}, {Lo: 0xa8fd, Hi: 0xa8ff}, {Lo: 0xa90a, Hi: 0xa92a}, {Lo: 0xa930, Hi: 0xa952}, {Lo: 0xa960, Hi: 0xa97c}, {Lo: 0xa980, Hi: 0xa9b2}, {Lo: 0xa9b4, Hi: 0xa9bf}, {Lo: 0xa9cf, Hi: 0xa9cf}, {Lo: 0xa9e0, Hi: 0xa9ef}, {Lo: 0xa9fa, Hi: 0xa9fe}, {Lo: 0xaa00, Hi: 0xaa36}, {Lo: 0xaa40, Hi: 0xaa4d}, {Lo: 0xaa60, Hi: 0xaa76}, {Lo: 0xaa7a, Hi: 0xaabe}, {Lo: 0xaac0, Hi: 0xaac0}, {Lo: 0xaac2, Hi: 0xaac2}, {Lo: 0xaadb, Hi: 0xaadd}, {Lo: 0xaae0, Hi: 0xaaef}, {Lo: 0xaaf2, Hi: 0xaaf5}, {Lo: 0xab01, Hi: 0xab06}, {Lo: 0xab09, Hi: 0xab0e}, {Lo: 0xab11, Hi: 0xab16}, {Lo: 0xab20, Hi: 0xab26}, {Lo: 0xab28, Hi: 0xab2e}, {Lo: 0xab30, Hi: 0xab5a}, {Lo: 0xab5c, Hi: 0xab69}, {Lo: 0xab70, Hi: 0xabea}, {Lo: 0xac00, Hi: 0xd7a3}, {Lo: 0xd7b0, Hi: 0xd7c6}, {Lo: 0xd7cb, Hi: 0xd7fb}, {Lo: 0xf900, Hi: 0xfa6d}, {Lo: 0xfa70, Hi: 0xfad9}, {Lo: 0xfb00, Hi: 0xfb06}, {Lo: 0xfb13, Hi: 0xfb17}, {Lo: 0xfb1d, Hi: 0xfb28}, {Lo: 0xfb2a, Hi: 0xfb36}, {Lo: 0xfb38, Hi: 0xfb3c}, {Lo: 0xfb3e, Hi: 0xfb3e}, {Lo: 0xfb40, Hi: 0xfb41}, {Lo: 0xfb43, Hi: 0xfb44}, {Lo: 0xfb46, Hi: 0xfbb1}, {Lo: 0xfbd3, Hi: 0xfd3d}, {Lo: 0xfd50, Hi: 0xfd8f}, {Lo: 0xfd92, Hi: 0xfdc7}, {Lo: 0xfdf0, Hi: 0xfdfb}, {Lo: 0xfe70, Hi: 0xfe74}, {Lo: 0xfe76, Hi: 0xfefc}, {Lo: 0xff21, Hi: 0xff3a}, {Lo: 0xff41, Hi: 0xff5a}, {Lo: 0xff66, Hi: 0xffbe}, {Lo: 0xffc2, Hi: 0xffc7}, {Lo: 0xffca, Hi: 0xffcf}, {Lo: 0xffd2, Hi: 0xffd7}, {Lo: 0xffda, Hi: 0xffdc}, {Lo: 0x10000, Hi: 0x1000b}, {Lo: 0x1000d, Hi: 0x10026}, {Lo: 0x10028, Hi: 0x1003a}, {Lo: 0x1003c, Hi: 0x1003d}, {Lo: 0x1003f, Hi: 0x1004d}, {Lo: 0x10050, Hi: 0x1005d}, {Lo: 0x10080, Hi: 0x100fa}, {Lo: 0x10140, Hi: 0x10174}, {Lo: 0x10280, Hi: 0x1029c}, {Lo: 0x102a0, Hi: 0x102d0}, {Lo: 0x10300, Hi: 0x1031f}, {Lo: 0x1032d, Hi: 0x1034a}, {Lo: 0x10350, Hi: 0x1037a}, {Lo: 0x10380, Hi: 0x1039d}, {Lo: 0x103a0, Hi: 0x103c3}, {Lo: 0x103c8, Hi: 0x103cf}, {Lo: 0x103d1, Hi: 0x103d5}, {Lo: 0x10400, Hi: 0x1049d}, {Lo: 0x104b0, Hi: 0x104d3}, {Lo: 0x104d8, Hi: 0x104fb}, {Lo: 0x10500, Hi: 0x10527}, {Lo: 0x10530, Hi: 0x10563}, {Lo: 0x10570, Hi: 0x1057a}, {Lo: 0x1057c, Hi: 0x1058a}, {Lo: 0x1058c, Hi: 0x10592}, {Lo: 0x10594, Hi: 0x10595}, {Lo: 0x10597, Hi: 0x105a1}, {Lo: 0x105a3, Hi: 0x105b1}, {Lo: 0x105b3, Hi: 0x105b9}, {Lo: 0x105bb, Hi: 0x105bc}, {Lo: 0x105c0, Hi: 0x105f3}, {Lo: 0x10600, Hi: 0x10736}, {Lo: 0x10740, Hi: 0x10755}, {Lo: 0x10760, Hi: 0x10767}, {Lo: 0x10780, Hi: 0x10785}, {Lo: 0x10787, Hi: 0x107b0}, {Lo: 0x107b2, Hi: 0x107ba}, {Lo: 0x10800, Hi: 0x10805}, {Lo: 0x10808, Hi: 0x10808}, {Lo: 0x1080a, Hi: 0x10835}, {Lo: 0x10837, Hi: 0x10838}, {Lo: 0x1083c, Hi: 0x1083c}, {Lo: 0x1083f, Hi: 0x10855}, {Lo: 0x10860, Hi: 0x10876}, {Lo: 0x10880, Hi: 0x1089e}, {Lo: 0x108e0, Hi: 0x108f2}, {Lo: 0x108f4, Hi: 0x108f5}, {Lo: 0x10900, Hi: 0x10915}, {Lo: 0x10920, Hi: 0x10939}, {Lo: 0x10940, Hi: 0x10959}, {Lo: 0x10980, Hi: 0x109b7}, {Lo: 0x109be, Hi: 0x109bf}, {Lo: 0x10a00, Hi: 0x10a03}, {Lo: 0x10a05, Hi: 0x10a06}, {Lo: 0x10a0c, Hi: 0x10a13}, {Lo: 0x10a15, Hi: 0x10a17}, {Lo: 0x10a19, Hi: 0x10a35}, {Lo: 0x10a60, Hi: 0x10a7c}, {Lo: 0x10a80, Hi: 0x10a9c}, {Lo: 0x10ac0, Hi: 0x10ac7}, {Lo: 0x10ac9, Hi: 0x10ae4}, {Lo: 0x10b00, Hi: 0x10b35}, {Lo: 0x10b40, Hi: 0x10b55}, {Lo: 0x10b60, Hi: 0x10b72}, {Lo: 0x10b80, Hi: 0x10b91}, {Lo: 0x10c00, Hi: 0x10c48}, {Lo: 0x10c80, Hi: 0x10cb2}, {Lo: 0x10cc0, Hi: 0x10cf2}, {Lo: 0x10d00, Hi: 0x10d27}, {Lo: 0x10d4a, Hi: 0x10d65}, {Lo: 0x10d69, Hi: 0x10d69}, {Lo: 0x10d6f, Hi: 0x10d85}, {Lo: 0x10e80, Hi: 0x10ea9}, {Lo: 0x10eab, Hi: 0x10eac}, {Lo: 0x10eb0, Hi: 0x10eb1}, {Lo: 0x10ec2, Hi: 0x10ec7}, {Lo: 0x10efa, Hi: 0x10efc}, {Lo: 0x10f00, Hi: 0x10f1c}, {Lo: 0x10f27, Hi: 0x10f27}, {Lo: 0x10f30, Hi: 0x10f45}, {Lo: 0x10f70, Hi: 0x10f81}, {Lo: 0x10fb0, Hi: 0x10fc4}, {Lo: 0x10fe0, Hi: 0x10ff6}, {Lo: 0x11000, Hi: 0x11045}, {Lo: 0x11071, Hi: 0x11075}, {Lo: 0x11080, Hi: 0x110b8}, {Lo: 0x110c2, Hi: 0x110c2}, {Lo: 0x110d0, Hi: 0x110e8}, {Lo: 0x11100, Hi: 0x11132}, {Lo: 0x11144, Hi: 0x11147}, {Lo: 0x11150, Hi: 0x11172}, {Lo: 0x11176, Hi: 0x11176}, {Lo: 0x11180, Hi: 0x111bf}, {Lo: 0x111c1, Hi: 0x111c4}, {Lo: 0x111ce, Hi: 0x111cf}, {Lo: 0x111da, Hi: 0x111da}, {Lo: 0x111dc, Hi: 0x111dc}, {Lo: 0x11200, Hi: 0x11211}, {Lo: 0x11213, Hi: 0x11234}, {Lo: 0x11237, Hi: 0x11237}, {Lo: 0x1123e, Hi: 0x11241}, {Lo: 0x11280, Hi: 0x11286}, {Lo: 0x11288, Hi: 0x11288}, {Lo: 0x1128a, Hi: 0x1128d}, {Lo: 0x1128f, Hi: 0x1129d}, {Lo: 0x1129f, Hi: 0x112a8}, {Lo: 0x112b0, Hi: 0x112e8}, {Lo: 0x11300, Hi: 0x11303}, {Lo: 0x11305, Hi: 0x1130c}, {Lo: 0x1130f, Hi: 0x11310}, {Lo: 0x11313, Hi: 0x11328}, {Lo: 0x1132a, Hi: 0x11330}, {Lo: 0x11332, Hi: 0x11333}, {Lo: 0x11335, Hi: 0x11339}, {Lo: 0x1133d, Hi: 0x11344}, {Lo: 0x11347, Hi: 0x11348}, {Lo: 0x1134b, Hi: 0x1134c}, {Lo: 0x11350, Hi: 0x11350}, {Lo: 0x11357, Hi: 0x11357}, {Lo: 0x1135d, Hi: 0x11363}, {Lo: 0x11380, Hi: 0x11389}, {Lo: 0x1138b, Hi: 0x1138b}, {Lo: 0x1138e, Hi: 0x1138e}, {Lo: 0x11390, Hi: 0x113b5}, {Lo: 0x113b7, Hi: 0x113c0}, {Lo: 0x113c2, Hi: 0x113c2}, {Lo: 0x113c5, Hi: 0x113c5}, {Lo: 0x113c7, Hi: 0x113ca}, {Lo: 0x113cc, Hi: 0x113cd}, {Lo: 0x113d1, Hi: 0x113d1}, {Lo: 0x113d3, Hi: 0x113d3}, {Lo: 0x11400, Hi: 0x11441}, {Lo: 0x11443, Hi: 0x11445}, {Lo: 0x11447, Hi: 0x1144a}, {Lo: 0x1145f, Hi: 0x11461}, {Lo: 0x11480, Hi: 0x114c1}, {Lo: 0x114c4, Hi: 0x114c5}, {Lo: 0x114c7, Hi: 0x114c7}, {Lo: 0x11580, Hi: 0x115b5}, {Lo: 0x115b8, Hi: 0x115be}, {Lo: 0x115d8, Hi: 0x115dd}, {Lo: 0x11600, Hi: 0x1163e}, {Lo: 0x11640, Hi: 0x11640}, {Lo: 0x11644, Hi: 0x11644}, {Lo: 0x11680, Hi: 0x116b5}, {Lo: 0x116b8, Hi: 0x116b8}, {Lo: 0x11700, Hi: 0x1171a}, {Lo: 0x1171d, Hi: 0x1172a}, {Lo: 0x11740, Hi: 0x11746}, {Lo: 0x11800, Hi: 0x11838}, {Lo: 0x118a0, Hi: 0x118df}, {Lo: 0x118ff, Hi: 0x11906}, {Lo: 0x11909, Hi: 0x11909}, {Lo: 0x1190c, Hi: 0x11913}, {Lo: 0x11915, Hi: 0x11916}, {Lo: 0x11918, Hi: 0x11935}, {Lo: 0x11937, Hi: 0x11938}, {Lo: 0x1193b, Hi: 0x1193c}, {Lo: 0x1193f, Hi: 0x11942}, {Lo: 0x119a0, Hi: 0x119a7}, {Lo: 0x119aa, Hi: 0x119d7}, {Lo: 0x119da, Hi: 0x119df}, {Lo: 0x119e1, Hi: 0x119e1}, {Lo: 0x119e3, Hi: 0x119e4}, {Lo: 0x11a00, Hi: 0x11a32}, {Lo: 0x11a35, Hi: 0x11a3e}, {Lo: 0x11a50, Hi: 0x11a97}, {Lo: 0x11a9d, Hi: 0x11a9d}, {Lo: 0x11ab0, Hi: 0x11af8}, {Lo: 0x11b60, Hi: 0x11b67}, {Lo: 0x11bc0, Hi: 0x11be0}, {Lo: 0x11c00, Hi: 0x11c08}, {Lo: 0x11c0a, Hi: 0x11c36}, {Lo: 0x11c38, Hi: 0x11c3e}, {Lo: 0x11c40, Hi: 0x11c40}, {Lo: 0x11c72, Hi: 0x11c8f}, {Lo: 0x11c92, Hi: 0x11ca7}, {Lo: 0x11ca9, Hi: 0x11cb6}, {Lo: 0x11d00, Hi: 0x11d06}, {Lo: 0x11d08, Hi: 0x11d09}, {Lo: 0x11d0b, Hi: 0x11d36}, {Lo: 0x11d3a, Hi: 0x11d3a}, {Lo: 0x11d3c, Hi: 0x11d3d}, {Lo: 0x11d3f, Hi: 0x11d41}, {Lo: 0x11d43, Hi: 0x11d43}, {Lo: 0x11d46, Hi: 0x11d47}, {Lo: 0x11d60, Hi: 0x11d65}, {Lo: 0x11d67, Hi: 0x11d68}, {Lo: 0x11d6a, Hi: 0x11d8e}, {Lo: 0x11d90, Hi: 0x11d91}, {Lo: 0x11d93, Hi: 0x11d96}, {Lo: 0x11d98, Hi: 0x11d98}, {Lo: 0x11db0, Hi: 0x11ddb}, {Lo: 0x11ee0, Hi: 0x11ef6}, {Lo: 0x11f00, Hi: 0x11f10}, {Lo: 0x11f12, Hi: 0x11f3a}, {Lo: 0x11f3e, Hi: 0x11f40}, {Lo: 0x11fb0, Hi: 0x11fb0}, {Lo: 0x12000, Hi: 0x12399}, {Lo: 0x12400, Hi: 0x1246e}, {Lo: 0x12480, Hi: 0x12543}, {Lo: 0x12f90, Hi: 0x12ff0}, {Lo: 0x13000, Hi: 0x1342f}, {Lo: 0x13441, Hi: 0x13446}, {Lo: 0x13460, Hi: 0x143fa}, {Lo: 0x14400, Hi: 0x14646}, {Lo: 0x16100, Hi: 0x1612e}, {Lo: 0x16800, Hi: 0x16a38}, {Lo: 0x16a40, Hi: 0x16a5e}, {Lo: 0x16a70, Hi: 0x16abe}, {Lo: 0x16ad0, Hi: 0x16aed}, {Lo: 0x16b00, Hi: 0x16b2f}, {Lo: 0x16b40, Hi: 0x16b43}, {Lo: 0x16b63, Hi: 0x16b77}, {Lo: 0x16b7d, Hi: 0x16b8f}, {Lo: 0x16d40, Hi: 0x16d6c}, {Lo: 0x16e40, Hi: 0x16e7f}, {Lo: 0x16ea0, Hi: 0x16eb8}, {Lo: 0x16ebb, Hi: 0x16ed3}, {Lo: 0x16f00, Hi: 0x16f4a}, {Lo: 0x16f4f, Hi: 0x16f87}, {Lo: 0x16f8f, Hi: 0x16f9f}, {Lo: 0x16fe0, Hi: 0x16fe1}, {Lo: 0x16fe3, Hi: 0x16fe3}, {Lo: 0x16ff0, Hi: 0x16ff6}, {Lo: 0x17000, Hi: 0x18cd5}, {Lo: 0x18cff, Hi: 0x18d1e}, {Lo: 0x18d80, Hi: 0x18df2}, {Lo: 0x1aff0, Hi: 0x1aff3}, {Lo: 0x1aff5, Hi: 0x1affb}, {Lo: 0x1affd, Hi: 0x1affe}, {Lo: 0x1b000, Hi: 0x1b122}, {Lo: 0x1b132, Hi: 0x1b132}, {Lo: 0x1b150, Hi: 0x1b152}, {Lo: 0x1b155, Hi: 0x1b155}, {Lo: 0x1b164, Hi: 0x1b167}, {Lo: 0x1b170, Hi: 0x1b2fb}, {Lo: 0x1bc00, Hi: 0x1bc6a}, {Lo: 0x1bc70, Hi: 0x1bc7c}, {Lo: 0x1bc80, Hi: 0x1bc88}, {Lo: 0x1bc90, Hi: 0x1bc99}, {Lo: 0x1bc9e, Hi: 0x1bc9e}, {Lo: 0x1d400, Hi: 0x1d454}, {Lo: 0x1d456, Hi: 0x1d49c}, {Lo: 0x1d49e, Hi: 0x1d49f}, {Lo: 0x1d4a2, Hi: 0x1d4a2}, {Lo: 0x1d4a5, Hi: 0x1d4a6}, {Lo: 0x1d4a9, Hi: 0x1d4ac}, {Lo: 0x1d4ae, Hi: 0x1d4b9}, {Lo: 0x1d4bb, Hi: 0x1d4bb}, {Lo: 0x1d4bd, Hi: 0x1d4c3}, {Lo: 0x1d4c5, Hi: 0x1d505}, {Lo: 0x1d507, Hi: 0x1d50a}, {Lo: 0x1d50d, Hi: 0x1d514}, {Lo: 0x1d516, Hi: 0x1d51c}, {Lo: 0x1d51e, Hi: 0x1d539}, {Lo: 0x1d53b, Hi: 0x1d53e}, {Lo: 0x1d540, Hi: 0x1d544}, {Lo: 0x1d546, Hi: 0x1d546}, {Lo: 0x1d54a, Hi: 0x1d550}, {Lo: 0x1d552, Hi: 0x1d6a5}, {Lo: 0x1d6a8, Hi: 0x1d6c0}, {Lo: 0x1d6c2, Hi: 0x1d6da}, {Lo: 0x1d6dc, Hi: 0x1d6fa}, {Lo: 0x1d6fc, Hi: 0x1d714}, {Lo: 0x1d716, Hi: 0x1d734}, {Lo: 0x1d736, Hi: 0x1d74e}, {Lo: 0x1d750, Hi: 0x1d76e}, {Lo: 0x1d770, Hi: 0x1d788}, {Lo: 0x1d78a, Hi: 0x1d7a8}, {Lo: 0x1d7aa, Hi: 0x1d7c2}, {Lo: 0x1d7c4, Hi: 0x1d7cb}, {Lo: 0x1df00, Hi: 0x1df1e}, {Lo: 0x1df25, Hi: 0x1df2a}, {Lo: 0x1e000, Hi: 0x1e006}, {Lo: 0x1e008, Hi: 0x1e018}, {Lo: 0x1e01b, Hi: 0x1e021}, {Lo: 0x1e023, Hi: 0x1e024}, {Lo: 0x1e026, Hi: 0x1e02a}, {Lo: 0x1e030, Hi: 0x1e06d}, {Lo: 0x1e08f, Hi: 0x1e08f}, {Lo: 0x1e100, Hi: 0x1e12c}, {Lo: 0x1e137, Hi: 0x1e13d}, {Lo: 0x1e14e, Hi: 0x1e14e}, {Lo: 0x1e290, Hi: 0x1e2ad}, {Lo: 0x1e2c0, Hi: 0x1e2eb}, {Lo: 0x1e4d0, Hi: 0x1e4eb}, {Lo: 0x1e5d0, Hi: 0x1e5ed}, {Lo: 0x1e5f0, Hi: 0x1e5f0}, {Lo: 0x1e6c0, Hi: 0x1e6de}, {Lo: 0x1e6e0, Hi: 0x1e6f5}, {Lo: 0x1e6fe, Hi: 0x1e6ff}, {Lo: 0x1e7e0, Hi: 0x1e7e6}, {Lo: 0x1e7e8, Hi: 0x1e7eb}, {Lo: 0x1e7ed, Hi: 0x1e7ee}, {Lo: 0x1e7f0, Hi: 0x1e7fe}, {Lo: 0x1e800, Hi: 0x1e8c4}, {Lo: 0x1e900, Hi: 0x1e943}, {Lo: 0x1e947, Hi: 0x1e947}, {Lo: 0x1e94b, Hi: 0x1e94b}, {Lo: 0x1ee00, Hi: 0x1ee03}, {Lo: 0x1ee05, Hi: 0x1ee1f}, {Lo: 0x1ee21, Hi: 0x1ee22}, {Lo: 0x1ee24, Hi: 0x1ee24}, {Lo: 0x1ee27, Hi: 0x1ee27}, {Lo: 0x1ee29, Hi: 0x1ee32}, {Lo: 0x1ee34, Hi: 0x1ee37}, {Lo: 0x1ee39, Hi: 0x1ee39}, {Lo: 0x1ee3b, Hi: 0x1ee3b}, {Lo: 0x1ee42, Hi: 0x1ee42}, {Lo: 0x1ee47, Hi: 0x1ee47}, {Lo: 0x1ee49, Hi: 0x1ee49}, {Lo: 0x1ee4b, Hi: 0x1ee4b}, {Lo: 0x1ee4d, Hi: 0x1ee4f}, {Lo: 0x1ee51, Hi: 0x1ee52}, {Lo: 0x1ee54, Hi: 0x1ee54}, {Lo: 0x1ee57, Hi: 0x1ee57}, {Lo: 0x1ee59, Hi: 0x1ee59}, {Lo: 0x1ee5b, Hi: 0x1ee5b}, {Lo: 0x1ee5d, Hi: 0x1ee5d}, {Lo: 0x1ee5f, Hi: 0x1ee5f}, {Lo: 0x1ee61, Hi: 0x1ee62}, {Lo: 0x1ee64, Hi: 0x1ee64}, {Lo: 0x1ee67, Hi: 0x1ee6a}, {Lo: 0x1ee6c, Hi: 0x1ee72}, {Lo: 0x1ee74, Hi: 0x1ee77}, {Lo: 0x1ee79, Hi: 0x1ee7c}, {Lo: 0x1ee7e, Hi: 0x1ee7e}, {Lo: 0x1ee80, Hi: 0x1ee89}, {Lo: 0x1ee8b, Hi: 0x1ee9b}, {Lo: 0x1eea1, Hi: 0x1eea3}, {Lo: 0x1eea5, Hi: 0x1eea9}, {Lo: 0x1eeab, Hi: 0x1eebb}, {Lo: 0x1f130, Hi: 0x1f149}, {Lo: 0x1f150, Hi: 0x1f169}, {Lo: 0x1f170, Hi: 0x1f189}, {Lo: 0x20000, Hi: 0x2a6df}, {Lo: 0x2a700, Hi: 0x2b81d}, {Lo: 0x2b820, Hi: 0x2cead}, {Lo: 0x2ceb0, Hi: 0x2ebe0}, {Lo: 0x2ebf0, Hi: 0x2ee5d}, {Lo: 0x2f800, Hi: 0x2fa1d}, {Lo: 0x30000, Hi: 0x3134a}, {Lo: 0x31350, Hi: 0x33479}}
+
+var ranges5 = []lex.Range{{Lo: 0x0, Hi: 0x8}, {Lo: 0xb, Hi: 0x1f}, {Lo: '!', Hi: '!'}, {Lo: '$', Hi: '-'}, {Lo: '/', Hi: '/'}, {Lo: ';', Hi: '@'}, {Lo: '[', Hi: '^'}, {Lo: '`', Hi: '`'}, {Lo: '|', Hi: '|'}, {Lo: '~', Hi: 0xa9}, {Lo: 0xab, Hi: 0xb4}, {Lo: 0xb6, Hi: 0xb9}, {Lo: 0xbb, Hi: 0xbf}, {Lo: 0xd7, Hi: 0xd7}, {Lo: 0xf7, Hi: 0xf7}, {Lo: 0x2c2, Hi: 0x2c5}, {Lo: 0x2d2, Hi: 0x2df}, {Lo: 0x2e5, Hi: 0x2eb}, {Lo: 0x2ed, Hi: 0x2ed}, {Lo: 0x2ef, Hi: 0x344}, {Lo: 0x346, Hi: 0x362}, {Lo: 0x375, Hi: 0x375}, {Lo: 0x378, Hi: 0x379}, {Lo: 0x37e, Hi: 0x37e}, {Lo: 0x380, Hi: 0x385}, {Lo: 0x387, Hi: 0x387}, {Lo: 0x38b, Hi: 0x38b}, {Lo: 0x38d, Hi: 0x38d}, {Lo: 0x3a2, Hi: 0x3a2}, {Lo: 0x3f6, Hi: 0x3f6}, {Lo: 0x482, Hi: 0x489}, {Lo: 0x530, Hi: 0x530}, {Lo: 0x557, Hi: 0x558}, {Lo: 0x55a, Hi: 0x55f}, {Lo: 0x589, Hi: 0x5af}, {Lo: 0x5be, Hi: 0x5be}, {Lo: 0x5c0, Hi: 0x5c0}, {Lo: 0x5c3, Hi: 0x5c3}, {Lo: 0x5c6, Hi: 0x5c6}, {Lo: 0x5c8, Hi: 0x5cf}, {Lo: 0x5eb, Hi: 0x5ee}, {Lo: 0x5f3, Hi: 0x60f}, {Lo: 0x61b, Hi: 0x61f}, {Lo: 0x658, Hi: 0x658}, {Lo: 0x660, Hi: 0x66d}, {Lo: 0x6d4, Hi: 0x6d4}, {Lo: 0x6dd, Hi: 0x6e0}, {Lo: 0x6e9, Hi: 0x6ec}, {Lo: 0x6f0, Hi: 0x6f9}, {Lo: 0x6fd, Hi: 0x6fe}, {Lo: 0x700, Hi: 0x70f}, {Lo: 0x740, Hi: 0x74c}, {Lo: 0x7b2, Hi: 0x7c9}, {Lo: 0x7eb, Hi: 0x7f3}, {Lo: 0x7f6, Hi: 0x7f9}, {Lo: 0x7fb, Hi: 0x7ff}, {Lo: 0x818, Hi: 0x819}, {Lo: 0x82d, Hi: 0x83f}, {Lo: 0x859, Hi: 0x85f}, {Lo: 0x86b, Hi: 0x86f}, {Lo: 0x888, Hi: 0x888}, {Lo: 0x890, Hi: 0x896}, {Lo: 0x898, Hi: 0x89f}, {Lo: 0x8ca, Hi: 0x8d3}, {Lo: 0x8e0, Hi: 0x8e2}, {Lo: 0x8ea, Hi: 0x8ef}, {Lo: 0x93c, Hi: 0x93c}, {Lo: 0x94d, Hi: 0x94d}, {Lo: 0x951, Hi: 0x954}, {Lo: 0x964, Hi: 0x970}, {Lo: 0x984, Hi: 0x984}, {Lo: 0x98d, Hi: 0x98e}, {Lo: 0x991, Hi: 0x992}, {Lo: 0x9a9, Hi: 0x9a9}, {Lo: 0x9b1, Hi: 0x9b1}, {Lo: 0x9b3, Hi: 0x9b5}, {Lo: 0x9ba, Hi: 0x9bc}, {Lo: 0x9c5, Hi: 0x9c6}, {Lo: 0x9c9, Hi: 0x9ca}, {Lo: 0x9cd, Hi: 0x9cd}, {Lo: 0x9cf, Hi: 0x9d6}, {Lo: 0x9d8, Hi: 0x9db}, {Lo: 0x9de, Hi: 0x9de}, {Lo: 0x9e4, Hi: 0x9ef}, {Lo: 0x9f2, Hi: 0x9fb}, {Lo: 0x9fd, Hi: 0xa00}, {Lo: 0xa04, Hi: 0xa04}, {Lo: 0xa0b, Hi: 0xa0e}, {Lo: 0xa11, Hi: 0xa12}, {Lo: 0xa29, Hi: 0xa29}, {Lo: 0xa31, Hi: 0xa31}, {Lo: 0xa34, Hi: 0xa34}, {Lo: 0xa37, Hi: 0xa37}, {Lo: 0xa3a, Hi: 0xa3d}, {Lo: 0xa43, Hi: 0xa46}, {Lo: 0xa49, Hi: 0xa4a}, {Lo: 0xa4d, Hi: 0xa50}, {Lo: 0xa52, Hi: 0xa58}, {Lo: 0xa5d, Hi: 0xa5d}, {Lo: 0xa5f, Hi: 0xa6f}, {Lo: 0xa76, Hi: 0xa80}, {Lo: 0xa84, Hi: 0xa84}, {Lo: 0xa8e, Hi: 0xa8e}, {Lo: 0xa92, Hi: 0xa92}, {Lo: 0xaa9, Hi: 0xaa9}, {Lo: 0xab1, Hi: 0xab1}, {Lo: 0xab4, Hi: 0xab4}, {Lo: 0xaba, Hi: 0xabc}, {Lo: 0xac6, Hi: 0xac6}, {Lo: 0xaca, Hi: 0xaca}, {Lo: 0xacd, Hi: 0xacf}, {Lo: 0xad1, Hi: 0xadf}, {Lo: 0xae4, Hi: 0xaf8}, {Lo: 0xafd, Hi: 0xb00}, {Lo: 0xb04, Hi: 0xb04}, {Lo: 0xb0d, Hi: 0xb0e}, {Lo: 0xb11, Hi: 0xb12}, {Lo: 0xb29, Hi: 0xb29}, {Lo: 0xb31, Hi: 0xb31}, {Lo: 0xb34, Hi: 0xb34}, {Lo: 0xb3a, Hi: 0xb3c}, {Lo: 0xb45, Hi: 0xb46}, {Lo: 0xb49, Hi: 0xb4a}, {Lo: 0xb4d, Hi: 0xb55}, {Lo: 0xb58, Hi: 0xb5b}, {Lo: 0xb5e, Hi: 0xb5e}, {Lo: 0xb64, Hi: 0xb70}, {Lo: 0xb72, Hi: 0xb81}, {Lo: 0xb84, Hi: 0xb84}, {Lo: 0xb8b, Hi: 0xb8d}, {Lo: 0xb91, Hi: 0xb91}, {Lo: 0xb96, Hi: 0xb98}, {Lo: 0xb9b, Hi: 0xb9b}, {Lo: 0xb9d, Hi: 0xb9d}, {Lo: 0xba0, Hi: 0xba2}, {Lo: 0xba5, Hi: 0xba7}, {Lo: 0xbab, Hi: 0xbad}, {Lo: 0xbba, Hi: 0xbbd}, {Lo: 0xbc3, Hi: 0xbc5}, {Lo: 0xbc9, Hi: 0xbc9}, {Lo: 0xbcd, Hi: 0xbcf}, {Lo: 0xbd1, Hi: 0xbd6}, {Lo: 0xbd8, Hi: 0xbff}, {Lo: 0xc0d, Hi: 0xc0d}, {Lo: 0xc11, Hi: 0xc11}, {Lo: 0xc29, Hi: 0xc29}, {Lo: 0xc3a, Hi: 0xc3c}, {Lo: 0xc45, Hi: 0xc45}, {Lo: 0xc49, Hi: 0xc49}, {Lo: 0xc4d, Hi: 0xc54}, {Lo: 0xc57, Hi: 0xc57}, {Lo: 0xc5b, Hi: 0xc5b}, {Lo: 0xc5e, Hi: 0xc5f}, {Lo: 0xc64, Hi: 0xc7f}, {Lo: 0xc84, Hi: 0xc84}, {Lo: 0xc8d, Hi: 0xc8d}, {Lo: 0xc91, Hi: 0xc91}, {Lo: 0xca9, Hi: 0xca9}, {Lo: 0xcb4, Hi: 0xcb4}, {Lo: 0xcba, Hi: 0xcbc}, {Lo: 0xcc5, Hi: 0xcc5}, {Lo: 0xcc9, Hi: 0xcc9}, {Lo: 0xccd, Hi: 0xcd4}, {Lo: 0xcd7, Hi: 0xcdb}, {Lo: 0xcdf, Hi: 0xcdf}, {Lo: 0xce4, Hi: 0xcf0}, {Lo: 0xcf4, Hi: 0xcff}, {Lo: 0xd0d, Hi: 0xd0d}, {Lo: 0xd11, Hi: 0xd11}, {Lo: 0xd3b, Hi: 0xd3c}, {Lo: 0xd45, Hi: 0xd45}, {Lo: 0xd49, Hi: 0xd49}, {Lo: 0xd4d, Hi: 0xd4d}, {Lo: 0xd4f, Hi: 0xd53}, {Lo: 0xd58, Hi: 0xd5e}, {Lo: 0xd64, Hi: 0xd79}, {Lo: 0xd80, Hi: 0xd80}, {Lo: 0xd84, Hi: 0xd84}, {Lo: 0xd97, Hi: 0xd99}, {Lo: 0xdb2, Hi: 0xdb2}, {Lo: 0xdbc, Hi: 0xdbc}, {Lo: 0xdbe, Hi: 0xdbf}, {Lo: 0xdc7, Hi: 0xdce}, {Lo: 0xdd5, Hi: 0xdd5}, {Lo: 0xdd7, Hi: 0xdd7}, {Lo: 0xde0, Hi: 0xdf1}, {Lo: 0xdf4, Hi: 0xe00}, {Lo: 0xe3b, Hi: 0xe3f}, {Lo: 0xe47, Hi: 0xe4c}, {Lo: 0xe4e, Hi: 0xe80}, {Lo: 0xe83, Hi: 0xe83}, {Lo: 0xe85, Hi: 0xe85}, {Lo: 0xe8b, Hi: 0xe8b}, {Lo: 0xea4, Hi: 0xea4}, {Lo: 0xea6, Hi: 0xea6}, {Lo: 0xeba, Hi: 0xeba}, {Lo: 0xebe, Hi: 0xebf}, {Lo: 0xec5, Hi: 0xec5}, {Lo: 0xec7, Hi: 0xecc}, {Lo: 0xece, Hi: 0xedb}, {Lo: 0xee0, Hi: 0xeff}, {Lo: 0xf01, Hi: 0xf3f}, {Lo: 0xf48, Hi: 0xf48}, {Lo: 0xf6d, Hi: 0xf70}, {Lo: 0xf84, Hi: 0xf87}, {Lo: 0xf98, Hi: 0xf98}, {Lo: 0xfbd, Hi: 0xfff}, {Lo: 0x1037, Hi: 0x1037}, {Lo: 0x1039, Hi: 0x103a}, {Lo: 0x1040, Hi: 0x104f}, {Lo: 0x1090, Hi: 0x1099}, {Lo: 0x109e, Hi: 0x109f}, {Lo: 0x10c6, Hi: 0x10c6}, {Lo: 0x10c8, Hi: 0x10cc}, {Lo: 0x10ce, Hi: 0x10cf}, {Lo: 0x10fb, Hi: 0x10fb}, {Lo: 0x1249, Hi: 0x1249}, {Lo: 0x124e, Hi: 0x124f}, {Lo: 0x1257, Hi: 0x1257}, {Lo: 0x1259, Hi: 0x1259}, {Lo: 0x125e, Hi: 0x125f}, {Lo: 0x1289, Hi: 0x1289}, {Lo: 0x128e, Hi: 0x128f}, {Lo: 0x12b1, Hi: 0x12b1}, {Lo: 0x12b6, Hi: 0x12b7}, {Lo: 0x12bf, Hi: 0x12bf}, {Lo: 0x12c1, Hi: 0x12c1}, {Lo: 0x12c6, Hi: 0x12c7}, {Lo: 0x12d7, Hi: 0x12d7}, {Lo: 0x1311, Hi: 0x1311}, {Lo: 0x1316, Hi: 0x1317}, {Lo: 0x135b, Hi: 0x137f}, {Lo: 0x1390, Hi: 0x139f}, {Lo: 0x13f6, Hi: 0x13f7}, {Lo: 0x13fe, Hi: 0x1400}, {Lo: 0x166d, Hi: 0x166e}, {Lo: 0x1680, Hi: 0x1680}, {Lo: 0x169b, Hi: 0x169f}, {Lo: 0x16eb, Hi: 0x16ed}, {Lo: 0x16f9, Hi: 0x16ff}, {Lo: 0x1714, Hi: 0x171e}, {Lo: 0x1734, Hi: 0x173f}, {Lo: 0x1754, Hi: 0x175f}, {Lo: 0x176d, Hi: 0x176d}, {Lo: 0x1771, Hi: 0x1771}, {Lo: 0x1774, Hi: 0x177f}, {Lo: 0x17b4, Hi: 0x17b5}, {Lo: 0x17c9, Hi: 0x17d6}, {Lo: 0x17d8, Hi: 0x17db}, {Lo: 0x17dd, Hi: 0x181f}, {Lo: 0x1879, Hi: 0x187f}, {Lo: 0x18ab, Hi: 0x18af}, {Lo: 0x18f6, Hi: 0x18ff}, {Lo: 0x191f, Hi: 0x191f}, {Lo: 0x192c, Hi: 0x192f}, {Lo: 0x1939, Hi: 0x194f}, {Lo: 0x196e, Hi: 0x196f}, {Lo: 0x1975, Hi: 0x197f}, {Lo: 0x19ac, Hi: 0x19af}, {Lo: 0x19ca, Hi: 0x19ff}, {Lo: 0x1a1c, Hi: 0x1a1f}, {Lo: 0x1a5f, Hi: 0x1a60}, {Lo: 0x1a75, Hi: 0x1aa6}, {Lo: 0x1aa8, Hi: 0x1abe}, {Lo: 0x1ac1, Hi: 0x1acb}, {Lo: 0x1acf, Hi: 0x1aff}, {Lo: 0x1b34, Hi: 0x1b34}, {Lo: 0x1b44, Hi: 0x1b44}, {Lo: 0x1b4d, Hi: 0x1b7f}, {Lo: 0x1baa, Hi: 0x1bab}, {Lo: 0x1bb0, Hi: 0x1bb9}, {Lo: 0x1be6, Hi: 0x1be6}, {Lo: 0x1bf2, Hi: 0x1bff}, {Lo: 0x1c37, Hi: 0x1c4c}, {Lo: 0x1c50, Hi: 0x1c59}, {Lo: 0x1c7e, Hi: 0x1c7f}, {Lo: 0x1c8b, Hi: 0x1c8f}, {Lo: 0x1cbb, Hi: 0x1cbc}, {Lo: 0x1cc0, Hi: 0x1ce8}, {Lo: 0x1ced, Hi: 0x1ced}, {Lo: 0x1cf4, Hi: 0x1cf4}, {Lo: 0x1cf7, Hi: 0x1cf9}, {Lo: 0x1cfb, Hi: 0x1cff}, {Lo: 0x1dc0, Hi: 0x1dd2}, {Lo: 0x1df5, Hi: 0x1dff}, {Lo: 0x1f16, Hi: 0x1f17}, {Lo: 0x1f1e, Hi: 0x1f1f}, {Lo: 0x1f46, Hi: 0x1f47}, {Lo: 0x1f4e, Hi: 0x1f4f}, {Lo: 0x1f58, Hi: 0x1f58}, {Lo: 0x1f5a, Hi: 0x1f5a}, {Lo: 0x1f5c, Hi: 0x1f5c}, {Lo: 0x1f5e, Hi: 0x1f5e}, {Lo: 0x1f7e, Hi: 0x1f7f}, {Lo: 0x1fb5, Hi: 0x1fb5}, {Lo: 0x1fbd, Hi: 0x1fbd}, {Lo: 0x1fbf, Hi: 0x1fc1}, {Lo: 0x1fc5, Hi: 0x1fc5}, {Lo: 0x1fcd, Hi: 0x1fcf}, {Lo: 0x1fd4, Hi: 0x1fd5}, {Lo: 0x1fdc, Hi: 0x1fdf}, {Lo: 0x1fed, Hi: 0x1ff1}, {Lo: 0x1ff5, Hi: 0x1ff5}, {Lo: 0x1ffd, Hi: 0x2070}, {Lo: 0x2072, Hi: 0x207e}, {Lo: 0x2080, Hi: 0x208f}, {Lo: 0x209d, Hi: 0x2101}, {Lo: 0x2103, Hi: 0x2106}, {Lo: 0x2108, Hi: 0x2109}, {Lo: 0x2114, Hi: 0x2114}, {Lo: 0x2116, Hi: 0x2118}, {Lo: 0x211e, Hi: 0x2123}, {Lo: 0x2125, Hi: 0x2125}, {Lo: 0x2127, Hi: 0x2127}, {Lo: 0x2129, Hi: 0x2129}, {Lo: 0x212e, Hi: 0x212e}, {Lo: 0x213a, Hi: 0x213b}, {Lo: 0x2140, Hi: 0x2144}, {Lo: 0x214a, Hi: 0x214d}, {Lo: 0x214f, Hi: 0x215f}, {Lo: 0x2189, Hi: 0x24b5}, {Lo: 0x24ea, Hi: 0x2bff}, {Lo: 0x2ce5, Hi: 0x2cea}, {Lo: 0x2cef, Hi: 0x2cf1}, {Lo: 0x2cf4, Hi: 0x2cff}, {Lo: 0x2d26, Hi: 0x2d26}, {Lo: 0x2d28, Hi: 0x2d2c}, {Lo: 0x2d2e, Hi: 0x2d2f}, {Lo: 0x2d68, Hi: 0x2d6e}, {Lo: 0x2d70, Hi: 0x2d7f}, {Lo: 0x2d97, Hi: 0x2d9f}, {Lo: 0x2da7, Hi: 0x2da7}, {Lo: 0x2daf, Hi: 0x2daf}, {Lo: 0x2db7, Hi: 0x2db7}, {Lo: 0x2dbf, Hi: 0x2dbf}, {Lo: 0x2dc7, Hi: 0x2dc7}, {Lo: 0x2dcf, Hi: 0x2dcf}, {Lo: 0x2dd7, Hi: 0x2dd7}, {Lo: 0x2ddf, Hi: 0x2ddf}, {Lo: 0x2e00, Hi: 0x2e2e}, {Lo: 0x2e30, Hi: 0x3004}, {Lo: 0x3008, Hi: 0x3020}, {Lo: 0x302a, Hi: 0x3030}, {Lo: 0x3036, Hi: 0x3037}, {Lo: 0x303d, Hi: 0x3040}, {Lo: 0x3097, Hi: 0x309c}, {Lo: 0x30a0, Hi: 0x30a0}, {Lo: 0x30fb, Hi: 0x30fb}, {Lo: 0x3100, Hi: 0x3104}, {Lo: 0x3130, Hi: 0x3130}, {Lo: 0x318f, Hi: 0x319f}, {Lo: 0x31c0, Hi: 0x31ef}, {Lo: 0x3200, Hi: 0x33ff}, {Lo: 0x4dc0, Hi: 0x4dff}, {Lo: 0xa48d, Hi: 0xa4cf}, {Lo: 0xa4fe, Hi: 0xa4ff}, {Lo: 0xa60d, Hi: 0xa60f}, {Lo: 0xa620, Hi: 0xa629}, {Lo: 0xa62c, Hi: 0xa63f}, {Lo: 0xa66f, Hi: 0xa673}, {Lo: 0xa67c, Hi: 0xa67e}, {Lo: 0xa6f0, Hi: 0xa716}, {Lo: 0xa720, Hi: 0xa721}, {Lo: 0xa789, Hi: 0xa78a}, {Lo: 0xa7dd, Hi: 0xa7f0}, {Lo: 0xa806, Hi: 0xa806}, {Lo: 0xa828, Hi: 0xa83f}, {Lo: 0xa874, Hi: 0xa87f}, {Lo: 0xa8c4, Hi: 0xa8c4}, {Lo: 0xa8c6, Hi: 0xa8f1}, {Lo: 0xa8f8, Hi: 0xa8fa}, {Lo: 0xa8fc, Hi: 0xa8fc}, {Lo: 0xa900, Hi: 0xa909}, {Lo: 0xa92b, Hi: 0xa92f}, {Lo: 0xa953, Hi: 0xa95f}, {Lo: 0xa97d, Hi: 0xa97f}, {Lo: 0xa9b3, Hi: 0xa9b3}, {Lo: 0xa9c0, Hi: 0xa9ce}, {Lo: 0xa9d0, Hi: 0xa9df}, {Lo: 0xa9f0, Hi: 0xa9f9}, {Lo: 0xa9ff, Hi: 0xa9ff}, {Lo: 0xaa37, Hi: 0xaa3f}, {Lo: 0xaa4e, Hi: 0xaa5f}, {Lo: 0xaa77, Hi: 0xaa79}, {Lo: 0xaabf, Hi: 0xaabf}, {Lo: 0xaac1, Hi: 0xaac1}, {Lo: 0xaac3, Hi: 0xaada}, {Lo: 0xaade, Hi: 0xaadf}, {Lo: 0xaaf0, Hi: 0xaaf1}, {Lo: 0xaaf6, Hi: 0xab00}, {Lo: 0xab07, Hi: 0xab08}, {Lo: 0xab0f, Hi: 0xab10}, {Lo: 0xab17, Hi: 0xab1f}, {Lo: 0xab27, Hi: 0xab27}, {Lo: 0xab2f, Hi: 0xab2f}, {Lo: 0xab5b, Hi: 0xab5b}, {Lo: 0xab6a, Hi: 0xab6f}, {Lo: 0xabeb, Hi: 0xabff}, {Lo: 0xd7a4, Hi: 0xd7af}, {Lo: 0xd7c7, Hi: 0xd7ca}, {Lo: 0xd7fc, Hi: 0xf8ff}, {Lo: 0xfa6e, Hi: 0xfa6f}, {Lo: 0xfada, Hi: 0xfaff}, {Lo: 0xfb07, Hi: 0xfb12}, {Lo: 0xfb18, Hi: 0xfb1c}, {Lo: 0xfb29, Hi: 0xfb29}, {Lo: 0xfb37, Hi: 0xfb37}, {Lo: 0xfb3d, Hi: 0xfb3d}, {Lo: 0xfb3f, Hi: 0xfb3f}, {Lo: 0xfb42, Hi: 0xfb42}, {Lo: 0xfb45, Hi: 0xfb45}, {Lo: 0xfbb2, Hi: 0xfbd2}, {Lo: 0xfd3e, Hi: 0xfd4f}, {Lo: 0xfd90, Hi: 0xfd91}, {Lo: 0xfdc8, Hi: 0xfdef}, {Lo: 0xfdfc, Hi: 0xfe6f}, {Lo: 0xfe75, Hi: 0xfe75}, {Lo: 0xfefd, Hi: 0xff20}, {Lo: 0xff3b, Hi: 0xff40}, {Lo: 0xff5b, Hi: 0xff65}, {Lo: 0xffbf, Hi: 0xffc1}, {Lo: 0xffc8, Hi: 0xffc9}, {Lo: 0xffd0, Hi: 0xffd1}, {Lo: 0xffd8, Hi: 0xffd9}, {Lo: 0xffdd, Hi: 0xffff}, {Lo: 0x1000c, Hi: 0x1000c}, {Lo: 0x10027, Hi: 0x10027}, {Lo: 0x1003b, Hi: 0x1003b}, {Lo: 0x1003e, Hi: 0x1003e}, {Lo: 0x1004e, Hi: 0x1004f}, {Lo: 0x1005e, Hi: 0x1007f}, {Lo: 0x100fb, Hi: 0x1013f}, {Lo: 0x10175, Hi: 0x1027f}, {Lo: 0x1029d, Hi: 0x1029f}, {Lo: 0x102d1, Hi: 0x102ff}, {Lo: 0x10320, Hi: 0x1032c}, {Lo: 0x1034b, Hi: 0x1034f}, {Lo: 0x1037b, Hi: 0x1037f}, {Lo: 0x1039e, Hi: 0x1039f}, {Lo: 0x103c4, Hi: 0x103c7}, {Lo: 0x103d0, Hi: 0x103d0}, {Lo: 0x103d6, Hi: 0x103ff}, {Lo: 0x1049e, Hi: 0x104af}, {Lo: 0x104d4, Hi: 0x104d7}, {Lo: 0x104fc, Hi: 0x104ff}, {Lo: 0x10528, Hi: 0x1052f}, {Lo: 0x10564, Hi: 0x1056f}, {Lo: 0x1057b, Hi: 0x1057b}, {Lo: 0x1058b, Hi: 0x1058b}, {Lo: 0x10593, Hi: 0x10593}, {Lo: 0x10596, Hi: 0x10596}, {Lo: 0x105a2, Hi: 0x105a2}, {Lo: 0x105b2, Hi: 0x105b2}, {Lo: 0x105ba, Hi: 0x105ba}, {Lo: 0x105bd, Hi: 0x105bf}, {Lo: 0x105f4, Hi: 0x105ff}, {Lo: 0x10737, Hi: 0x1073f}, {Lo: 0x10756, Hi: 0x1075f}, {Lo: 0x10768, Hi: 0x1077f}, {Lo: 0x10786, Hi: 0x10786}, {Lo: 0x107b1, Hi: 0x107b1}, {Lo: 0x107bb, Hi: 0x107ff}, {Lo: 0x10806, Hi: 0x10807}, {Lo: 0x10809, Hi: 0x10809}, {Lo: 0x10836, Hi: 0x10836}, {Lo: 0x10839, Hi: 0x1083b}, {Lo: 0x1083d, Hi: 0x1083e}, {Lo: 0x10856, Hi: 0x1085f}, {Lo: 0x10877, Hi: 0x1087f}, {Lo: 0x1089f, Hi: 0x108df}, {Lo: 0x108f3, Hi: 0x108f3}, {Lo: 0x108f6, Hi: 0x108ff}, {Lo: 0x10916, Hi: 0x1091f}, {Lo: 0x1093a, Hi: 0x1093f}, {Lo: 0x1095a, Hi: 0x1097f}, {Lo: 0x109b8, Hi: 0x109bd}, {Lo: 0x109c0, Hi: 0x109ff}, {Lo: 0x10a04, Hi: 0x10a04}, {Lo: 0x10a07, Hi: 0x10a0b}, {Lo: 0x10a14, Hi: 0x10a14}, {Lo: 0x10a18, Hi: 0x10a18}, {Lo: 0x10a36, Hi: 0x10a5f}, {Lo: 0x10a7d, Hi: 0x10a7f}, {Lo: 0x10a9d, Hi: 0x10abf}, {Lo: 0x10ac8, Hi: 0x10ac8}, {Lo: 0x10ae5, Hi: 0x10aff}, {Lo: 0x10b36, Hi: 0x10b3f}, {Lo: 0x10b56, Hi: 0x10b5f}, {Lo: 0x10b73, Hi: 0x10b7f}, {Lo: 0x10b92, Hi: 0x10bff}, {Lo: 0x10c49, Hi: 0x10c7f}, {Lo: 0x10cb3, Hi: 0x10cbf}, {Lo: 0x10cf3, Hi: 0x10cff}, {Lo: 0x10d28, Hi: 0x10d49}, {Lo: 0x10d66, Hi: 0x10d68}, {Lo: 0x10d6a, Hi: 0x10d6e}, {Lo: 0x10d86, Hi: 0x10e7f}, {Lo: 0x10eaa, Hi: 0x10eaa}, {Lo: 0x10ead, Hi: 0x10eaf}, {Lo: 0x10eb2, Hi: 0x10ec1}, {Lo: 0x10ec8, Hi: 0x10ef9}, {Lo: 0x10efd, Hi: 0x10eff}, {Lo: 0x10f1d, Hi: 0x10f26}, {Lo: 0x10f28, Hi: 0x10f2f}, {Lo: 0x10f46, Hi: 0x10f6f}, {Lo: 0x10f82, Hi: 0x10faf}, {Lo: 0x10fc5, Hi: 0x10fdf}, {Lo: 0x10ff7, Hi: 0x10fff}, {Lo: 0x11046, Hi: 0x11070}, {Lo: 0x11076, Hi: 0x1107f}, {Lo: 0x110b9, Hi: 0x110c1}, {Lo: 0x110c3, Hi: 0x110cf}, {Lo: 0x110e9, Hi: 0x110ff}, {Lo: 0x11133, Hi: 0x11143}, {Lo: 0x11148, Hi: 0x1114f}, {Lo: 0x11173, Hi: 0x11175}, {Lo: 0x11177, Hi: 0x1117f}, {Lo: 0x111c0, Hi: 0x111c0}, {Lo: 0x111c5, Hi: 0x111cd}, {Lo: 0x111d0, Hi: 0x111d9}, {Lo: 0x111db, Hi: 0x111db}, {Lo: 0x111dd, Hi: 0x111ff}, {Lo: 0x11212, Hi: 0x11212}, {Lo: 0x11235, Hi: 0x11236}, {Lo: 0x11238, Hi: 0x1123d}, {Lo: 0x11242, Hi: 0x1127f}, {Lo: 0x11287, Hi: 0x11287}, {Lo: 0x11289, Hi: 0x11289}, {Lo: 0x1128e, Hi: 0x1128e}, {Lo: 0x1129e, Hi: 0x1129e}, {Lo: 0x112a9, Hi: 0x112af}, {Lo: 0x112e9, Hi: 0x112ff}, {Lo: 0x11304, Hi: 0x11304}, {Lo: 0x1130d, Hi: 0x1130e}, {Lo: 0x11311, Hi: 0x11312}, {Lo: 0x11329, Hi: 0x11329}, {Lo: 0x11331, Hi: 0x11331}, {Lo: 0x11334, Hi: 0x11334}, {Lo: 0x1133a, Hi: 0x1133c}, {Lo: 0x11345, Hi: 0x11346}, {Lo: 0x11349, Hi: 0x1134a}, {Lo: 0x1134d, Hi: 0x1134f}, {Lo: 0x11351, Hi: 0x11356}, {Lo: 0x11358, Hi: 0x1135c}, {Lo: 0x11364, Hi: 0x1137f}, {Lo: 0x1138a, Hi: 0x1138a}, {Lo: 0x1138c, Hi: 0x1138d}, {Lo: 0x1138f, Hi: 0x1138f}, {Lo: 0x113b6, Hi: 0x113b6}, {Lo: 0x113c1, Hi: 0x113c1}, {Lo: 0x113c3, Hi: 0x113c4}, {Lo: 0x113c6, Hi: 0x113c6}, {Lo: 0x113cb, Hi: 0x113cb}, {Lo: 0x113ce, Hi: 0x113d0}, {Lo: 0x113d2, Hi: 0x113d2}, {Lo: 0x113d4, Hi: 0x113ff}, {Lo: 0x11442, Hi: 0x11442}, {Lo: 0x11446, Hi: 0x11446}, {Lo: 0x1144b, Hi: 0x1145e}, {Lo: 0x11462, Hi: 0x1147f}, {Lo: 0x114c2, Hi: 0x114c3}, {Lo: 0x114c6, Hi: 0x114c6}, {Lo: 0x114c8, Hi: 0x1157f}, {Lo: 0x115b6, Hi: 0x115b7}, {Lo: 0x115bf, Hi: 0x115d7}, {Lo: 0x115de, Hi: 0x115ff}, {Lo: 0x1163f, Hi: 0x1163f}, {Lo: 0x11641, Hi: 0x11643}, {Lo: 0x11645, Hi: 0x1167f}, {Lo: 0x116b6, Hi: 0x116b7}, {Lo: 0x116b9, Hi: 0x116ff}, {Lo: 0x1171b, Hi: 0x1171c}, {Lo: 0x1172b, Hi: 0x1173f}, {Lo: 0x11747, Hi: 0x117ff}, {Lo: 0x11839, Hi: 0x1189f}, {Lo: 0x118e0, Hi: 0x118fe}, {Lo: 0x11907, Hi: 0x11908}, {Lo: 0x1190a, Hi: 0x1190b}, {Lo: 0x11914, Hi: 0x11914}, {Lo: 0x11917, Hi: 0x11917}, {Lo: 0x11936, Hi: 0x11936}, {Lo: 0x11939, Hi: 0x1193a}, {Lo: 0x1193d, Hi: 0x1193e}, {Lo: 0x11943, Hi: 0x1199f}, {Lo: 0x119a8, Hi: 0x119a9}, {Lo: 0x119d8, Hi: 0x119d9}, {Lo: 0x119e0, Hi: 0x119e0}, {Lo: 0x119e2, Hi: 0x119e2}, {Lo: 0x119e5, Hi: 0x119ff}, {Lo: 0x11a33, Hi: 0x11a34}, {Lo: 0x11a3f, Hi: 0x11a4f}, {Lo: 0x11a98, Hi: 0x11a9c}, {Lo: 0x11a9e, Hi: 0x11aaf}, {Lo: 0x11af9, Hi: 0x11b5f}, {Lo: 0x11b68, Hi: 0x11bbf}, {Lo: 0x11be1, Hi: 0x11bff}, {Lo: 0x11c09, Hi: 0x11c09}, {Lo: 0x11c37, Hi: 0x11c37}, {Lo: 0x11c3f, Hi: 0x11c3f}, {Lo: 0x11c41, Hi: 0x11c71}, {Lo: 0x11c90, Hi: 0x11c91}, {Lo: 0x11ca8, Hi: 0x11ca8}, {Lo: 0x11cb7, Hi: 0x11cff}, {Lo: 0x11d07, Hi: 0x11d07}, {Lo: 0x11d0a, Hi: 0x11d0a}, {Lo: 0x11d37, Hi: 0x11d39}, {Lo: 0x11d3b, Hi: 0x11d3b}, {Lo: 0x11d3e, Hi: 0x11d3e}, {Lo: 0x11d42, Hi: 0x11d42}, {Lo: 0x11d44, Hi: 0x11d45}, {Lo: 0x11d48, Hi: 0x11d5f}, {Lo: 0x11d66, Hi: 0x11d66}, {Lo: 0x11d69, Hi: 0x11d69}, {Lo: 0x11d8f, Hi: 0x11d8f}, {Lo: 0x11d92, Hi: 0x11d92}, {Lo: 0x11d97, Hi: 0x11d97}, {Lo: 0x11d99, Hi: 0x11daf}, {Lo: 0x11ddc, Hi: 0x11edf}, {Lo: 0x11ef7, Hi: 0x11eff}, {Lo: 0x11f11, Hi: 0x11f11}, {Lo: 0x11f3b, Hi: 0x11f3d}, {Lo: 0x11f41, Hi: 0x11faf}, {Lo: 0x11fb1, Hi: 0x11fff}, {Lo: 0x1239a, Hi: 0x123ff}, {Lo: 0x1246f, Hi: 0x1247f}, {Lo: 0x12544, Hi: 0x12f8f}, {Lo: 0x12ff1, Hi: 0x12fff}, {Lo: 0x13430, Hi: 0x13440}, {Lo: 0x13447, Hi: 0x1345f}, {Lo: 0x143fb, Hi: 0x143ff}, {Lo: 0x14647, Hi: 0x160ff}, {Lo: 0x1612f, Hi: 0x167ff}, {Lo: 0x16a39, Hi: 0x16a3f}, {Lo: 0x16a5f, Hi: 0x16a6f}, {Lo: 0x16abf, Hi: 0x16acf}, {Lo: 0x16aee, Hi: 0x16aff}, {Lo: 0x16b30, Hi: 0x16b3f}, {Lo: 0x16b44, Hi: 0x16b62}, {Lo: 0x16b78, Hi: 0x16b7c}, {Lo: 0x16b90, Hi: 0x16d3f}, {Lo: 0x16d6d, Hi: 0x16e3f}, {Lo: 0x16e80, Hi: 0x16e9f}, {Lo: 0x16eb9, Hi: 0x16eba}, {Lo: 0x16ed4, Hi: 0x16eff}, {Lo: 0x16f4b, Hi: 0x16f4e}, {Lo: 0x16f88, Hi: 0x16f8e}, {Lo: 0x16fa0, Hi: 0x16fdf}, {Lo: 0x16fe2, Hi: 0x16fe2}, {Lo: 0x16fe4, Hi: 0x16fef}, {Lo: 0x16ff7, Hi: 0x16fff}, {Lo: 0x18cd6, Hi: 0x18cfe}, {Lo: 0x18d1f, Hi: 0x18d7f}, {Lo: 0x18df3, Hi: 0x1afef}, {Lo: 0x1aff4, Hi: 0x1aff4}, {Lo: 0x1affc, Hi: 0x1affc}, {Lo: 0x1afff, Hi: 0x1afff}, {Lo: 0x1b123, Hi: 0x1b131}, {Lo: 0x1b133, Hi: 0x1b14f}, {Lo: 0x1b153, Hi: 0x1b154}, {Lo: 0x1b156, Hi: 0x1b163}, {Lo: 0x1b168, Hi: 0x1b16f}, {Lo: 0x1b2fc, Hi: 0x1bbff}, {Lo: 0x1bc6b, Hi: 0x1bc6f}, {Lo: 0x1bc7d, Hi: 0x1bc7f}, {Lo: 0x1bc89, Hi: 0x1bc8f}, {Lo: 0x1bc9a, Hi: 0x1bc9d}, {Lo: 0x1bc9f, Hi: 0x1d3ff}, {Lo: 0x1d455, Hi: 0x1d455}, {Lo: 0x1d49d, Hi: 0x1d49d}, {Lo: 0x1d4a0, Hi: 0x1d4a1}, {Lo: 0x1d4a3, Hi: 0x1d4a4}, {Lo: 0x1d4a7, Hi: 0x1d4a8}, {Lo: 0x1d4ad, Hi: 0x1d4ad}, {Lo: 0x1d4ba, Hi: 0x1d4ba}, {Lo: 0x1d4bc, Hi: 0x1d4bc}, {Lo: 0x1d4c4, Hi: 0x1d4c4}, {Lo: 0x1d506, Hi: 0x1d506}, {Lo: 0x1d50b, Hi: 0x1d50c}, {Lo: 0x1d515, Hi: 0x1d515}, {Lo: 0x1d51d, Hi: 0x1d51d}, {Lo: 0x1d53a, Hi: 0x1d53a}, {Lo: 0x1d53f, Hi: 0x1d53f}, {Lo: 0x1d545, Hi: 0x1d545}, {Lo: 0x1d547, Hi: 0x1d549}, {Lo: 0x1d551, Hi: 0x1d551}, {Lo: 0x1d6a6, Hi: 0x1d6a7}, {Lo: 0x1d6c1, Hi: 0x1d6c1}, {Lo: 0x1d6db, Hi: 0x1d6db}, {Lo: 0x1d6fb, Hi: 0x1d6fb}, {Lo: 0x1d715, Hi: 0x1d715}, {Lo: 0x1d735, Hi: 0x1d735}, {Lo: 0x1d74f, Hi: 0x1d74f}, {Lo: 0x1d76f, Hi: 0x1d76f}, {Lo: 0x1d789, Hi: 0x1d789}, {Lo: 0x1d7a9, Hi: 0x1d7a9}, {Lo: 0x1d7c3, Hi: 0x1d7c3}, {Lo: 0x1d7cc, Hi: 0x1deff}, {Lo: 0x1df1f, Hi: 0x1df24}, {Lo: 0x1df2b, Hi: 0x1dfff}, {Lo: 0x1e007, Hi: 0x1e007}, {Lo: 0x1e019, Hi: 0x1e01a}, {Lo: 0x1e022, Hi: 0x1e022}, {Lo: 0x1e025, Hi: 0x1e025}, {Lo: 0x1e02b, Hi: 0x1e02f}, {Lo: 0x1e06e, Hi: 0x1e08e}, {Lo: 0x1e090, Hi: 0x1e0ff}, {Lo: 0x1e12d, Hi: 0x1e136}, {Lo: 0x1e13e, Hi: 0x1e14d}, {Lo: 0x1e14f, Hi: 0x1e28f}, {Lo: 0x1e2ae, Hi: 0x1e2bf}, {Lo: 0x1e2ec, Hi: 0x1e4cf}, {Lo: 0x1e4ec, Hi: 0x1e5cf}, {Lo: 0x1e5ee, Hi: 0x1e5ef}, {Lo: 0x1e5f1, Hi: 0x1e6bf}, {Lo: 0x1e6df, Hi: 0x1e6df}, {Lo: 0x1e6f6, Hi: 0x1e6fd}, {Lo: 0x1e700, Hi: 0x1e7df}, {Lo: 0x1e7e7, Hi: 0x1e7e7}, {Lo: 0x1e7ec, Hi: 0x1e7ec}, {Lo: 0x1e7ef, Hi: 0x1e7ef}, {Lo: 0x1e7ff, Hi: 0x1e7ff}, {Lo: 0x1e8c5, Hi: 0x1e8ff}, {Lo: 0x1e944, Hi: 0x1e946}, {Lo: 0x1e948, Hi: 0x1e94a}, {Lo: 0x1e94c, Hi: 0x1edff}, {Lo: 0x1ee04, Hi: 0x1ee04}, {Lo: 0x1ee20, Hi: 0x1ee20}, {Lo: 0x1ee23, Hi: 0x1ee23}, {Lo: 0x1ee25, Hi: 0x1ee26}, {Lo: 0x1ee28, Hi: 0x1ee28}, {Lo: 0x1ee33, Hi: 0x1ee33}, {Lo: 0x1ee38, Hi: 0x1ee38}, {Lo: 0x1ee3a, Hi: 0x1ee3a}, {Lo: 0x1ee3c, Hi: 0x1ee41}, {Lo: 0x1ee43, Hi: 0x1ee46}, {Lo: 0x1ee48, Hi: 0x1ee48}, {Lo: 0x1ee4a, Hi: 0x1ee4a}, {Lo: 0x1ee4c, Hi: 0x1ee4c}, {Lo: 0x1ee50, Hi: 0x1ee50}, {Lo: 0x1ee53, Hi: 0x1ee53}, {Lo: 0x1ee55, Hi: 0x1ee56}, {Lo: 0x1ee58, Hi: 0x1ee58}, {Lo: 0x1ee5a, Hi: 0x1ee5a}, {Lo: 0x1ee5c, Hi: 0x1ee5c}, {Lo: 0x1ee5e, Hi: 0x1ee5e}, {Lo: 0x1ee60, Hi: 0x1ee60}, {Lo: 0x1ee63, Hi: 0x1ee63}, {Lo: 0x1ee65, Hi: 0x1ee66}, {Lo: 0x1ee6b, Hi: 0x1ee6b}, {Lo: 0x1ee73, Hi: 0x1ee73}, {Lo: 0x1ee78, Hi: 0x1ee78}, {Lo: 0x1ee7d, Hi: 0x1ee7d}, {Lo: 0x1ee7f, Hi: 0x1ee7f}, {Lo: 0x1ee8a, Hi: 0x1ee8a}, {Lo: 0x1ee9c, Hi: 0x1eea0}, {Lo: 0x1eea4, Hi: 0x1eea4}, {Lo: 0x1eeaa, Hi: 0x1eeaa}, {Lo: 0x1eebc, Hi: 0x1f12f}, {Lo: 0x1f14a, Hi: 0x1f14f}, {Lo: 0x1f16a, Hi: 0x1f16f}, {Lo: 0x1f18a, Hi: 0x1ffff}, {Lo: 0x2a6e0, Hi: 0x2a6ff}, {Lo: 0x2b81e, Hi: 0x2b81f}, {Lo: 0x2ceae, Hi: 0x2ceaf}, {Lo: 0x2ebe1, Hi: 0x2ebef}, {Lo: 0x2ee5e, Hi: 0x2f7ff}, {Lo: 0x2fa1e, Hi: 0x2ffff}, {Lo: 0x3134b, Hi: 0x3134f}, {Lo: 0x3347a, Hi: 0x10ffff}}
+
+var ranges6 = []lex.Range{{Lo: '.', Hi: '.'}, {Lo: '0', Hi: '9'}, {Lo: 'A', Hi: 'Z'}, {Lo: '_', Hi: '_'}, {Lo: 'a', Hi: 'd'}, {Lo: 'f', Hi: 'z'}, {Lo: 0xaa, Hi: 0xaa}, {Lo: 0xb5, Hi: 0xb5}, {Lo: 0xba, Hi: 0xba}, {Lo: 0xc0, Hi: 0xd6}, {Lo: 0xd8, Hi: 0xf6}, {Lo: 0xf8, Hi: 0x2c1}, {Lo: 0x2c6, Hi: 0x2d1}, {Lo: 0x2e0, Hi: 0x2e4}, {Lo: 0x2ec, Hi: 0x2ec}, {Lo: 0x2ee, Hi: 0x2ee}, {Lo: 0x345, Hi: 0x345}, {Lo: 0x363, Hi: 0x374}, {Lo: 0x376, Hi: 0x377}, {Lo: 0x37a, Hi: 0x37d}, {Lo: 0x37f, Hi: 0x37f}, {Lo: 0x386, Hi: 0x386}, {Lo: 0x388, Hi: 0x38a}, {Lo: 0x38c, Hi: 0x38c}, {Lo: 0x38e, Hi: 0x3a1}, {Lo: 0x3a3, Hi: 0x3f5}, {Lo: 0x3f7, Hi: 0x481}, {Lo: 0x48a, Hi: 0x52f}, {Lo: 0x531, Hi: 0x556}, {Lo: 0x559, Hi: 0x559}, {Lo: 0x560, Hi: 0x588}, {Lo: 0x5b0, Hi: 0x5bd}, {Lo: 0x5bf, Hi: 0x5bf}, {Lo: 0x5c1, Hi: 0x5c2}, {Lo: 0x5c4, Hi: 0x5c5}, {Lo: 0x5c7, Hi: 0x5c7}, {Lo: 0x5d0, Hi: 0x5ea}, {Lo: 0x5ef, Hi: 0x5f2}, {Lo: 0x610, Hi: 0x61a}, {Lo: 0x620, Hi: 0x657}, {Lo: 0x659, Hi: 0x65f}, {Lo: 0x66e, Hi: 0x6d3}, {Lo: 0x6d5, Hi: 0x6dc}, {Lo: 0x6e1, Hi: 0x6e8}, {Lo: 0x6ed, Hi: 0x6ef}, {Lo: 0x6fa, Hi: 0x6fc}, {Lo: 0x6ff, Hi: 0x6ff}, {Lo: 0x710, Hi: 0x73f}, {Lo: 0x74d, Hi: 0x7b1}, {Lo: 0x7ca, Hi: 0x7ea}, {Lo: 0x7f4, Hi: 0x7f5}, {Lo: 0x7fa, Hi: 0x7fa}, {Lo: 0x800, Hi: 0x817}, {Lo: 0x81a, Hi: 0x82c}, {Lo: 0x840, Hi: 0x858}, {Lo: 0x860, Hi: 0x86a}, {Lo: 0x870, Hi: 0x887}, {Lo: 0x889, Hi: 0x88f}, {Lo: 0x897, Hi: 0x897}, {Lo: 0x8a0, Hi: 0x8c9}, {Lo: 0x8d4, Hi: 0x8df}, {Lo: 0x8e3, Hi: 0x8e9}, {Lo: 0x8f0, Hi: 0x93b}, {Lo: 0x93d, Hi: 0x94c}, {Lo: 0x94e, Hi: 0x950}, {Lo: 0x955, Hi: 0x963}, {Lo: 0x971, Hi: 0x983}, {Lo: 0x985, Hi: 0x98c}, {Lo: 0x98f, Hi: 0x990}, {Lo: 0x993, Hi: 0x9a8}, {Lo: 0x9aa, Hi: 0x9b0}, {Lo: 0x9b2, Hi: 0x9b2}, {Lo: 0x9b6, Hi: 0x9b9}, {Lo: 0x9bd, Hi: 0x9c4}, {Lo: 0x9c7, Hi: 0x9c8}, {Lo: 0x9cb, Hi: 0x9cc}, {Lo: 0x9ce, Hi: 0x9ce}, {Lo: 0x9d7, Hi: 0x9d7}, {Lo: 0x9dc, Hi: 0x9dd}, {Lo: 0x9df, Hi: 0x9e3}, {Lo: 0x9f0, Hi: 0x9f1}, {Lo: 0x9fc, Hi: 0x9fc}, {Lo: 0xa01, Hi: 0xa03}, {Lo: 0xa05, Hi: 0xa0a}, {Lo: 0xa0f, Hi: 0xa10}, {Lo: 0xa13, Hi: 0xa28}, {Lo: 0xa2a, Hi: 0xa30}, {Lo: 0xa32, Hi: 0xa33}, {Lo: 0xa35, Hi: 0xa36}, {Lo: 0xa38, Hi: 0xa39}, {Lo: 0xa3e, Hi: 0xa42}, {Lo: 0xa47, Hi: 0xa48}, {Lo: 0xa4b, Hi: 0xa4c}, {Lo: 0xa51, Hi: 0xa51}, {Lo: 0xa59, Hi: 0xa5c}, {Lo: 0xa5e, Hi: 0xa5e}, {Lo: 0xa70, Hi: 0xa75}, {Lo: 0xa81, Hi: 0xa83}, {Lo: 0xa85, Hi: 0xa8d}, {Lo: 0xa8f, Hi: 0xa91}, {Lo: 0xa93, Hi: 0xaa8}, {Lo: 0xaaa, Hi: 0xab0}, {Lo: 0xab2, Hi: 0xab3}, {Lo: 0xab5, Hi: 0xab9}, {Lo: 0xabd, Hi: 0xac5}, {Lo: 0xac7, Hi: 0xac9}, {Lo: 0xacb, Hi: 0xacc}, {Lo: 0xad0, Hi: 0xad0}, {Lo: 0xae0, Hi: 0xae3}, {Lo: 0xaf9, Hi: 0xafc}, {Lo: 0xb01, Hi: 0xb03}, {Lo: 0xb05, Hi: 0xb0c}, {Lo: 0xb0f, Hi: 0xb10}, {Lo: 0xb13, Hi: 0xb28}, {Lo: 0xb2a, Hi: 0xb30}, {Lo: 0xb32, Hi: 0xb33}, {Lo: 0xb35, Hi: 0xb39}, {Lo: 0xb3d, Hi: 0xb44}, {Lo: 0xb47, Hi: 0xb48}, {Lo: 0xb4b, Hi: 0xb4c}, {Lo: 0xb56, Hi: 0xb57}, {Lo: 0xb5c, Hi: 0xb5d}, {Lo: 0xb5f, Hi: 0xb63}, {Lo: 0xb71, Hi: 0xb71}, {Lo: 0xb82, Hi: 0xb83}, {Lo: 0xb85, Hi: 0xb8a}, {Lo: 0xb8e, Hi: 0xb90}, {Lo: 0xb92, Hi: 0xb95}, {Lo: 0xb99, Hi: 0xb9a}, {Lo: 0xb9c, Hi: 0xb9c}, {Lo: 0xb9e, Hi: 0xb9f}, {Lo: 0xba3, Hi: 0xba4}, {Lo: 0xba8, Hi: 0xbaa}, {Lo: 0xbae, Hi: 0xbb9}, {Lo: 0xbbe, Hi: 0xbc2}, {Lo: 0xbc6, Hi: 0xbc8}, {Lo: 0xbca, Hi: 0xbcc}, {Lo: 0xbd0, Hi: 0xbd0}, {Lo: 0xbd7, Hi: 0xbd7}, {Lo: 0xc00, Hi: 0xc0c}, {Lo: 0xc0e, Hi: 0xc10}, {Lo: 0xc12, Hi: 0xc28}, {Lo: 0xc2a, Hi: 0xc39}, {Lo: 0xc3d, Hi: 0xc44}, {Lo: 0xc46, Hi: 0xc48}, {Lo: 0xc4a, Hi: 0xc4c}, {Lo: 0xc55, Hi: 0xc56}, {Lo: 0xc58, Hi: 0xc5a}, {Lo: 0xc5c, Hi: 0xc5d}, {Lo: 0xc60, Hi: 0xc63}, {Lo: 0xc80, Hi: 0xc83}, {Lo: 0xc85, Hi: 0xc8c}, {Lo: 0xc8e, Hi: 0xc90}, {Lo: 0xc92, Hi: 0xca8}, {Lo: 0xcaa, Hi: 0xcb3}, {Lo: 0xcb5, Hi: 0xcb9}, {Lo: 0xcbd, Hi: 0xcc4}, {Lo: 0xcc6, Hi: 0xcc8}, {Lo: 0xcca, Hi: 0xccc}, {Lo: 0xcd5, Hi: 0xcd6}, {Lo: 0xcdc, Hi: 0xcde}, {Lo: 0xce0, Hi: 0xce3}, {Lo: 0xcf1, Hi: 0xcf3}, {Lo: 0xd00, Hi: 0xd0c}, {Lo: 0xd0e, Hi: 0xd10}, {Lo: 0xd12, Hi: 0xd3a}, {Lo: 0xd3d, Hi: 0xd44}, {Lo: 0xd46, Hi: 0xd48}, {Lo: 0xd4a, Hi: 0xd4c}, {Lo: 0xd4e, Hi: 0xd4e}, {Lo: 0xd54, Hi: 0xd57}, {Lo: 0xd5f, Hi: 0xd63}, {Lo: 0xd7a, Hi: 0xd7f}, {Lo: 0xd81, Hi: 0xd83}, {Lo: 0xd85, Hi: 0xd96}, {Lo: 0xd9a, Hi: 0xdb1}, {Lo: 0xdb3, Hi: 0xdbb}, {Lo: 0xdbd, Hi: 0xdbd}, {Lo: 0xdc0, Hi: 0xdc6}, {Lo: 0xdcf, Hi: 0xdd4}, {Lo: 0xdd6, Hi: 0xdd6}, {Lo: 0xdd8, Hi: 0xddf}, {Lo: 0xdf2, Hi: 0xdf3}, {Lo: 0xe01, Hi: 0xe3a}, {Lo: 0xe40, Hi: 0xe46}, {Lo: 0xe4d, Hi: 0xe4d}, {Lo: 0xe81, Hi: 0xe82}, {Lo: 0xe84, Hi: 0xe84}, {Lo: 0xe86, Hi: 0xe8a}, {Lo: 0xe8c, Hi: 0xea3}, {Lo: 0xea5, Hi: 0xea5}, {Lo: 0xea7, Hi: 0xeb9}, {Lo: 0xebb, Hi: 0xebd}, {Lo: 0xec0, Hi: 0xec4}, {Lo: 0xec6, Hi: 0xec6}, {Lo: 0xecd, Hi: 0xecd}, {Lo: 0xedc, Hi: 0xedf}, {Lo: 0xf00, Hi: 0xf00}, {Lo: 0xf40, Hi: 0xf47}, {Lo: 0xf49, Hi: 0xf6c}, {Lo: 0xf71, Hi: 0xf83}, {Lo: 0xf88, Hi: 0xf97}, {Lo: 0xf99, Hi: 0xfbc}, {Lo: 0x1000, Hi: 0x1036}, {Lo: 0x1038, Hi: 0x1038}, {Lo: 0x103b, Hi: 0x103f}, {Lo: 0x1050, Hi: 0x108f}, {Lo: 0x109a, Hi: 0x109d}, {Lo: 0x10a0, Hi: 0x10c5}, {Lo: 0x10c7, Hi: 0x10c7}, {Lo: 0x10cd, Hi: 0x10cd}, {Lo: 0x10d0, Hi: 0x10fa}, {Lo: 0x10fc, Hi: 0x1248}, {Lo: 0x124a, Hi: 0x124d}, {Lo: 0x1250, Hi: 0x1256}, {Lo: 0x1258, Hi: 0x1258}, {Lo: 0x125a, Hi: 0x125d}, {Lo: 0x1260, Hi: 0x1288}, {Lo: 0x128a, Hi: 0x128d}, {Lo: 0x1290, Hi: 0x12b0}, {Lo: 0x12b2, Hi: 0x12b5}, {Lo: 0x12b8, Hi: 0x12be}, {Lo: 0x12c0, Hi: 0x12c0}, {Lo: 0x12c2, Hi: 0x12c5}, {Lo: 0x12c8, Hi: 0x12d6}, {Lo: 0x12d8, Hi: 0x1310}, {Lo: 0x1312, Hi: 0x1315}, {Lo: 0x1318, Hi: 0x135a}, {Lo: 0x1380, Hi: 0x138f}, {Lo: 0x13a0, Hi: 0x13f5}, {Lo: 0x13f8, Hi: 0x13fd}, {Lo: 0x1401, Hi: 0x166c}, {Lo: 0x166f, Hi: 0x167f}, {Lo: 0x1681, Hi: 0x169a}, {Lo: 0x16a0, Hi: 0x16ea}, {Lo: 0x16ee, Hi: 0x16f8}, {Lo: 0x1700, Hi: 0x1713}, {Lo: 0x171f, Hi: 0x1733}, {Lo: 0x1740, Hi: 0x1753}, {Lo: 0x1760, Hi: 0x176c}, {Lo: 0x176e, Hi: 0x1770}, {Lo: 0x1772, Hi: 0x1773}, {Lo: 0x1780, Hi: 0x17b3}, {Lo: 0x17b6, Hi: 0x17c8}, {Lo: 0x17d7, Hi: 0x17d7}, {Lo: 0x17dc, Hi: 0x17dc}, {Lo: 0x1820, Hi: 0x1878}, {Lo: 0x1880, Hi: 0x18aa}, {Lo: 0x18b0, Hi: 0x18f5}, {Lo: 0x1900, Hi: 0x191e}, {Lo: 0x1920, Hi: 0x192b}, {Lo: 0x1930, Hi: 0x1938}, {Lo: 0x1950, Hi: 0x196d}, {Lo: 0x1970, Hi: 0x1974}, {Lo: 0x1980, Hi: 0x19ab}, {Lo: 0x19b0, Hi: 0x19c9}, {Lo: 0x1a00, Hi: 0x1a1b}, {Lo: 0x1a20, Hi: 0x1a5e}, {Lo: 0x1a61, Hi: 0x1a74}, {Lo: 0x1aa7, Hi: 0x1aa7}, {Lo: 0x1abf, Hi: 0x1ac0}, {Lo: 0x1acc, Hi: 0x1ace}, {Lo: 0x1b00, Hi: 0x1b33}, {Lo: 0x1b35, Hi: 0x1b43}, {Lo: 0x1b45, Hi: 0x1b4c}, {Lo: 0x1b80, Hi: 0x1ba9}, {Lo: 0x1bac, Hi: 0x1baf}, {Lo: 0x1bba, Hi: 0x1be5}, {Lo: 0x1be7, Hi: 0x1bf1}, {Lo: 0x1c00, Hi: 0x1c36}, {Lo: 0x1c4d, Hi: 0x1c4f}, {Lo: 0x1c5a, Hi: 0x1c7d}, {Lo: 0x1c80, Hi: 0x1c8a}, {Lo: 0x1c90, Hi: 0x1cba}, {Lo: 0x1cbd, Hi: 0x1cbf}, {Lo: 0x1ce9, Hi: 0x1cec}, {Lo: 0x1cee, Hi: 0x1cf3}, {Lo: 0x1cf5, Hi: 0x1cf6}, {Lo: 0x1cfa, Hi: 0x1cfa}, {Lo: 0x1d00, Hi: 0x1dbf}, {Lo: 0x1dd3, Hi: 0x1df4}, {Lo: 0x1e00, Hi: 0x1f15}, {Lo: 0x1f18, Hi: 0x1f1d}, {Lo: 0x1f20, Hi: 0x1f45}, {Lo: 0x1f48, Hi: 0x1f4d}, {Lo: 0x1f50, Hi: 0x1f57}, {Lo: 0x1f59, Hi: 0x1f59}, {Lo: 0x1f5b, Hi: 0x1f5b}, {Lo: 0x1f5d, Hi: 0x1f5d}, {Lo: 0x1f5f, Hi: 0x1f7d}, {Lo: 0x1f80, Hi: 0x1fb4}, {Lo: 0x1fb6, Hi: 0x1fbc}, {Lo: 0x1fbe, Hi: 0x1fbe}, {Lo: 0x1fc2, Hi: 0x1fc4}, {Lo: 0x1fc6, Hi: 0x1fcc}, {Lo: 0x1fd0, Hi: 0x1fd3}, {Lo: 0x1fd6, Hi: 0x1fdb}, {Lo: 0x1fe0, Hi: 0x1fec}, {Lo: 0x1ff2, Hi: 0x1ff4}, {Lo: 0x1ff6, Hi: 0x1ffc}, {Lo: 0x2071, Hi: 0x2071}, {Lo: 0x207f, Hi: 0x207f}, {Lo: 0x2090, Hi: 0x209c}, {Lo: 0x2102, Hi: 0x2102}, {Lo: 0x2107, Hi: 0x2107}, {Lo: 0x210a, Hi: 0x2113}, {Lo: 0x2115, Hi: 0x2115}, {Lo: 0x2119, Hi: 0x211d}, {Lo: 0x2124, Hi: 0x2124}, {Lo: 0x2126, Hi: 0x2126}, {Lo: 0x2128, Hi: 0x2128}, {Lo: 0x212a, Hi: 0x212d}, {Lo: 0x212f, Hi: 0x2139}, {Lo: 0x213c, Hi: 0x213f}, {Lo: 0x2145, Hi: 0x2149}, {Lo: 0x214e, Hi: 0x214e}, {Lo: 0x2160, Hi: 0x2188}, {Lo: 0x24b6, Hi: 0x24e9}, {Lo: 0x2c00, Hi: 0x2ce4}, {Lo: 0x2ceb, Hi: 0x2cee}, {Lo: 0x2cf2, Hi: 0x2cf3}, {Lo: 0x2d00, Hi: 0x2d25}, {Lo: 0x2d27, Hi: 0x2d27}, {Lo: 0x2d2d, Hi: 0x2d2d}, {Lo: 0x2d30, Hi: 0x2d67}, {Lo: 0x2d6f, Hi: 0x2d6f}, {Lo: 0x2d80, Hi: 0x2d96}, {Lo: 0x2da0, Hi: 0x2da6}, {Lo: 0x2da8, Hi: 0x2dae}, {Lo: 0x2db0, Hi: 0x2db6}, {Lo: 0x2db8, Hi: 0x2dbe}, {Lo: 0x2dc0, Hi: 0x2dc6}, {Lo: 0x2dc8, Hi: 0x2dce}, {Lo: 0x2dd0, Hi: 0x2dd6}, {Lo: 0x2dd8, Hi: 0x2dde}, {Lo: 0x2de0, Hi: 0x2dff}, {Lo: 0x2e2f, Hi: 0x2e2f}, {Lo: 0x3005, Hi: 0x3007}, {Lo: 0x3021, Hi: 0x3029}, {Lo: 0x3031, Hi: 0x3035}, {Lo: 0x3038, Hi: 0x303c}, {Lo: 0x3041, Hi: 0x3096}, {Lo: 0x309d, Hi: 0x309f}, {Lo: 0x30a1, Hi: 0x30fa}, {Lo: 0x30fc, Hi: 0x30ff}, {Lo: 0x3105, Hi: 0x312f}, {Lo: 0x3131, Hi: 0x318e}, {Lo: 0x31a0, Hi: 0x31bf}, {Lo: 0x31f0, Hi: 0x31ff}, {Lo: 0x3400, Hi: 0x4dbf}, {Lo: 0x4e00, Hi: 0xa48c}, {Lo: 0xa4d0, Hi: 0xa4fd}, {Lo: 0xa500, Hi: 0xa60c}, {Lo: 0xa610, Hi: 0xa61f}, {Lo: 0xa62a, Hi: 0xa62b}, {Lo: 0xa640, Hi: 0xa66e}, {Lo: 0xa674, Hi: 0xa67b}, {Lo: 0xa67f, Hi: 0xa6ef}, {Lo: 0xa717, Hi: 0xa71f}, {Lo: 0xa722, Hi: 0xa788}, {Lo: 0xa78b, Hi: 0xa7dc}, {Lo: 0xa7f1, Hi: 0xa805}, {Lo: 0xa807, Hi: 0xa827}, {Lo: 0xa840, Hi: 0xa873}, {Lo: 0xa880, Hi: 0xa8c3}, {Lo: 0xa8c5, Hi: 0xa8c5}, {Lo: 0xa8f2, Hi: 0xa8f7}, {Lo: 0xa8fb, Hi: 0xa8fb}, {Lo: 0xa8fd, Hi: 0xa8ff}, {Lo: 0xa90a, Hi: 0xa92a}, {Lo: 0xa930, Hi: 0xa952}, {Lo: 0xa960, Hi: 0xa97c}, {Lo: 0xa980, Hi: 0xa9b2}, {Lo: 0xa9b4, Hi: 0xa9bf}, {Lo: 0xa9cf, Hi: 0xa9cf}, {Lo: 0xa9e0, Hi: 0xa9ef}, {Lo: 0xa9fa, Hi: 0xa9fe}, {Lo: 0xaa00, Hi: 0xaa36}, {Lo: 0xaa40, Hi: 0xaa4d}, {Lo: 0xaa60, Hi: 0xaa76}, {Lo: 0xaa7a, Hi: 0xaabe}, {Lo: 0xaac0, Hi: 0xaac0}, {Lo: 0xaac2, Hi: 0xaac2}, {Lo: 0xaadb, Hi: 0xaadd}, {Lo: 0xaae0, Hi: 0xaaef}, {Lo: 0xaaf2, Hi: 0xaaf5}, {Lo: 0xab01, Hi: 0xab06}, {Lo: 0xab09, Hi: 0xab0e}, {Lo: 0xab11, Hi: 0xab16}, {Lo: 0xab20, Hi: 0xab26}, {Lo: 0xab28, Hi: 0xab2e}, {Lo: 0xab30, Hi: 0xab5a}, {Lo: 0xab5c, Hi: 0xab69}, {Lo: 0xab70, Hi: 0xabea}, {Lo: 0xac00, Hi: 0xd7a3}, {Lo: 0xd7b0, Hi: 0xd7c6}, {Lo: 0xd7cb, Hi: 0xd7fb}, {Lo: 0xf900, Hi: 0xfa6d}, {Lo: 0xfa70, Hi: 0xfad9}, {Lo: 0xfb00, Hi: 0xfb06}, {Lo: 0xfb13, Hi: 0xfb17}, {Lo: 0xfb1d, Hi: 0xfb28}, {Lo: 0xfb2a, Hi: 0xfb36}, {Lo: 0xfb38, Hi: 0xfb3c}, {Lo: 0xfb3e, Hi: 0xfb3e}, {Lo: 0xfb40, Hi: 0xfb41}, {Lo: 0xfb43, Hi: 0xfb44}, {Lo: 0xfb46, Hi: 0xfbb1}, {Lo: 0xfbd3, Hi: 0xfd3d}, {Lo: 0xfd50, Hi: 0xfd8f}, {Lo: 0xfd92, Hi: 0xfdc7}, {Lo: 0xfdf0, Hi: 0xfdfb}, {Lo: 0xfe70, Hi: 0xfe74}, {Lo: 0xfe76, Hi: 0xfefc}, {Lo: 0xff21, Hi: 0xff3a}, {Lo: 0xff41, Hi: 0xff5a}, {Lo: 0xff66, Hi: 0xffbe}, {Lo: 0xffc2, Hi: 0xffc7}, {Lo: 0xffca, Hi: 0xffcf}, {Lo: 0xffd2, Hi: 0xffd7}, {Lo: 0xffda, Hi: 0xffdc}, {Lo: 0x10000, Hi: 0x1000b}, {Lo: 0x1000d, Hi: 0x10026}, {Lo: 0x10028, Hi: 0x1003a}, {Lo: 0x1003c, Hi: 0x1003d}, {Lo: 0x1003f, Hi: 0x1004d}, {Lo: 0x10050, Hi: 0x1005d}, {Lo: 0x10080, Hi: 0x100fa}, {Lo: 0x10140, Hi: 0x10174}, {Lo: 0x10280, Hi: 0x1029c}, {Lo: 0x102a0, Hi: 0x102d0}, {Lo: 0x10300, Hi: 0x1031f}, {Lo: 0x1032d, Hi: 0x1034a}, {Lo: 0x10350, Hi: 0x1037a}, {Lo: 0x10380, Hi: 0x1039d}, {Lo: 0x103a0, Hi: 0x103c3}, {Lo: 0x103c8, Hi: 0x103cf}, {Lo: 0x103d1, Hi: 0x103d5}, {Lo: 0x10400, Hi: 0x1049d}, {Lo: 0x104b0, Hi: 0x104d3}, {Lo: 0x104d8, Hi: 0x104fb}, {Lo: 0x10500, Hi: 0x10527}, {Lo: 0x10530, Hi: 0x10563}, {Lo: 0x10570, Hi: 0x1057a}, {Lo: 0x1057c, Hi: 0x1058a}, {Lo: 0x1058c, Hi: 0x10592}, {Lo: 0x10594, Hi: 0x10595}, {Lo: 0x10597, Hi: 0x105a1}, {Lo: 0x105a3, Hi: 0x105b1}, {Lo: 0x105b3, Hi: 0x105b9}, {Lo: 0x105bb, Hi: 0x105bc}, {Lo: 0x105c0, Hi: 0x105f3}, {Lo: 0x10600, Hi: 0x10736}, {Lo: 0x10740, Hi: 0x10755}, {Lo: 0x10760, Hi: 0x10767}, {Lo: 0x10780, Hi: 0x10785}, {Lo: 0x10787, Hi: 0x107b0}, {Lo: 0x107b2, Hi: 0x107ba}, {Lo: 0x10800, Hi: 0x10805}, {Lo: 0x10808, Hi: 0x10808}, {Lo: 0x1080a, Hi: 0x10835}, {Lo: 0x10837, Hi: 0x10838}, {Lo: 0x1083c, Hi: 0x1083c}, {Lo: 0x1083f, Hi: 0x10855}, {Lo: 0x10860, Hi: 0x10876}, {Lo: 0x10880, Hi: 0x1089e}, {Lo: 0x108e0, Hi: 0x108f2}, {Lo: 0x108f4, Hi: 0x108f5}, {Lo: 0x10900, Hi: 0x10915}, {Lo: 0x10920, Hi: 0x10939}, {Lo: 0x10940, Hi: 0x10959}, {Lo: 0x10980, Hi: 0x109b7}, {Lo: 0x109be, Hi: 0x109bf}, {Lo: 0x10a00, Hi: 0x10a03}, {Lo: 0x10a05, Hi: 0x10a06}, {Lo: 0x10a0c, Hi: 0x10a13}, {Lo: 0x10a15, Hi: 0x10a17}, {Lo: 0x10a19, Hi: 0x10a35}, {Lo: 0x10a60, Hi: 0x10a7c}, {Lo: 0x10a80, Hi: 0x10a9c}, {Lo: 0x10ac0, Hi: 0x10ac7}, {Lo: 0x10ac9, Hi: 0x10ae4}, {Lo: 0x10b00, Hi: 0x10b35}, {Lo: 0x10b40, Hi: 0x10b55}, {Lo: 0x10b60, Hi: 0x10b72}, {Lo: 0x10b80, Hi: 0x10b91}, {Lo: 0x10c00, Hi: 0x10c48}, {Lo: 0x10c80, Hi: 0x10cb2}, {Lo: 0x10cc0, Hi: 0x10cf2}, {Lo: 0x10d00, Hi: 0x10d27}, {Lo: 0x10d4a, Hi: 0x10d65}, {Lo: 0x10d69, Hi: 0x10d69}, {Lo: 0x10d6f, Hi: 0x10d85}, {Lo: 0x10e80, Hi: 0x10ea9}, {Lo: 0x10eab, Hi: 0x10eac}, {Lo: 0x10eb0, Hi: 0x10eb1}, {Lo: 0x10ec2, Hi: 0x10ec7}, {Lo: 0x10efa, Hi: 0x10efc}, {Lo: 0x10f00, Hi: 0x10f1c}, {Lo: 0x10f27, Hi: 0x10f27}, {Lo: 0x10f30, Hi: 0x10f45}, {Lo: 0x10f70, Hi: 0x10f81}, {Lo: 0x10fb0, Hi: 0x10fc4}, {Lo: 0x10fe0, Hi: 0x10ff6}, {Lo: 0x11000, Hi: 0x11045}, {Lo: 0x11071, Hi: 0x11075}, {Lo: 0x11080, Hi: 0x110b8}, {Lo: 0x110c2, Hi: 0x110c2}, {Lo: 0x110d0, Hi: 0x110e8}, {Lo: 0x11100, Hi: 0x11132}, {Lo: 0x11144, Hi: 0x11147}, {Lo: 0x11150, Hi: 0x11172}, {Lo: 0x11176, Hi: 0x11176}, {Lo: 0x11180, Hi: 0x111bf}, {Lo: 0x111c1, Hi: 0x111c4}, {Lo: 0x111ce, Hi: 0x111cf}, {Lo: 0x111da, Hi: 0x111da}, {Lo: 0x111dc, Hi: 0x111dc}, {Lo: 0x11200, Hi: 0x11211}, {Lo: 0x11213, Hi: 0x11234}, {Lo: 0x11237, Hi: 0x11237}, {Lo: 0x1123e, Hi: 0x11241}, {Lo: 0x11280, Hi: 0x11286}, {Lo: 0x11288, Hi: 0x11288}, {Lo: 0x1128a, Hi: 0x1128d}, {Lo: 0x1128f, Hi: 0x1129d}, {Lo: 0x1129f, Hi: 0x112a8}, {Lo: 0x112b0, Hi: 0x112e8}, {Lo: 0x11300, Hi: 0x11303}, {Lo: 0x11305, Hi: 0x1130c}, {Lo: 0x1130f, Hi: 0x11310}, {Lo: 0x11313, Hi: 0x11328}, {Lo: 0x1132a, Hi: 0x11330}, {Lo: 0x11332, Hi: 0x11333}, {Lo: 0x11335, Hi: 0x11339}, {Lo: 0x1133d, Hi: 0x11344}, {Lo: 0x11347, Hi: 0x11348}, {Lo: 0x1134b, Hi: 0x1134c}, {Lo: 0x11350, Hi: 0x11350}, {Lo: 0x11357, Hi: 0x11357}, {Lo: 0x1135d, Hi: 0x11363}, {Lo: 0x11380, Hi: 0x11389}, {Lo: 0x1138b, Hi: 0x1138b}, {Lo: 0x1138e, Hi: 0x1138e}, {Lo: 0x11390, Hi: 0x113b5}, {Lo: 0x113b7, Hi: 0x113c0}, {Lo: 0x113c2, Hi: 0x113c2}, {Lo: 0x113c5, Hi: 0x113c5}, {Lo: 0x113c7, Hi: 0x113ca}, {Lo: 0x113cc, Hi: 0x113cd}, {Lo: 0x113d1, Hi: 0x113d1}, {Lo: 0x113d3, Hi: 0x113d3}, {Lo: 0x11400, Hi: 0x11441}, {Lo: 0x11443, Hi: 0x11445}, {Lo: 0x11447, Hi: 0x1144a}, {Lo: 0x1145f, Hi: 0x11461}, {Lo: 0x11480, Hi: 0x114c1}, {Lo: 0x114c4, Hi: 0x114c5}, {Lo: 0x114c7, Hi: 0x114c7}, {Lo: 0x11580, Hi: 0x115b5}, {Lo: 0x115b8, Hi: 0x115be}, {Lo: 0x115d8, Hi: 0x115dd}, {Lo: 0x11600, Hi: 0x1163e}, {Lo: 0x11640, Hi: 0x11640}, {Lo: 0x11644, Hi: 0x11644}, {Lo: 0x11680, Hi: 0x116b5}, {Lo: 0x116b8, Hi: 0x116b8}, {Lo: 0x11700, Hi: 0x1171a}, {Lo: 0x1171d, Hi: 0x1172a}, {Lo: 0x11740, Hi: 0x11746}, {Lo: 0x11800, Hi: 0x11838}, {Lo: 0x118a0, Hi: 0x118df}, {Lo: 0x118ff, Hi: 0x11906}, {Lo: 0x11909, Hi: 0x11909}, {Lo: 0x1190c, Hi: 0x11913}, {Lo: 0x11915, Hi: 0x11916}, {Lo: 0x11918, Hi: 0x11935}, {Lo: 0x11937, Hi: 0x11938}, {Lo: 0x1193b, Hi: 0x1193c}, {Lo: 0x1193f, Hi: 0x11942}, {Lo: 0x119a0, Hi: 0x119a7}, {Lo: 0x119aa, Hi: 0x119d7}, {Lo: 0x119da, Hi: 0x119df}, {Lo: 0x119e1, Hi: 0x119e1}, {Lo: 0x119e3, Hi: 0x119e4}, {Lo: 0x11a00, Hi: 0x11a32}, {Lo: 0x11a35, Hi: 0x11a3e}, {Lo: 0x11a50, Hi: 0x11a97}, {Lo: 0x11a9d, Hi: 0x11a9d}, {Lo: 0x11ab0, Hi: 0x11af8}, {Lo: 0x11b60, Hi: 0x11b67}, {Lo: 0x11bc0, Hi: 0x11be0}, {Lo: 0x11c00, Hi: 0x11c08}, {Lo: 0x11c0a, Hi: 0x11c36}, {Lo: 0x11c38, Hi: 0x11c3e}, {Lo: 0x11c40, Hi: 0x11c40}, {Lo: 0x11c72, Hi: 0x11c8f}, {Lo: 0x11c92, Hi: 0x11ca7}, {Lo: 0x11ca9, Hi: 0x11cb6}, {Lo: 0x11d00, Hi: 0x11d06}, {Lo: 0x11d08, Hi: 0x11d09}, {Lo: 0x11d0b, Hi: 0x11d36}, {Lo: 0x11d3a, Hi: 0x11d3a}, {Lo: 0x11d3c, Hi: 0x11d3d}, {Lo: 0x11d3f, Hi: 0x11d41}, {Lo: 0x11d43, Hi: 0x11d43}, {Lo: 0x11d46, Hi: 0x11d47}, {Lo: 0x11d60, Hi: 0x11d65}, {Lo: 0x11d67, Hi: 0x11d68}, {Lo: 0x11d6a, Hi: 0x11d8e}, {Lo: 0x11d90, Hi: 0x11d91}, {Lo: 0x11d93, Hi: 0x11d96}, {Lo: 0x11d98, Hi: 0x11d98}, {Lo: 0x11db0, Hi: 0x11ddb}, {Lo: 0x11ee0, Hi: 0x11ef6}, {Lo: 0x11f00, Hi: 0x11f10}, {Lo: 0x11f12, Hi: 0x11f3a}, {Lo: 0x11f3e, Hi: 0x11f40}, {Lo: 0x11fb0, Hi: 0x11fb0}, {Lo: 0x12000, Hi: 0x12399}, {Lo: 0x12400, Hi: 0x1246e}, {Lo: 0x12480, Hi: 0x12543}, {Lo: 0x12f90, Hi: 0x12ff0}, {Lo: 0x13000, Hi: 0x1342f}, {Lo: 0x13441, Hi: 0x13446}, {Lo: 0x13460, Hi: 0x143fa}, {Lo: 0x14400, Hi: 0x14646}, {Lo: 0x16100, Hi: 0x1612e}, {Lo: 0x16800, Hi: 0x16a38}, {Lo: 0x16a40, Hi: 0x16a5e}, {Lo: 0x16a70, Hi: 0x16abe}, {Lo: 0x16ad0, Hi: 0x16aed}, {Lo: 0x16b00, Hi: 0x16b2f}, {Lo: 0x16b40, Hi: 0x16b43}, {Lo: 0x16b63, Hi: 0x16b77}, {Lo: 0x16b7d, Hi: 0x16b8f}, {Lo: 0x16d40, Hi: 0x16d6c}, {Lo: 0x16e40, Hi: 0x16e7f}, {Lo: 0x16ea0, Hi: 0x16eb8}, {Lo: 0x16ebb, Hi: 0x16ed3}, {Lo: 0x16f00, Hi: 0x16f4a}, {Lo: 0x16f4f, Hi: 0x16f87}, {Lo: 0x16f8f, Hi: 0x16f9f}, {Lo: 0x16fe0, Hi: 0x16fe1}, {Lo: 0x16fe3, Hi: 0x16fe3}, {Lo: 0x16ff0, Hi: 0x16ff6}, {Lo: 0x17000, Hi: 0x18cd5}, {Lo: 0x18cff, Hi: 0x18d1e}, {Lo: 0x18d80, Hi: 0x18df2}, {Lo: 0x1aff0, Hi: 0x1aff3}, {Lo: 0x1aff5, Hi: 0x1affb}, {Lo: 0x1affd, Hi: 0x1affe}, {Lo: 0x1b000, Hi: 0x1b122}, {Lo: 0x1b132, Hi: 0x1b132}, {Lo: 0x1b150, Hi: 0x1b152}, {Lo: 0x1b155, Hi: 0x1b155}, {Lo: 0x1b164, Hi: 0x1b167}, {Lo: 0x1b170, Hi: 0x1b2fb}, {Lo: 0x1bc00, Hi: 0x1bc6a}, {Lo: 0x1bc70, Hi: 0x1bc7c}, {Lo: 0x1bc80, Hi: 0x1bc88}, {Lo: 0x1bc90, Hi: 0x1bc99}, {Lo: 0x1bc9e, Hi: 0x1bc9e}, {Lo: 0x1d400, Hi: 0x1d454}, {Lo: 0x1d456, Hi: 0x1d49c}, {Lo: 0x1d49e, Hi: 0x1d49f}, {Lo: 0x1d4a2, Hi: 0x1d4a2}, {Lo: 0x1d4a5, Hi: 0x1d4a6}, {Lo: 0x1d4a9, Hi: 0x1d4ac}, {Lo: 0x1d4ae, Hi: 0x1d4b9}, {Lo: 0x1d4bb, Hi: 0x1d4bb}, {Lo: 0x1d4bd, Hi: 0x1d4c3}, {Lo: 0x1d4c5, Hi: 0x1d505}, {Lo: 0x1d507, Hi: 0x1d50a}, {Lo: 0x1d50d, Hi: 0x1d514}, {Lo: 0x1d516, Hi: 0x1d51c}, {Lo: 0x1d51e, Hi: 0x1d539}, {Lo: 0x1d53b, Hi: 0x1d53e}, {Lo: 0x1d540, Hi: 0x1d544}, {Lo: 0x1d546, Hi: 0x1d546}, {Lo: 0x1d54a, Hi: 0x1d550}, {Lo: 0x1d552, Hi: 0x1d6a5}, {Lo: 0x1d6a8, Hi: 0x1d6c0}, {Lo: 0x1d6c2, Hi: 0x1d6da}, {Lo: 0x1d6dc, Hi: 0x1d6fa}, {Lo: 0x1d6fc, Hi: 0x1d714}, {Lo: 0x1d716, Hi: 0x1d734}, {Lo: 0x1d736, Hi: 0x1d74e}, {Lo: 0x1d750, Hi: 0x1d76e}, {Lo: 0x1d770, Hi: 0x1d788}, {Lo: 0x1d78a, Hi: 0x1d7a8}, {Lo: 0x1d7aa, Hi: 0x1d7c2}, {Lo: 0x1d7c4, Hi: 0x1d7cb}, {Lo: 0x1df00, Hi: 0x1df1e}, {Lo: 0x1df25, Hi: 0x1df2a}, {Lo: 0x1e000, Hi: 0x1e006}, {Lo: 0x1e008, Hi: 0x1e018}, {Lo: 0x1e01b, Hi: 0x1e021}, {Lo: 0x1e023, Hi: 0x1e024}, {Lo: 0x1e026, Hi: 0x1e02a}, {Lo: 0x1e030, Hi: 0x1e06d}, {Lo: 0x1e08f, Hi: 0x1e08f}, {Lo: 0x1e100, Hi: 0x1e12c}, {Lo: 0x1e137, Hi: 0x1e13d}, {Lo: 0x1e14e, Hi: 0x1e14e}, {Lo: 0x1e290, Hi: 0x1e2ad}, {Lo: 0x1e2c0, Hi: 0x1e2eb}, {Lo: 0x1e4d0, Hi: 0x1e4eb}, {Lo: 0x1e5d0, Hi: 0x1e5ed}, {Lo: 0x1e5f0, Hi: 0x1e5f0}, {Lo: 0x1e6c0, Hi: 0x1e6de}, {Lo: 0x1e6e0, Hi: 0x1e6f5}, {Lo: 0x1e6fe, Hi: 0x1e6ff}, {Lo: 0x1e7e0, Hi: 0x1e7e6}, {Lo: 0x1e7e8, Hi: 0x1e7eb}, {Lo: 0x1e7ed, Hi: 0x1e7ee}, {Lo: 0x1e7f0, Hi: 0x1e7fe}, {Lo: 0x1e800, Hi: 0x1e8c4}, {Lo: 0x1e900, Hi: 0x1e943}, {Lo: 0x1e947, Hi: 0x1e947}, {Lo: 0x1e94b, Hi: 0x1e94b}, {Lo: 0x1ee00, Hi: 0x1ee03}, {Lo: 0x1ee05, Hi: 0x1ee1f}, {Lo: 0x1ee21, Hi: 0x1ee22}, {Lo: 0x1ee24, Hi: 0x1ee24}, {Lo: 0x1ee27, Hi: 0x1ee27}, {Lo: 0x1ee29, Hi: 0x1ee32}, {Lo: 0x1ee34, Hi: 0x1ee37}, {Lo: 0x1ee39, Hi: 0x1ee39}, {Lo: 0x1ee3b, Hi: 0x1ee3b}, {Lo: 0x1ee42, Hi: 0x1ee42}, {Lo: 0x1ee47, Hi: 0x1ee47}, {Lo: 0x1ee49, Hi: 0x1ee49}, {Lo: 0x1ee4b, Hi: 0x1ee4b}, {Lo: 0x1ee4d, Hi: 0x1ee4f}, {Lo: 0x1ee51, Hi: 0x1ee52}, {Lo: 0x1ee54, Hi: 0x1ee54}, {Lo: 0x1ee57, Hi: 0x1ee57}, {Lo: 0x1ee59, Hi: 0x1ee59}, {Lo: 0x1ee5b, Hi: 0x1ee5b}, {Lo: 0x1ee5d, Hi: 0x1ee5d}, {Lo: 0x1ee5f, Hi: 0x1ee5f}, {Lo: 0x1ee61, Hi: 0x1ee62}, {Lo: 0x1ee64, Hi: 0x1ee64}, {Lo: 0x1ee67, Hi: 0x1ee6a}, {Lo: 0x1ee6c, Hi: 0x1ee72}, {Lo: 0x1ee74, Hi: 0x1ee77}, {Lo: 0x1ee79, Hi: 0x1ee7c}, {Lo: 0x1ee7e, Hi: 0x1ee7e}, {Lo: 0x1ee80, Hi: 0x1ee89}, {Lo: 0x1ee8b, Hi: 0x1ee9b}, {Lo: 0x1eea1, Hi: 0x1eea3}, {Lo: 0x1eea5, Hi: 0x1eea9}, {Lo: 0x1eeab, Hi: 0x1eebb}, {Lo: 0x1f130, Hi: 0x1f149}, {Lo: 0x1f150, Hi: 0x1f169}, {Lo: 0x1f170, Hi: 0x1f189}, {Lo: 0x20000, Hi: 0x2a6df}, {Lo: 0x2a700, Hi: 0x2b81d}, {Lo: 0x2b820, Hi: 0x2cead}, {Lo: 0x2ceb0, Hi: 0x2ebe0}, {Lo: 0x2ebf0, Hi: 0x2ee5d}, {Lo: 0x2f800, Hi: 0x2fa1d}, {Lo: 0x30000, Hi: 0x3134a}, {Lo: 0x31350, Hi: 0x33479}}
+
+var ranges7 = []lex.Range{{Lo: '.', Hi: '.'}, {Lo: '0', Hi: '9'}, {Lo: 'A', Hi: 'Z'}, {Lo: '_', Hi: '_'}, {Lo: 'a', Hi: 'm'}, {Lo: 'o', Hi: 'z'}, {Lo: 0xaa, Hi: 0xaa}, {Lo: 0xb5, Hi: 0xb5}, {Lo: 0xba, Hi: 0xba}, {Lo: 0xc0, Hi: 0xd6}, {Lo: 0xd8, Hi: 0xf6}, {Lo: 0xf8, Hi: 0x2c1}, {Lo: 0x2c6, Hi: 0x2d1}, {Lo: 0x2e0, Hi: 0x2e4}, {Lo: 0x2ec, Hi: 0x2ec}, {Lo: 0x2ee, Hi: 0x2ee}, {Lo: 0x345, Hi: 0x345}, {Lo: 0x363, Hi: 0x374}, {Lo: 0x376, Hi: 0x377}, {Lo: 0x37a, Hi: 0x37d}, {Lo: 0x37f, Hi: 0x37f}, {Lo: 0x386, Hi: 0x386}, {Lo: 0x388, Hi: 0x38a}, {Lo: 0x38c, Hi: 0x38c}, {Lo: 0x38e, Hi: 0x3a1}, {Lo: 0x3a3, Hi: 0x3f5}, {Lo: 0x3f7, Hi: 0x481}, {Lo: 0x48a, Hi: 0x52f}, {Lo: 0x531, Hi: 0x556}, {Lo: 0x559, Hi: 0x559}, {Lo: 0x560, Hi: 0x588}, {Lo: 0x5b0, Hi: 0x5bd}, {Lo: 0x5bf, Hi: 0x5bf}, {Lo: 0x5c1, Hi: 0x5c2}, {Lo: 0x5c4, Hi: 0x5c5}, {Lo: 0x5c7, Hi: 0x5c7}, {Lo: 0x5d0, Hi: 0x5ea}, {Lo: 0x5ef, Hi: 0x5f2}, {Lo: 0x610, Hi: 0x61a}, {Lo: 0x620, Hi: 0x657}, {Lo: 0x659, Hi: 0x65f}, {Lo: 0x66e, Hi: 0x6d3}, {Lo: 0x6d5, Hi: 0x6dc}, {Lo: 0x6e1, Hi: 0x6e8}, {Lo: 0x6ed, Hi: 0x6ef}, {Lo: 0x6fa, Hi: 0x6fc}, {Lo: 0x6ff, Hi: 0x6ff}, {Lo: 0x710, Hi: 0x73f}, {Lo: 0x74d, Hi: 0x7b1}, {Lo: 0x7ca, Hi: 0x7ea}, {Lo: 0x7f4, Hi: 0x7f5}, {Lo: 0x7fa, Hi: 0x7fa}, {Lo: 0x800, Hi: 0x817}, {Lo: 0x81a, Hi: 0x82c}, {Lo: 0x840, Hi: 0x858}, {Lo: 0x860, Hi: 0x86a}, {Lo: 0x870, Hi: 0x887}, {Lo: 0x889, Hi: 0x88f}, {Lo: 0x897, Hi: 0x897}, {Lo: 0x8a0, Hi: 0x8c9}, {Lo: 0x8d4, Hi: 0x8df}, {Lo: 0x8e3, Hi: 0x8e9}, {Lo: 0x8f0, Hi: 0x93b}, {Lo: 0x93d, Hi: 0x94c}, {Lo: 0x94e, Hi: 0x950}, {Lo: 0x955, Hi: 0x963}, {Lo: 0x971, Hi: 0x983}, {Lo: 0x985, Hi: 0x98c}, {Lo: 0x98f, Hi: 0x990}, {Lo: 0x993, Hi: 0x9a8}, {Lo: 0x9aa, Hi: 0x9b0}, {Lo: 0x9b2, Hi: 0x9b2}, {Lo: 0x9b6, Hi: 0x9b9}, {Lo: 0x9bd, Hi: 0x9c4}, {Lo: 0x9c7, Hi: 0x9c8}, {Lo: 0x9cb, Hi: 0x9cc}, {Lo: 0x9ce, Hi: 0x9ce}, {Lo: 0x9d7, Hi: 0x9d7}, {Lo: 0x9dc, Hi: 0x9dd}, {Lo: 0x9df, Hi: 0x9e3}, {Lo: 0x9f0, Hi: 0x9f1}, {Lo: 0x9fc, Hi: 0x9fc}, {Lo: 0xa01, Hi: 0xa03}, {Lo: 0xa05, Hi: 0xa0a}, {Lo: 0xa0f, Hi: 0xa10}, {Lo: 0xa13, Hi: 0xa28}, {Lo: 0xa2a, Hi: 0xa30}, {Lo: 0xa32, Hi: 0xa33}, {Lo: 0xa35, Hi: 0xa36}, {Lo: 0xa38, Hi: 0xa39}, {Lo: 0xa3e, Hi: 0xa42}, {Lo: 0xa47, Hi: 0xa48}, {Lo: 0xa4b, Hi: 0xa4c}, {Lo: 0xa51, Hi: 0xa51}, {Lo: 0xa59, Hi: 0xa5c}, {Lo: 0xa5e, Hi: 0xa5e}, {Lo: 0xa70, Hi: 0xa75}, {Lo: 0xa81, Hi: 0xa83}, {Lo: 0xa85, Hi: 0xa8d}, {Lo: 0xa8f, Hi: 0xa91}, {Lo: 0xa93, Hi: 0xaa8}, {Lo: 0xaaa, Hi: 0xab0}, {Lo: 0xab2, Hi: 0xab3}, {Lo: 0xab5, Hi: 0xab9}, {Lo: 0xabd, Hi: 0xac5}, {Lo: 0xac7, Hi: 0xac9}, {Lo: 0xacb, Hi: 0xacc}, {Lo: 0xad0, Hi: 0xad0}, {Lo: 0xae0, Hi: 0xae3}, {Lo: 0xaf9, Hi: 0xafc}, {Lo: 0xb01, Hi: 0xb03}, {Lo: 0xb05, Hi: 0xb0c}, {Lo: 0xb0f, Hi: 0xb10}, {Lo: 0xb13, Hi: 0xb28}, {Lo: 0xb2a, Hi: 0xb30}, {Lo: 0xb32, Hi: 0xb33}, {Lo: 0xb35, Hi: 0xb39}, {Lo: 0xb3d, Hi: 0xb44}, {Lo: 0xb47, Hi: 0xb48}, {Lo: 0xb4b, Hi: 0xb4c}, {Lo: 0xb56, Hi: 0xb57}, {Lo: 0xb5c, Hi: 0xb5d}, {Lo: 0xb5f, Hi: 0xb63}, {Lo: 0xb71, Hi: 0xb71}, {Lo: 0xb82, Hi: 0xb83}, {Lo: 0xb85, Hi: 0xb8a}, {Lo: 0xb8e, Hi: 0xb90}, {Lo: 0xb92, Hi: 0xb95}, {Lo: 0xb99, Hi: 0xb9a}, {Lo: 0xb9c, Hi: 0xb9c}, {Lo: 0xb9e, Hi: 0xb9f}, {Lo: 0xba3, Hi: 0xba4}, {Lo: 0xba8, Hi: 0xbaa}, {Lo: 0xbae, Hi: 0xbb9}, {Lo: 0xbbe, Hi: 0xbc2}, {Lo: 0xbc6, Hi: 0xbc8}, {Lo: 0xbca, Hi: 0xbcc}, {Lo: 0xbd0, Hi: 0xbd0}, {Lo: 0xbd7, Hi: 0xbd7}, {Lo: 0xc00, Hi: 0xc0c}, {Lo: 0xc0e, Hi: 0xc10}, {Lo: 0xc12, Hi: 0xc28}, {Lo: 0xc2a, Hi: 0xc39}, {Lo: 0xc3d, Hi: 0xc44}, {Lo: 0xc46, Hi: 0xc48}, {Lo: 0xc4a, Hi: 0xc4c}, {Lo: 0xc55, Hi: 0xc56}, {Lo: 0xc58, Hi: 0xc5a}, {Lo: 0xc5c, Hi: 0xc5d}, {Lo: 0xc60, Hi: 0xc63}, {Lo: 0xc80, Hi: 0xc83}, {Lo: 0xc85, Hi: 0xc8c}, {Lo: 0xc8e, Hi: 0xc90}, {Lo: 0xc92, Hi: 0xca8}, {Lo: 0xcaa, Hi: 0xcb3}, {Lo: 0xcb5, Hi: 0xcb9}, {Lo: 0xcbd, Hi: 0xcc4}, {Lo: 0xcc6, Hi: 0xcc8}, {Lo: 0xcca, Hi: 0xccc}, {Lo: 0xcd5, Hi: 0xcd6}, {Lo: 0xcdc, Hi: 0xcde}, {Lo: 0xce0, Hi: 0xce3}, {Lo: 0xcf1, Hi: 0xcf3}, {Lo: 0xd00, Hi: 0xd0c}, {Lo: 0xd0e, Hi: 0xd10}, {Lo: 0xd12, Hi: 0xd3a}, {Lo: 0xd3d, Hi: 0xd44}, {Lo: 0xd46, Hi: 0xd48}, {Lo: 0xd4a, Hi: 0xd4c}, {Lo: 0xd4e, Hi: 0xd4e}, {Lo: 0xd54, Hi: 0xd57}, {Lo: 0xd5f, Hi: 0xd63}, {Lo: 0xd7a, Hi: 0xd7f}, {Lo: 0xd81, Hi: 0xd83}, {Lo: 0xd85, Hi: 0xd96}, {Lo: 0xd9a, Hi: 0xdb1}, {Lo: 0xdb3, Hi: 0xdbb}, {Lo: 0xdbd, Hi: 0xdbd}, {Lo: 0xdc0, Hi: 0xdc6}, {Lo: 0xdcf, Hi: 0xdd4}, {Lo: 0xdd6, Hi: 0xdd6}, {Lo: 0xdd8, Hi: 0xddf}, {Lo: 0xdf2, Hi: 0xdf3}, {Lo: 0xe01, Hi: 0xe3a}, {Lo: 0xe40, Hi: 0xe46}, {Lo: 0xe4d, Hi: 0xe4d}, {Lo: 0xe81, Hi: 0xe82}, {Lo: 0xe84, Hi: 0xe84}, {Lo: 0xe86, Hi: 0xe8a}, {Lo: 0xe8c, Hi: 0xea3}, {Lo: 0xea5, Hi: 0xea5}, {Lo: 0xea7, Hi: 0xeb9}, {Lo: 0xebb, Hi: 0xebd}, {Lo: 0xec0, Hi: 0xec4}, {Lo: 0xec6, Hi: 0xec6}, {Lo: 0xecd, Hi: 0xecd}, {Lo: 0xedc, Hi: 0xedf}, {Lo: 0xf00, Hi: 0xf00}, {Lo: 0xf40, Hi: 0xf47}, {Lo: 0xf49, Hi: 0xf6c}, {Lo: 0xf71, Hi: 0xf83}, {Lo: 0xf88, Hi: 0xf97}, {Lo: 0xf99, Hi: 0xfbc}, {Lo: 0x1000, Hi: 0x1036}, {Lo: 0x1038, Hi: 0x1038}, {Lo: 0x103b, Hi: 0x103f}, {Lo: 0x1050, Hi: 0x108f}, {Lo: 0x109a, Hi: 0x109d}, {Lo: 0x10a0, Hi: 0x10c5}, {Lo: 0x10c7, Hi: 0x10c7}, {Lo: 0x10cd, Hi: 0x10cd}, {Lo: 0x10d0, Hi: 0x10fa}, {Lo: 0x10fc, Hi: 0x1248}, {Lo: 0x124a, Hi: 0x124d}, {Lo: 0x1250, Hi: 0x1256}, {Lo: 0x1258, Hi: 0x1258}, {Lo: 0x125a, Hi: 0x125d}, {Lo: 0x1260, Hi: 0x1288}, {Lo: 0x128a, Hi: 0x128d}, {Lo: 0x1290, Hi: 0x12b0}, {Lo: 0x12b2, Hi: 0x12b5}, {Lo: 0x12b8, Hi: 0x12be}, {Lo: 0x12c0, Hi: 0x12c0}, {Lo: 0x12c2, Hi: 0x12c5}, {Lo: 0x12c8, Hi: 0x12d6}, {Lo: 0x12d8, Hi: 0x1310}, {Lo: 0x1312, Hi: 0x1315}, {Lo: 0x1318, Hi: 0x135a}, {Lo: 0x1380, Hi: 0x138f}, {Lo: 0x13a0, Hi: 0x13f5}, {Lo: 0x13f8, Hi: 0x13fd}, {Lo: 0x1401, Hi: 0x166c}, {Lo: 0x166f, Hi: 0x167f}, {Lo: 0x1681, Hi: 0x169a}, {Lo: 0x16a0, Hi: 0x16ea}, {Lo: 0x16ee, Hi: 0x16f8}, {Lo: 0x1700, Hi: 0x1713}, {Lo: 0x171f, Hi: 0x1733}, {Lo: 0x1740, Hi: 0x1753}, {Lo: 0x1760, Hi: 0x176c}, {Lo: 0x176e, Hi: 0x1770}, {Lo: 0x1772, Hi: 0x1773}, {Lo: 0x1780, Hi: 0x17b3}, {Lo: 0x17b6, Hi: 0x17c8}, {Lo: 0x17d7, Hi: 0x17d7}, {Lo: 0x17dc, Hi: 0x17dc}, {Lo: 0x1820, Hi: 0x1878}, {Lo: 0x1880, Hi: 0x18aa}, {Lo: 0x18b0, Hi: 0x18f5}, {Lo: 0x1900, Hi: 0x191e}, {Lo: 0x1920, Hi: 0x192b}, {Lo: 0x1930, Hi: 0x1938}, {Lo: 0x1950, Hi: 0x196d}, {Lo: 0x1970, Hi: 0x1974}, {Lo: 0x1980, Hi: 0x19ab}, {Lo: 0x19b0, Hi: 0x19c9}, {Lo: 0x1a00, Hi: 0x1a1b}, {Lo: 0x1a20, Hi: 0x1a5e}, {Lo: 0x1a61, Hi: 0x1a74}, {Lo: 0x1aa7, Hi: 0x1aa7}, {Lo: 0x1abf, Hi: 0x1ac0}, {Lo: 0x1acc, Hi: 0x1ace}, {Lo: 0x1b00, Hi: 0x1b33}, {Lo: 0x1b35, Hi: 0x1b43}, {Lo: 0x1b45, Hi: 0x1b4c}, {Lo: 0x1b80, Hi: 0x1ba9}, {Lo: 0x1bac, Hi: 0x1baf}, {Lo: 0x1bba, Hi: 0x1be5}, {Lo: 0x1be7, Hi: 0x1bf1}, {Lo: 0x1c00, Hi: 0x1c36}, {Lo: 0x1c4d, Hi: 0x1c4f}, {Lo: 0x1c5a, Hi: 0x1c7d}, {Lo: 0x1c80, Hi: 0x1c8a}, {Lo: 0x1c90, Hi: 0x1cba}, {Lo: 0x1cbd, Hi: 0x1cbf}, {Lo: 0x1ce9, Hi: 0x1cec}, {Lo: 0x1cee, Hi: 0x1cf3}, {Lo: 0x1cf5, Hi: 0x1cf6}, {Lo: 0x1cfa, Hi: 0x1cfa}, {Lo: 0x1d00, Hi: 0x1dbf}, {Lo: 0x1dd3, Hi: 0x1df4}, {Lo: 0x1e00, Hi: 0x1f15}, {Lo: 0x1f18, Hi: 0x1f1d}, {Lo: 0x1f20, Hi: 0x1f45}, {Lo: 0x1f48, Hi: 0x1f4d}, {Lo: 0x1f50, Hi: 0x1f57}, {Lo: 0x1f59, Hi: 0x1f59}, {Lo: 0x1f5b, Hi: 0x1f5b}, {Lo: 0x1f5d, Hi: 0x1f5d}, {Lo: 0x1f5f, Hi: 0x1f7d}, {Lo: 0x1f80, Hi: 0x1fb4}, {Lo: 0x1fb6, Hi: 0x1fbc}, {Lo: 0x1fbe, Hi: 0x1fbe}, {Lo: 0x1fc2, Hi: 0x1fc4}, {Lo: 0x1fc6, Hi: 0x1fcc}, {Lo: 0x1fd0, Hi: 0x1fd3}, {Lo: 0x1fd6, Hi: 0x1fdb}, {Lo: 0x1fe0, Hi: 0x1fec}, {Lo: 0x1ff2, Hi: 0x1ff4}, {Lo: 0x1ff6, Hi: 0x1ffc}, {Lo: 0x2071, Hi: 0x2071}, {Lo: 0x207f, Hi: 0x207f}, {Lo: 0x2090, Hi: 0x209c}, {Lo: 0x2102, Hi: 0x2102}, {Lo: 0x2107, Hi: 0x2107}, {Lo: 0x210a, Hi: 0x2113}, {Lo: 0x2115, Hi: 0x2115}, {Lo: 0x2119, Hi: 0x211d}, {Lo: 0x2124, Hi: 0x2124}, {Lo: 0x2126, Hi: 0x2126}, {Lo: 0x2128, Hi: 0x2128}, {Lo: 0x212a, Hi: 0x212d}, {Lo: 0x212f, Hi: 0x2139}, {Lo: 0x213c, Hi: 0x213f}, {Lo: 0x2145, Hi: 0x2149}, {Lo: 0x214e, Hi: 0x214e}, {Lo: 0x2160, Hi: 0x2188}, {Lo: 0x24b6, Hi: 0x24e9}, {Lo: 0x2c00, Hi: 0x2ce4}, {Lo: 0x2ceb, Hi: 0x2cee}, {Lo: 0x2cf2, Hi: 0x2cf3}, {Lo: 0x2d00, Hi: 0x2d25}, {Lo: 0x2d27, Hi: 0x2d27}, {Lo: 0x2d2d, Hi: 0x2d2d}, {Lo: 0x2d30, Hi: 0x2d67}, {Lo: 0x2d6f, Hi: 0x2d6f}, {Lo: 0x2d80, Hi: 0x2d96}, {Lo: 0x2da0, Hi: 0x2da6}, {Lo: 0x2da8, Hi: 0x2dae}, {Lo: 0x2db0, Hi: 0x2db6}, {Lo: 0x2db8, Hi: 0x2dbe}, {Lo: 0x2dc0, Hi: 0x2dc6}, {Lo: 0x2dc8, Hi: 0x2dce}, {Lo: 0x2dd0, Hi: 0x2dd6}, {Lo: 0x2dd8, Hi: 0x2dde}, {Lo: 0x2de0, Hi: 0x2dff}, {Lo: 0x2e2f, Hi: 0x2e2f}, {Lo: 0x3005, Hi: 0x3007}, {Lo: 0x3021, Hi: 0x3029}, {Lo: 0x3031, Hi: 0x3035}, {Lo: 0x3038, Hi: 0x303c}, {Lo: 0x3041, Hi: 0x3096}, {Lo: 0x309d, Hi: 0x309f}, {Lo: 0x30a1, Hi: 0x30fa}, {Lo: 0x30fc, Hi: 0x30ff}, {Lo: 0x3105, Hi: 0x312f}, {Lo: 0x3131, Hi: 0x318e}, {Lo: 0x31a0, Hi: 0x31bf}, {Lo: 0x31f0, Hi: 0x31ff}, {Lo: 0x3400, Hi: 0x4dbf}, {Lo: 0x4e00, Hi: 0xa48c}, {Lo: 0xa4d0, Hi: 0xa4fd}, {Lo: 0xa500, Hi: 0xa60c}, {Lo: 0xa610, Hi: 0xa61f}, {Lo: 0xa62a, Hi: 0xa62b}, {Lo: 0xa640, Hi: 0xa66e}, {Lo: 0xa674, Hi: 0xa67b}, {Lo: 0xa67f, Hi: 0xa6ef}, {Lo: 0xa717, Hi: 0xa71f}, {Lo: 0xa722, Hi: 0xa788}, {Lo: 0xa78b, Hi: 0xa7dc}, {Lo: 0xa7f1, Hi: 0xa805}, {Lo: 0xa807, Hi: 0xa827}, {Lo: 0xa840, Hi: 0xa873}, {Lo: 0xa880, Hi: 0xa8c3}, {Lo: 0xa8c5, Hi: 0xa8c5}, {Lo: 0xa8f2, Hi: 0xa8f7}, {Lo: 0xa8fb, Hi: 0xa8fb}, {Lo: 0xa8fd, Hi: 0xa8ff}, {Lo: 0xa90a, Hi: 0xa92a}, {Lo: 0xa930, Hi: 0xa952}, {Lo: 0xa960, Hi: 0xa97c}, {Lo: 0xa980, Hi: 0xa9b2}, {Lo: 0xa9b4, Hi: 0xa9bf}, {Lo: 0xa9cf, Hi: 0xa9cf}, {Lo: 0xa9e0, Hi: 0xa9ef}, {Lo: 0xa9fa, Hi: 0xa9fe}, {Lo: 0xaa00, Hi: 0xaa36}, {Lo: 0xaa40, Hi: 0xaa4d}, {Lo: 0xaa60, Hi: 0xaa76}, {Lo: 0xaa7a, Hi: 0xaabe}, {Lo: 0xaac0, Hi: 0xaac0}, {Lo: 0xaac2, Hi: 0xaac2}, {Lo: 0xaadb, Hi: 0xaadd}, {Lo: 0xaae0, Hi: 0xaaef}, {Lo: 0xaaf2, Hi: 0xaaf5}, {Lo: 0xab01, Hi: 0xab06}, {Lo: 0xab09, Hi: 0xab0e}, {Lo: 0xab11, Hi: 0xab16}, {Lo: 0xab20, Hi: 0xab26}, {Lo: 0xab28, Hi: 0xab2e}, {Lo: 0xab30, Hi: 0xab5a}, {Lo: 0xab5c, Hi: 0xab69}, {Lo: 0xab70, Hi: 0xabea}, {Lo: 0xac00, Hi: 0xd7a3}, {Lo: 0xd7b0, Hi: 0xd7c6}, {Lo: 0xd7cb, Hi: 0xd7fb}, {Lo: 0xf900, Hi: 0xfa6d}, {Lo: 0xfa70, Hi: 0xfad9}, {Lo: 0xfb00, Hi: 0xfb06}, {Lo: 0xfb13, Hi: 0xfb17}, {Lo: 0xfb1d, Hi: 0xfb28}, {Lo: 0xfb2a, Hi: 0xfb36}, {Lo: 0xfb38, Hi: 0xfb3c}, {Lo: 0xfb3e, Hi: 0xfb3e}, {Lo: 0xfb40, Hi: 0xfb41}, {Lo: 0xfb43, Hi: 0xfb44}, {Lo: 0xfb46, Hi: 0xfbb1}, {Lo: 0xfbd3, Hi: 0xfd3d}, {Lo: 0xfd50, Hi: 0xfd8f}, {Lo: 0xfd92, Hi: 0xfdc7}, {Lo: 0xfdf0, Hi: 0xfdfb}, {Lo: 0xfe70, Hi: 0xfe74}, {Lo: 0xfe76, Hi: 0xfefc}, {Lo: 0xff21, Hi: 0xff3a}, {Lo: 0xff41, Hi: 0xff5a}, {Lo: 0xff66, Hi: 0xffbe}, {Lo: 0xffc2, Hi: 0xffc7}, {Lo: 0xffca, Hi: 0xffcf}, {Lo: 0xffd2, Hi: 0xffd7}, {Lo: 0xffda, Hi: 0xffdc}, {Lo: 0x10000, Hi: 0x1000b}, {Lo: 0x1000d, Hi: 0x10026}, {Lo: 0x10028, Hi: 0x1003a}, {Lo: 0x1003c, Hi: 0x1003d}, {Lo: 0x1003f, Hi: 0x1004d}, {Lo: 0x10050, Hi: 0x1005d}, {Lo: 0x10080, Hi: 0x100fa}, {Lo: 0x10140, Hi: 0x10174}, {Lo: 0x10280, Hi: 0x1029c}, {Lo: 0x102a0, Hi: 0x102d0}, {Lo: 0x10300, Hi: 0x1031f}, {Lo: 0x1032d, Hi: 0x1034a}, {Lo: 0x10350, Hi: 0x1037a}, {Lo: 0x10380, Hi: 0x1039d}, {Lo: 0x103a0, Hi: 0x103c3}, {Lo: 0x103c8, Hi: 0x103cf}, {Lo: 0x103d1, Hi: 0x103d5}, {Lo: 0x10400, Hi: 0x1049d}, {Lo: 0x104b0, Hi: 0x104d3}, {Lo: 0x104d8, Hi: 0x104fb}, {Lo: 0x10500, Hi: 0x10527}, {Lo: 0x10530, Hi: 0x10563}, {Lo: 0x10570, Hi: 0x1057a}, {Lo: 0x1057c, Hi: 0x1058a}, {Lo: 0x1058c, Hi: 0x10592}, {Lo: 0x10594, Hi: 0x10595}, {Lo: 0x10597, Hi: 0x105a1}, {Lo: 0x105a3, Hi: 0x105b1}, {Lo: 0x105b3, Hi: 0x105b9}, {Lo: 0x105bb, Hi: 0x105bc}, {Lo: 0x105c0, Hi: 0x105f3}, {Lo: 0x10600, Hi: 0x10736}, {Lo: 0x10740, Hi: 0x10755}, {Lo: 0x10760, Hi: 0x10767}, {Lo: 0x10780, Hi: 0x10785}, {Lo: 0x10787, Hi: 0x107b0}, {Lo: 0x107b2, Hi: 0x107ba}, {Lo: 0x10800, Hi: 0x10805}, {Lo: 0x10808, Hi: 0x10808}, {Lo: 0x1080a, Hi: 0x10835}, {Lo: 0x10837, Hi: 0x10838}, {Lo: 0x1083c, Hi: 0x1083c}, {Lo: 0x1083f, Hi: 0x10855}, {Lo: 0x10860, Hi: 0x10876}, {Lo: 0x10880, Hi: 0x1089e}, {Lo: 0x108e0, Hi: 0x108f2}, {Lo: 0x108f4, Hi: 0x108f5}, {Lo: 0x10900, Hi: 0x10915}, {Lo: 0x10920, Hi: 0x10939}, {Lo: 0x10940, Hi: 0x10959}, {Lo: 0x10980, Hi: 0x109b7}, {Lo: 0x109be, Hi: 0x109bf}, {Lo: 0x10a00, Hi: 0x10a03}, {Lo: 0x10a05, Hi: 0x10a06}, {Lo: 0x10a0c, Hi: 0x10a13}, {Lo: 0x10a15, Hi: 0x10a17}, {Lo: 0x10a19, Hi: 0x10a35}, {Lo: 0x10a60, Hi: 0x10a7c}, {Lo: 0x10a80, Hi: 0x10a9c}, {Lo: 0x10ac0, Hi: 0x10ac7}, {Lo: 0x10ac9, Hi: 0x10ae4}, {Lo: 0x10b00, Hi: 0x10b35}, {Lo: 0x10b40, Hi: 0x10b55}, {Lo: 0x10b60, Hi: 0x10b72}, {Lo: 0x10b80, Hi: 0x10b91}, {Lo: 0x10c00, Hi: 0x10c48}, {Lo: 0x10c80, Hi: 0x10cb2}, {Lo: 0x10cc0, Hi: 0x10cf2}, {Lo: 0x10d00, Hi: 0x10d27}, {Lo: 0x10d4a, Hi: 0x10d65}, {Lo: 0x10d69, Hi: 0x10d69}, {Lo: 0x10d6f, Hi: 0x10d85}, {Lo: 0x10e80, Hi: 0x10ea9}, {Lo: 0x10eab, Hi: 0x10eac}, {Lo: 0x10eb0, Hi: 0x10eb1}, {Lo: 0x10ec2, Hi: 0x10ec7}, {Lo: 0x10efa, Hi: 0x10efc}, {Lo: 0x10f00, Hi: 0x10f1c}, {Lo: 0x10f27, Hi: 0x10f27}, {Lo: 0x10f30, Hi: 0x10f45}, {Lo: 0x10f70, Hi: 0x10f81}, {Lo: 0x10fb0, Hi: 0x10fc4}, {Lo: 0x10fe0, Hi: 0x10ff6}, {Lo: 0x11000, Hi: 0x11045}, {Lo: 0x11071, Hi: 0x11075}, {Lo: 0x11080, Hi: 0x110b8}, {Lo: 0x110c2, Hi: 0x110c2}, {Lo: 0x110d0, Hi: 0x110e8}, {Lo: 0x11100, Hi: 0x11132}, {Lo: 0x11144, Hi: 0x11147}, {Lo: 0x11150, Hi: 0x11172}, {Lo: 0x11176, Hi: 0x11176}, {Lo: 0x11180, Hi: 0x111bf}, {Lo: 0x111c1, Hi: 0x111c4}, {Lo: 0x111ce, Hi: 0x111cf}, {Lo: 0x111da, Hi: 0x111da}, {Lo: 0x111dc, Hi: 0x111dc}, {Lo: 0x11200, Hi: 0x11211}, {Lo: 0x11213, Hi: 0x11234}, {Lo: 0x11237, Hi: 0x11237}, {Lo: 0x1123e, Hi: 0x11241}, {Lo: 0x11280, Hi: 0x11286}, {Lo: 0x11288, Hi: 0x11288}, {Lo: 0x1128a, Hi: 0x1128d}, {Lo: 0x1128f, Hi: 0x1129d}, {Lo: 0x1129f, Hi: 0x112a8}, {Lo: 0x112b0, Hi: 0x112e8}, {Lo: 0x11300, Hi: 0x11303}, {Lo: 0x11305, Hi: 0x1130c}, {Lo: 0x1130f, Hi: 0x11310}, {Lo: 0x11313, Hi: 0x11328}, {Lo: 0x1132a, Hi: 0x11330}, {Lo: 0x11332, Hi: 0x11333}, {Lo: 0x11335, Hi: 0x11339}, {Lo: 0x1133d, Hi: 0x11344}, {Lo: 0x11347, Hi: 0x11348}, {Lo: 0x1134b, Hi: 0x1134c}, {Lo: 0x11350, Hi: 0x11350}, {Lo: 0x11357, Hi: 0x11357}, {Lo: 0x1135d, Hi: 0x11363}, {Lo: 0x11380, Hi: 0x11389}, {Lo: 0x1138b, Hi: 0x1138b}, {Lo: 0x1138e, Hi: 0x1138e}, {Lo: 0x11390, Hi: 0x113b5}, {Lo: 0x113b7, Hi: 0x113c0}, {Lo: 0x113c2, Hi: 0x113c2}, {Lo: 0x113c5, Hi: 0x113c5}, {Lo: 0x113c7, Hi: 0x113ca}, {Lo: 0x113cc, Hi: 0x113cd}, {Lo: 0x113d1, Hi: 0x113d1}, {Lo: 0x113d3, Hi: 0x113d3}, {Lo: 0x11400, Hi: 0x11441}, {Lo: 0x11443, Hi: 0x11445}, {Lo: 0x11447, Hi: 0x1144a}, {Lo: 0x1145f, Hi: 0x11461}, {Lo: 0x11480, Hi: 0x114c1}, {Lo: 0x114c4, Hi: 0x114c5}, {Lo: 0x114c7, Hi: 0x114c7}, {Lo: 0x11580, Hi: 0x115b5}, {Lo: 0x115b8, Hi: 0x115be}, {Lo: 0x115d8, Hi: 0x115dd}, {Lo: 0x11600, Hi: 0x1163e}, {Lo: 0x11640, Hi: 0x11640}, {Lo: 0x11644, Hi: 0x11644}, {Lo: 0x11680, Hi: 0x116b5}, {Lo: 0x116b8, Hi: 0x116b8}, {Lo: 0x11700, Hi: 0x1171a}, {Lo: 0x1171d, Hi: 0x1172a}, {Lo: 0x11740, Hi: 0x11746}, {Lo: 0x11800, Hi: 0x11838}, {Lo: 0x118a0, Hi: 0x118df}, {Lo: 0x118ff, Hi: 0x11906}, {Lo: 0x11909, Hi: 0x11909}, {Lo: 0x1190c, Hi: 0x11913}, {Lo: 0x11915, Hi: 0x11916}, {Lo: 0x11918, Hi: 0x11935}, {Lo: 0x11937, Hi: 0x11938}, {Lo: 0x1193b, Hi: 0x1193c}, {Lo: 0x1193f, Hi: 0x11942}, {Lo: 0x119a0, Hi: 0x119a7}, {Lo: 0x119aa, Hi: 0x119d7}, {Lo: 0x119da, Hi: 0x119df}, {Lo: 0x119e1, Hi: 0x119e1}, {Lo: 0x119e3, Hi: 0x119e4}, {Lo: 0x11a00, Hi: 0x11a32}, {Lo: 0x11a35, Hi: 0x11a3e}, {Lo: 0x11a50, Hi: 0x11a97}, {Lo: 0x11a9d, Hi: 0x11a9d}, {Lo: 0x11ab0, Hi: 0x11af8}, {Lo: 0x11b60, Hi: 0x11b67}, {Lo: 0x11bc0, Hi: 0x11be0}, {Lo: 0x11c00, Hi: 0x11c08}, {Lo: 0x11c0a, Hi: 0x11c36}, {Lo: 0x11c38, Hi: 0x11c3e}, {Lo: 0x11c40, Hi: 0x11c40}, {Lo: 0x11c72, Hi: 0x11c8f}, {Lo: 0x11c92, Hi: 0x11ca7}, {Lo: 0x11ca9, Hi: 0x11cb6}, {Lo: 0x11d00, Hi: 0x11d06}, {Lo: 0x11d08, Hi: 0x11d09}, {Lo: 0x11d0b, Hi: 0x11d36}, {Lo: 0x11d3a, Hi: 0x11d3a}, {Lo: 0x11d3c, Hi: 0x11d3d}, {Lo: 0x11d3f, Hi: 0x11d41}, {Lo: 0x11d43, Hi: 0x11d43}, {Lo: 0x11d46, Hi: 0x11d47}, {Lo: 0x11d60, Hi: 0x11d65}, {Lo: 0x11d67, Hi: 0x11d68}, {Lo: 0x11d6a, Hi: 0x11d8e}, {Lo: 0x11d90, Hi: 0x11d91}, {Lo: 0x11d93, Hi: 0x11d96}, {Lo: 0x11d98, Hi: 0x11d98}, {Lo: 0x11db0, Hi: 0x11ddb}, {Lo: 0x11ee0, Hi: 0x11ef6}, {Lo: 0x11f00, Hi: 0x11f10}, {Lo: 0x11f12, Hi: 0x11f3a}, {Lo: 0x11f3e, Hi: 0x11f40}, {Lo: 0x11fb0, Hi: 0x11fb0}, {Lo: 0x12000, Hi: 0x12399}, {Lo: 0x12400, Hi: 0x1246e}, {Lo: 0x12480, Hi: 0x12543}, {Lo: 0x12f90, Hi: 0x12ff0}, {Lo: 0x13000, Hi: 0x1342f}, {Lo: 0x13441, Hi: 0x13446}, {Lo: 0x13460, Hi: 0x143fa}, {Lo: 0x14400, Hi: 0x14646}, {Lo: 0x16100, Hi: 0x1612e}, {Lo: 0x16800, Hi: 0x16a38}, {Lo: 0x16a40, Hi: 0x16a5e}, {Lo: 0x16a70, Hi: 0x16abe}, {Lo: 0x16ad0, Hi: 0x16aed}, {Lo: 0x16b00, Hi: 0x16b2f}, {Lo: 0x16b40, Hi: 0x16b43}, {Lo: 0x16b63, Hi: 0x16b77}, {Lo: 0x16b7d, Hi: 0x16b8f}, {Lo: 0x16d40, Hi: 0x16d6c}, {Lo: 0x16e40, Hi: 0x16e7f}, {Lo: 0x16ea0, Hi: 0x16eb8}, {Lo: 0x16ebb, Hi: 0x16ed3}, {Lo: 0x16f00, Hi: 0x16f4a}, {Lo: 0x16f4f, Hi: 0x16f87}, {Lo: 0x16f8f, Hi: 0x16f9f}, {Lo: 0x16fe0, Hi: 0x16fe1}, {Lo: 0x16fe3, Hi: 0x16fe3}, {Lo: 0x16ff0, Hi: 0x16ff6}, {Lo: 0x17000, Hi: 0x18cd5}, {Lo: 0x18cff, Hi: 0x18d1e}, {Lo: 0x18d80, Hi: 0x18df2}, {Lo: 0x1aff0, Hi: 0x1aff3}, {Lo: 0x1aff5, Hi: 0x1affb}, {Lo: 0x1affd, Hi: 0x1affe}, {Lo: 0x1b000, Hi: 0x1b122}, {Lo: 0x1b132, Hi: 0x1b132}, {Lo: 0x1b150, Hi: 0x1b152}, {Lo: 0x1b155, Hi: 0x1b155}, {Lo: 0x1b164, Hi: 0x1b167}, {Lo: 0x1b170, Hi: 0x1b2fb}, {Lo: 0x1bc00, Hi: 0x1bc6a}, {Lo: 0x1bc70, Hi: 0x1bc7c}, {Lo: 0x1bc80, Hi: 0x1bc88}, {Lo: 0x1bc90, Hi: 0x1bc99}, {Lo: 0x1bc9e, Hi: 0x1bc9e}, {Lo: 0x1d400, Hi: 0x1d454}, {Lo: 0x1d456, Hi: 0x1d49c}, {Lo: 0x1d49e, Hi: 0x1d49f}, {Lo: 0x1d4a2, Hi: 0x1d4a2}, {Lo: 0x1d4a5, Hi: 0x1d4a6}, {Lo: 0x1d4a9, Hi: 0x1d4ac}, {Lo: 0x1d4ae, Hi: 0x1d4b9}, {Lo: 0x1d4bb, Hi: 0x1d4bb}, {Lo: 0x1d4bd, Hi: 0x1d4c3}, {Lo: 0x1d4c5, Hi: 0x1d505}, {Lo: 0x1d507, Hi: 0x1d50a}, {Lo: 0x1d50d, Hi: 0x1d514}, {Lo: 0x1d516, Hi: 0x1d51c}, {Lo: 0x1d51e, Hi: 0x1d539}, {Lo: 0x1d53b, Hi: 0x1d53e}, {Lo: 0x1d540, Hi: 0x1d544}, {Lo: 0x1d546, Hi: 0x1d546}, {Lo: 0x1d54a, Hi: 0x1d550}, {Lo: 0x1d552, Hi: 0x1d6a5}, {Lo: 0x1d6a8, Hi: 0x1d6c0}, {Lo: 0x1d6c2, Hi: 0x1d6da}, {Lo: 0x1d6dc, Hi: 0x1d6fa}, {Lo: 0x1d6fc, Hi: 0x1d714}, {Lo: 0x1d716, Hi: 0x1d734}, {Lo: 0x1d736, Hi: 0x1d74e}, {Lo: 0x1d750, Hi: 0x1d76e}, {Lo: 0x1d770, Hi: 0x1d788}, {Lo: 0x1d78a, Hi: 0x1d7a8}, {Lo: 0x1d7aa, Hi: 0x1d7c2}, {Lo: 0x1d7c4, Hi: 0x1d7cb}, {Lo: 0x1df00, Hi: 0x1df1e}, {Lo: 0x1df25, Hi: 0x1df2a}, {Lo: 0x1e000, Hi: 0x1e006}, {Lo: 0x1e008, Hi: 0x1e018}, {Lo: 0x1e01b, Hi: 0x1e021}, {Lo: 0x1e023, Hi: 0x1e024}, {Lo: 0x1e026, Hi: 0x1e02a}, {Lo: 0x1e030, Hi: 0x1e06d}, {Lo: 0x1e08f, Hi: 0x1e08f}, {Lo: 0x1e100, Hi: 0x1e12c}, {Lo: 0x1e137, Hi: 0x1e13d}, {Lo: 0x1e14e, Hi: 0x1e14e}, {Lo: 0x1e290, Hi: 0x1e2ad}, {Lo: 0x1e2c0, Hi: 0x1e2eb}, {Lo: 0x1e4d0, Hi: 0x1e4eb}, {Lo: 0x1e5d0, Hi: 0x1e5ed}, {Lo: 0x1e5f0, Hi: 0x1e5f0}, {Lo: 0x1e6c0, Hi: 0x1e6de}, {Lo: 0x1e6e0, Hi: 0x1e6f5}, {Lo: 0x1e6fe, Hi: 0x1e6ff}, {Lo: 0x1e7e0, Hi: 0x1e7e6}, {Lo: 0x1e7e8, Hi: 0x1e7eb}, {Lo: 0x1e7ed, Hi: 0x1e7ee}, {Lo: 0x1e7f0, Hi: 0x1e7fe}, {Lo: 0x1e800, Hi: 0x1e8c4}, {Lo: 0x1e900, Hi: 0x1e943}, {Lo: 0x1e947, Hi: 0x1e947}, {Lo: 0x1e94b, Hi: 0x1e94b}, {Lo: 0x1ee00, Hi: 0x1ee03}, {Lo: 0x1ee05, Hi: 0x1ee1f}, {Lo: 0x1ee21, Hi: 0x1ee22}, {Lo: 0x1ee24, Hi: 0x1ee24}, {Lo: 0x1ee27, Hi: 0x1ee27}, {Lo: 0x1ee29, Hi: 0x1ee32}, {Lo: 0x1ee34, Hi: 0x1ee37}, {Lo: 0x1ee39, Hi: 0x1ee39}, {Lo: 0x1ee3b, Hi: 0x1ee3b}, {Lo: 0x1ee42, Hi: 0x1ee42}, {Lo: 0x1ee47, Hi: 0x1ee47}, {Lo: 0x1ee49, Hi: 0x1ee49}, {Lo: 0x1ee4b, Hi: 0x1ee4b}, {Lo: 0x1ee4d, Hi: 0x1ee4f}, {Lo: 0x1ee51, Hi: 0x1ee52}, {Lo: 0x1ee54, Hi: 0x1ee54}, {Lo: 0x1ee57, Hi: 0x1ee57}, {Lo: 0x1ee59, Hi: 0x1ee59}, {Lo: 0x1ee5b, Hi: 0x1ee5b}, {Lo: 0x1ee5d, Hi: 0x1ee5d}, {Lo: 0x1ee5f, Hi: 0x1ee5f}, {Lo: 0x1ee61, Hi: 0x1ee62}, {Lo: 0x1ee64, Hi: 0x1ee64}, {Lo: 0x1ee67, Hi: 0x1ee6a}, {Lo: 0x1ee6c, Hi: 0x1ee72}, {Lo: 0x1ee74, Hi: 0x1ee77}, {Lo: 0x1ee79, Hi: 0x1ee7c}, {Lo: 0x1ee7e, Hi: 0x1ee7e}, {Lo: 0x1ee80, Hi: 0x1ee89}, {Lo: 0x1ee8b, Hi: 0x1ee9b}, {Lo: 0x1eea1, Hi: 0x1eea3}, {Lo: 0x1eea5, Hi: 0x1eea9}, {Lo: 0x1eeab, Hi: 0x1eebb}, {Lo: 0x1f130, Hi: 0x1f149}, {Lo: 0x1f150, Hi: 0x1f169}, {Lo: 0x1f170, Hi: 0x1f189}, {Lo: 0x20000, Hi: 0x2a6df}, {Lo: 0x2a700, Hi: 0x2b81d}, {Lo: 0x2b820, Hi: 0x2cead}, {Lo: 0x2ceb0, Hi: 0x2ebe0}, {Lo: 0x2ebf0, Hi: 0x2ee5d}, {Lo: 0x2f800, Hi: 0x2fa1d}, {Lo: 0x30000, Hi: 0x3134a}, {Lo: 0x31350, Hi: 0x33479}}
+
+var ranges8 = []lex.Range{{Lo: 'A', Hi: 'Z'}, {Lo: '_', Hi: '_'}, {Lo: 'a', Hi: 'z'}, {Lo: 0xaa, Hi: 0xaa}, {Lo: 0xb5, Hi: 0xb5}, {Lo: 0xba, Hi: 0xba}, {Lo: 0xc0, Hi: 0xd6}, {Lo: 0xd8, Hi: 0xf6}, {Lo: 0xf8, Hi: 0x2c1}, {Lo: 0x2c6, Hi: 0x2d1}, {Lo: 0x2e0, Hi: 0x2e4}, {Lo: 0x2ec, Hi: 0x2ec}, {Lo: 0x2ee, Hi: 0x2ee}, {Lo: 0x345, Hi: 0x345}, {Lo: 0x363, Hi: 0x374}, {Lo: 0x376, Hi: 0x377}, {Lo: 0x37a, Hi: 0x37d}, {Lo: 0x37f, Hi: 0x37f}, {Lo: 0x386, Hi: 0x386}, {Lo: 0x388, Hi: 0x38a}, {Lo: 0x38c, Hi: 0x38c}, {Lo: 0x38e, Hi: 0x3a1}, {Lo: 0x3a3, Hi: 0x3f5}, {Lo: 0x3f7, Hi: 0x481}, {Lo: 0x48a, Hi: 0x52f}, {Lo: 0x531, Hi: 0x556}, {Lo: 0x559, Hi: 0x559}, {Lo: 0x560, Hi: 0x588}, {Lo: 0x5b0, Hi: 0x5bd}, {Lo: 0x5bf, Hi: 0x5bf}, {Lo: 0x5c1, Hi: 0x5c2}, {Lo: 0x5c4, Hi: 0x5c5}, {Lo: 0x5c7, Hi: 0x5c7}, {Lo: 0x5d0, Hi: 0x5ea}, {Lo: 0x5ef, Hi: 0x5f2}, {Lo: 0x610, Hi: 0x61a}, {Lo: 0x620, Hi: 0x657}, {Lo: 0x659, Hi: 0x65f}, {Lo: 0x66e, Hi: 0x6d3}, {Lo: 0x6d5, Hi: 0x6dc}, {Lo: 0x6e1, Hi: 0x6e8}, {Lo: 0x6ed, Hi: 0x6ef}, {Lo: 0x6fa, Hi: 0x6fc}, {Lo: 0x6ff, Hi: 0x6ff}, {Lo: 0x710, Hi: 0x73f}, {Lo: 0x74d, Hi: 0x7b1}, {Lo: 0x7ca, Hi: 0x7ea}, {Lo: 0x7f4, Hi: 0x7f5}, {Lo: 0x7fa, Hi: 0x7fa}, {Lo: 0x800, Hi: 0x817}, {Lo: 0x81a, Hi: 0x82c}, {Lo: 0x840, Hi: 0x858}, {Lo: 0x860, Hi: 0x86a}, {Lo: 0x870, Hi: 0x887}, {Lo: 0x889, Hi: 0x88f}, {Lo: 0x897, Hi: 0x897}, {Lo: 0x8a0, Hi: 0x8c9}, {Lo: 0x8d4, Hi: 0x8df}, {Lo: 0x8e3, Hi: 0x8e9}, {Lo: 0x8f0, Hi: 0x93b}, {Lo: 0x93d, Hi: 0x94c}, {Lo: 0x94e, Hi: 0x950}, {Lo: 0x955, Hi: 0x963}, {Lo: 0x971, Hi: 0x983}, {Lo: 0x985, Hi: 0x98c}, {Lo: 0x98f, Hi: 0x990}, {Lo: 0x993, Hi: 0x9a8}, {Lo: 0x9aa, Hi: 0x9b0}, {Lo: 0x9b2, Hi: 0x9b2}, {Lo: 0x9b6, Hi: 0x9b9}, {Lo: 0x9bd, Hi: 0x9c4}, {Lo: 0x9c7, Hi: 0x9c8}, {Lo: 0x9cb, Hi: 0x9cc}, {Lo: 0x9ce, Hi: 0x9ce}, {Lo: 0x9d7, Hi: 0x9d7}, {Lo: 0x9dc, Hi: 0x9dd}, {Lo: 0x9df, Hi: 0x9e3}, {Lo: 0x9f0, Hi: 0x9f1}, {Lo: 0x9fc, Hi: 0x9fc}, {Lo: 0xa01, Hi: 0xa03}, {Lo: 0xa05, Hi: 0xa0a}, {Lo: 0xa0f, Hi: 0xa10}, {Lo: 0xa13, Hi: 0xa28}, {Lo: 0xa2a, Hi: 0xa30}, {Lo: 0xa32, Hi: 0xa33}, {Lo: 0xa35, Hi: 0xa36}, {Lo: 0xa38, Hi: 0xa39}, {Lo: 0xa3e, Hi: 0xa42}, {Lo: 0xa47, Hi: 0xa48}, {Lo: 0xa4b, Hi: 0xa4c}, {Lo: 0xa51, Hi: 0xa51}, {Lo: 0xa59, Hi: 0xa5c}, {Lo: 0xa5e, Hi: 0xa5e}, {Lo: 0xa70, Hi: 0xa75}, {Lo: 0xa81, Hi: 0xa83}, {Lo: 0xa85, Hi: 0xa8d}, {Lo: 0xa8f, Hi: 0xa91}, {Lo: 0xa93, Hi: 0xaa8}, {Lo: 0xaaa, Hi: 0xab0}, {Lo: 0xab2, Hi: 0xab3}, {Lo: 0xab5, Hi: 0xab9}, {Lo: 0xabd, Hi: 0xac5}, {Lo: 0xac7, Hi: 0xac9}, {Lo: 0xacb, Hi: 0xacc}, {Lo: 0xad0, Hi: 0xad0}, {Lo: 0xae0, Hi: 0xae3}, {Lo: 0xaf9, Hi: 0xafc}, {Lo: 0xb01, Hi: 0xb03}, {Lo: 0xb05, Hi: 0xb0c}, {Lo: 0xb0f, Hi: 0xb10}, {Lo: 0xb13, Hi: 0xb28}, {Lo: 0xb2a, Hi: 0xb30}, {Lo: 0xb32, Hi: 0xb33}, {Lo: 0xb35, Hi: 0xb39}, {Lo: 0xb3d, Hi: 0xb44}, {Lo: 0xb47, Hi: 0xb48}, {Lo: 0xb4b, Hi: 0xb4c}, {Lo: 0xb56, Hi: 0xb57}, {Lo: 0xb5c, Hi: 0xb5d}, {Lo: 0xb5f, Hi: 0xb63}, {Lo: 0xb71, Hi: 0xb71}, {Lo: 0xb82, Hi: 0xb83}, {Lo: 0xb85, Hi: 0xb8a}, {Lo: 0xb8e, Hi: 0xb90}, {Lo: 0xb92, Hi: 0xb95}, {Lo: 0xb99, Hi: 0xb9a}, {Lo: 0xb9c, Hi: 0xb9c}, {Lo: 0xb9e, Hi: 0xb9f}, {Lo: 0xba3, Hi: 0xba4}, {Lo: 0xba8, Hi: 0xbaa}, {Lo: 0xbae, Hi: 0xbb9}, {Lo: 0xbbe, Hi: 0xbc2}, {Lo: 0xbc6, Hi: 0xbc8}, {Lo: 0xbca, Hi: 0xbcc}, {Lo: 0xbd0, Hi: 0xbd0}, {Lo: 0xbd7, Hi: 0xbd7}, {Lo: 0xc00, Hi: 0xc0c}, {Lo: 0xc0e, Hi: 0xc10}, {Lo: 0xc12, Hi: 0xc28}, {Lo: 0xc2a, Hi: 0xc39}, {Lo: 0xc3d, Hi: 0xc44}, {Lo: 0xc46, Hi: 0xc48}, {Lo: 0xc4a, Hi: 0xc4c}, {Lo: 0xc55, Hi: 0xc56}, {Lo: 0xc58, Hi: 0xc5a}, {Lo: 0xc5c, Hi: 0xc5d}, {Lo: 0xc60, Hi: 0xc63}, {Lo: 0xc80, Hi: 0xc83}, {Lo: 0xc85, Hi: 0xc8c}, {Lo: 0xc8e, Hi: 0xc90}, {Lo: 0xc92, Hi: 0xca8}, {Lo: 0xcaa, Hi: 0xcb3}, {Lo: 0xcb5, Hi: 0xcb9}, {Lo: 0xcbd, Hi: 0xcc4}, {Lo: 0xcc6, Hi: 0xcc8}, {Lo: 0xcca, Hi: 0xccc}, {Lo: 0xcd5, Hi: 0xcd6}, {Lo: 0xcdc, Hi: 0xcde}, {Lo: 0xce0, Hi: 0xce3}, {Lo: 0xcf1, Hi: 0xcf3}, {Lo: 0xd00, Hi: 0xd0c}, {Lo: 0xd0e, Hi: 0xd10}, {Lo: 0xd12, Hi: 0xd3a}, {Lo: 0xd3d, Hi: 0xd44}, {Lo: 0xd46, Hi: 0xd48}, {Lo: 0xd4a, Hi: 0xd4c}, {Lo: 0xd4e, Hi: 0xd4e}, {Lo: 0xd54, Hi: 0xd57}, {Lo: 0xd5f, Hi: 0xd63}, {Lo: 0xd7a, Hi: 0xd7f}, {Lo: 0xd81, Hi: 0xd83}, {Lo: 0xd85, Hi: 0xd96}, {Lo: 0xd9a, Hi: 0xdb1}, {Lo: 0xdb3, Hi: 0xdbb}, {Lo: 0xdbd, Hi: 0xdbd}, {Lo: 0xdc0, Hi: 0xdc6}, {Lo: 0xdcf, Hi: 0xdd4}, {Lo: 0xdd6, Hi: 0xdd6}, {Lo: 0xdd8, Hi: 0xddf}, {Lo: 0xdf2, Hi: 0xdf3}, {Lo: 0xe01, Hi: 0xe3a}, {Lo: 0xe40, Hi: 0xe46}, {Lo: 0xe4d, Hi: 0xe4d}, {Lo: 0xe81, Hi: 0xe82}, {Lo: 0xe84, Hi: 0xe84}, {Lo: 0xe86, Hi: 0xe8a}, {Lo: 0xe8c, Hi: 0xea3}, {Lo: 0xea5, Hi: 0xea5}, {Lo: 0xea7, Hi: 0xeb9}, {Lo: 0xebb, Hi: 0xebd}, {Lo: 0xec0, Hi: 0xec4}, {Lo: 0xec6, Hi: 0xec6}, {Lo: 0xecd, Hi: 0xecd}, {Lo: 0xedc, Hi: 0xedf}, {Lo: 0xf00, Hi: 0xf00}, {Lo: 0xf40, Hi: 0xf47}, {Lo: 0xf49, Hi: 0xf6c}, {Lo: 0xf71, Hi: 0xf83}, {Lo: 0xf88, Hi: 0xf97}, {Lo: 0xf99, Hi: 0xfbc}, {Lo: 0x1000, Hi: 0x1036}, {Lo: 0x1038, Hi: 0x1038}, {Lo: 0x103b, Hi: 0x103f}, {Lo: 0x1050, Hi: 0x108f}, {Lo: 0x109a, Hi: 0x109d}, {Lo: 0x10a0, Hi: 0x10c5}, {Lo: 0x10c7, Hi: 0x10c7}, {Lo: 0x10cd, Hi: 0x10cd}, {Lo: 0x10d0, Hi: 0x10fa}, {Lo: 0x10fc, Hi: 0x1248}, {Lo: 0x124a, Hi: 0x124d}, {Lo: 0x1250, Hi: 0x1256}, {Lo: 0x1258, Hi: 0x1258}, {Lo: 0x125a, Hi: 0x125d}, {Lo: 0x1260, Hi: 0x1288}, {Lo: 0x128a, Hi: 0x128d}, {Lo: 0x1290, Hi: 0x12b0}, {Lo: 0x12b2, Hi: 0x12b5}, {Lo: 0x12b8, Hi: 0x12be}, {Lo: 0x12c0, Hi: 0x12c0}, {Lo: 0x12c2, Hi: 0x12c5}, {Lo: 0x12c8, Hi: 0x12d6}, {Lo: 0x12d8, Hi: 0x1310}, {Lo: 0x1312, Hi: 0x1315}, {Lo: 0x1318, Hi: 0x135a}, {Lo: 0x1380, Hi: 0x138f}, {Lo: 0x13a0, Hi: 0x13f5}, {Lo: 0x13f8, Hi: 0x13fd}, {Lo: 0x1401, Hi: 0x166c}, {Lo: 0x166f, Hi: 0x167f}, {Lo: 0x1681, Hi: 0x169a}, {Lo: 0x16a0, Hi: 0x16ea}, {Lo: 0x16ee, Hi: 0x16f8}, {Lo: 0x1700, Hi: 0x1713}, {Lo: 0x171f, Hi: 0x1733}, {Lo: 0x1740, Hi: 0x1753}, {Lo: 0x1760, Hi: 0x176c}, {Lo: 0x176e, Hi: 0x1770}, {Lo: 0x1772, Hi: 0x1773}, {Lo: 0x1780, Hi: 0x17b3}, {Lo: 0x17b6, Hi: 0x17c8}, {Lo: 0x17d7, Hi: 0x17d7}, {Lo: 0x17dc, Hi: 0x17dc}, {Lo: 0x1820, Hi: 0x1878}, {Lo: 0x1880, Hi: 0x18aa}, {Lo: 0x18b0, Hi: 0x18f5}, {Lo: 0x1900, Hi: 0x191e}, {Lo: 0x1920, Hi: 0x192b}, {Lo: 0x1930, Hi: 0x1938}, {Lo: 0x1950, Hi: 0x196d}, {Lo: 0x1970, Hi: 0x1974}, {Lo: 0x1980, Hi: 0x19ab}, {Lo: 0x19b0, Hi: 0x19c9}, {Lo: 0x1a00, Hi: 0x1a1b}, {Lo: 0x1a20, Hi: 0x1a5e}, {Lo: 0x1a61, Hi: 0x1a74}, {Lo: 0x1aa7, Hi: 0x1aa7}, {Lo: 0x1abf, Hi: 0x1ac0}, {Lo: 0x1acc, Hi: 0x1ace}, {Lo: 0x1b00, Hi: 0x1b33}, {Lo: 0x1b35, Hi: 0x1b43}, {Lo: 0x1b45, Hi: 0x1b4c}, {Lo: 0x1b80, Hi: 0x1ba9}, {Lo: 0x1bac, Hi: 0x1baf}, {Lo: 0x1bba, Hi: 0x1be5}, {Lo: 0x1be7, Hi: 0x1bf1}, {Lo: 0x1c00, Hi: 0x1c36}, {Lo: 0x1c4d, Hi: 0x1c4f}, {Lo: 0x1c5a, Hi: 0x1c7d}, {Lo: 0x1c80, Hi: 0x1c8a}, {Lo: 0x1c90, Hi: 0x1cba}, {Lo: 0x1cbd, Hi: 0x1cbf}, {Lo: 0x1ce9, Hi: 0x1cec}, {Lo: 0x1cee, Hi: 0x1cf3}, {Lo: 0x1cf5, Hi: 0x1cf6}, {Lo: 0x1cfa, Hi: 0x1cfa}, {Lo: 0x1d00, Hi: 0x1dbf}, {Lo: 0x1dd3, Hi: 0x1df4}, {Lo: 0x1e00, Hi: 0x1f15}, {Lo: 0x1f18, Hi: 0x1f1d}, {Lo: 0x1f20, Hi: 0x1f45}, {Lo: 0x1f48, Hi: 0x1f4d}, {Lo: 0x1f50, Hi: 0x1f57}, {Lo: 0x1f59, Hi: 0x1f59}, {Lo: 0x1f5b, Hi: 0x1f5b}, {Lo: 0x1f5d, Hi: 0x1f5d}, {Lo: 0x1f5f, Hi: 0x1f7d}, {Lo: 0x1f80, Hi: 0x1fb4}, {Lo: 0x1fb6, Hi: 0x1fbc}, {Lo: 0x1fbe, Hi: 0x1fbe}, {Lo: 0x1fc2, Hi: 0x1fc4}, {Lo: 0x1fc6, Hi: 0x1fcc}, {Lo: 0x1fd0, Hi: 0x1fd3}, {Lo: 0x1fd6, Hi: 0x1fdb}, {Lo: 0x1fe0, Hi: 0x1fec}, {Lo: 0x1ff2, Hi: 0x1ff4}, {Lo: 0x1ff6, Hi: 0x1ffc}, {Lo: 0x2071, Hi: 0x2071}, {Lo: 0x207f, Hi: 0x207f}, {Lo: 0x2090, Hi: 0x209c}, {Lo: 0x2102, Hi: 0x2102}, {Lo: 0x2107, Hi: 0x2107}, {Lo: 0x210a, Hi: 0x2113}, {Lo: 0x2115, Hi: 0x2115}, {Lo: 0x2119, Hi: 0x211d}, {Lo: 0x2124, Hi: 0x2124}, {Lo: 0x2126, Hi: 0x2126}, {Lo: 0x2128, Hi: 0x2128}, {Lo: 0x212a, Hi: 0x212d}, {Lo: 0x212f, Hi: 0x2139}, {Lo: 0x213c, Hi: 0x213f}, {Lo: 0x2145, Hi: 0x2149}, {Lo: 0x214e, Hi: 0x214e}, {Lo: 0x2160, Hi: 0x2188}, {Lo: 0x24b6, Hi: 0x24e9}, {Lo: 0x2c00, Hi: 0x2ce4}, {Lo: 0x2ceb, Hi: 0x2cee}, {Lo: 0x2cf2, Hi: 0x2cf3}, {Lo: 0x2d00, Hi: 0x2d25}, {Lo: 0x2d27, Hi: 0x2d27}, {Lo: 0x2d2d, Hi: 0x2d2d}, {Lo: 0x2d30, Hi: 0x2d67}, {Lo: 0x2d6f, Hi: 0x2d6f}, {Lo: 0x2d80, Hi: 0x2d96}, {Lo: 0x2da0, Hi: 0x2da6}, {Lo: 0x2da8, Hi: 0x2dae}, {Lo: 0x2db0, Hi: 0x2db6}, {Lo: 0x2db8, Hi: 0x2dbe}, {Lo: 0x2dc0, Hi: 0x2dc6}, {Lo: 0x2dc8, Hi: 0x2dce}, {Lo: 0x2dd0, Hi: 0x2dd6}, {Lo: 0x2dd8, Hi: 0x2dde}, {Lo: 0x2de0, Hi: 0x2dff}, {Lo: 0x2e2f, Hi: 0x2e2f}, {Lo: 0x3005, Hi: 0x3007}, {Lo: 0x3021, Hi: 0x3029}, {Lo: 0x3031, Hi: 0x3035}, {Lo: 0x3038, Hi: 0x303c}, {Lo: 0x3041, Hi: 0x3096}, {Lo: 0x309d, Hi: 0x309f}, {Lo: 0x30a1, Hi: 0x30fa}, {Lo: 0x30fc, Hi: 0x30ff}, {Lo: 0x3105, Hi: 0x312f}, {Lo: 0x3131, Hi: 0x318e}, {Lo: 0x31a0, Hi: 0x31bf}, {Lo: 0x31f0, Hi: 0x31ff}, {Lo: 0x3400, Hi: 0x4dbf}, {Lo: 0x4e00, Hi: 0xa48c}, {Lo: 0xa4d0, Hi: 0xa4fd}, {Lo: 0xa500, Hi: 0xa60c}, {Lo: 0xa610, Hi: 0xa61f}, {Lo: 0xa62a, Hi: 0xa62b}, {Lo: 0xa640, Hi: 0xa66e}, {Lo: 0xa674, Hi: 0xa67b}, {Lo: 0xa67f, Hi: 0xa6ef}, {Lo: 0xa717, Hi: 0xa71f}, {Lo: 0xa722, Hi: 0xa788}, {Lo: 0xa78b, Hi: 0xa7dc}, {Lo: 0xa7f1, Hi: 0xa805}, {Lo: 0xa807, Hi: 0xa827}, {Lo: 0xa840, Hi: 0xa873}, {Lo: 0xa880, Hi: 0xa8c3}, {Lo: 0xa8c5, Hi: 0xa8c5}, {Lo: 0xa8f2, Hi: 0xa8f7}, {Lo: 0xa8fb, Hi: 0xa8fb}, {Lo: 0xa8fd, Hi: 0xa8ff}, {Lo: 0xa90a, Hi: 0xa92a}, {Lo: 0xa930, Hi: 0xa952}, {Lo: 0xa960, Hi: 0xa97c}, {Lo: 0xa980, Hi: 0xa9b2}, {Lo: 0xa9b4, Hi: 0xa9bf}, {Lo: 0xa9cf, Hi: 0xa9cf}, {Lo: 0xa9e0, Hi: 0xa9ef}, {Lo: 0xa9fa, Hi: 0xa9fe}, {Lo: 0xaa00, Hi: 0xaa36}, {Lo: 0xaa40, Hi: 0xaa4d}, {Lo: 0xaa60, Hi: 0xaa76}, {Lo: 0xaa7a, Hi: 0xaabe}, {Lo: 0xaac0, Hi: 0xaac0}, {Lo: 0xaac2, Hi: 0xaac2}, {Lo: 0xaadb, Hi: 0xaadd}, {Lo: 0xaae0, Hi: 0xaaef}, {Lo: 0xaaf2, Hi: 0xaaf5}, {Lo: 0xab01, Hi: 0xab06}, {Lo: 0xab09, Hi: 0xab0e}, {Lo: 0xab11, Hi: 0xab16}, {Lo: 0xab20, Hi: 0xab26}, {Lo: 0xab28, Hi: 0xab2e}, {Lo: 0xab30, Hi: 0xab5a}, {Lo: 0xab5c, Hi: 0xab69}, {Lo: 0xab70, Hi: 0xabea}, {Lo: 0xac00, Hi: 0xd7a3}, {Lo: 0xd7b0, Hi: 0xd7c6}, {Lo: 0xd7cb, Hi: 0xd7fb}, {Lo: 0xf900, Hi: 0xfa6d}, {Lo: 0xfa70, Hi: 0xfad9}, {Lo: 0xfb00, Hi: 0xfb06}, {Lo: 0xfb13, Hi: 0xfb17}, {Lo: 0xfb1d, Hi: 0xfb28}, {Lo: 0xfb2a, Hi: 0xfb36}, {Lo: 0xfb38, Hi: 0xfb3c}, {Lo: 0xfb3e, Hi: 0xfb3e}, {Lo: 0xfb40, Hi: 0xfb41}, {Lo: 0xfb43, Hi: 0xfb44}, {Lo: 0xfb46, Hi: 0xfbb1}, {Lo: 0xfbd3, Hi: 0xfd3d}, {Lo: 0xfd50, Hi: 0xfd8f}, {Lo: 0xfd92, Hi: 0xfdc7}, {Lo: 0xfdf0, Hi: 0xfdfb}, {Lo: 0xfe70, Hi: 0xfe74}, {Lo: 0xfe76, Hi: 0xfefc}, {Lo: 0xff21, Hi: 0xff3a}, {Lo: 0xff41, Hi: 0xff5a}, {Lo: 0xff66, Hi: 0xffbe}, {Lo: 0xffc2, Hi: 0xffc7}, {Lo: 0xffca, Hi: 0xffcf}, {Lo: 0xffd2, Hi: 0xffd7}, {Lo: 0xffda, Hi: 0xffdc}, {Lo: 0x10000, Hi: 0x1000b}, {Lo: 0x1000d, Hi: 0x10026}, {Lo: 0x10028, Hi: 0x1003a}, {Lo: 0x1003c, Hi: 0x1003d}, {Lo: 0x1003f, Hi: 0x1004d}, {Lo: 0x10050, Hi: 0x1005d}, {Lo: 0x10080, Hi: 0x100fa}, {Lo: 0x10140, Hi: 0x10174}, {Lo: 0x10280, Hi: 0x1029c}, {Lo: 0x102a0, Hi: 0x102d0}, {Lo: 0x10300, Hi: 0x1031f}, {Lo: 0x1032d, Hi: 0x1034a}, {Lo: 0x10350, Hi: 0x1037a}, {Lo: 0x10380, Hi: 0x1039d}, {Lo: 0x103a0, Hi: 0x103c3}, {Lo: 0x103c8, Hi: 0x103cf}, {Lo: 0x103d1, Hi: 0x103d5}, {Lo: 0x10400, Hi: 0x1049d}, {Lo: 0x104b0, Hi: 0x104d3}, {Lo: 0x104d8, Hi: 0x104fb}, {Lo: 0x10500, Hi: 0x10527}, {Lo: 0x10530, Hi: 0x10563}, {Lo: 0x10570, Hi: 0x1057a}, {Lo: 0x1057c, Hi: 0x1058a}, {Lo: 0x1058c, Hi: 0x10592}, {Lo: 0x10594, Hi: 0x10595}, {Lo: 0x10597, Hi: 0x105a1}, {Lo: 0x105a3, Hi: 0x105b1}, {Lo: 0x105b3, Hi: 0x105b9}, {Lo: 0x105bb, Hi: 0x105bc}, {Lo: 0x105c0, Hi: 0x105f3}, {Lo: 0x10600, Hi: 0x10736}, {Lo: 0x10740, Hi: 0x10755}, {Lo: 0x10760, Hi: 0x10767}, {Lo: 0x10780, Hi: 0x10785}, {Lo: 0x10787, Hi: 0x107b0}, {Lo: 0x107b2, Hi: 0x107ba}, {Lo: 0x10800, Hi: 0x10805}, {Lo: 0x10808, Hi: 0x10808}, {Lo: 0x1080a, Hi: 0x10835}, {Lo: 0x10837, Hi: 0x10838}, {Lo: 0x1083c, Hi: 0x1083c}, {Lo: 0x1083f, Hi: 0x10855}, {Lo: 0x10860, Hi: 0x10876}, {Lo: 0x10880, Hi: 0x1089e}, {Lo: 0x108e0, Hi: 0x108f2}, {Lo: 0x108f4, Hi: 0x108f5}, {Lo: 0x10900, Hi: 0x10915}, {Lo: 0x10920, Hi: 0x10939}, {Lo: 0x10940, Hi: 0x10959}, {Lo: 0x10980, Hi: 0x109b7}, {Lo: 0x109be, Hi: 0x109bf}, {Lo: 0x10a00, Hi: 0x10a03}, {Lo: 0x10a05, Hi: 0x10a06}, {Lo: 0x10a0c, Hi: 0x10a13}, {Lo: 0x10a15, Hi: 0x10a17}, {Lo: 0x10a19, Hi: 0x10a35}, {Lo: 0x10a60, Hi: 0x10a7c}, {Lo: 0x10a80, Hi: 0x10a9c}, {Lo: 0x10ac0, Hi: 0x10ac7}, {Lo: 0x10ac9, Hi: 0x10ae4}, {Lo: 0x10b00, Hi: 0x10b35}, {Lo: 0x10b40, Hi: 0x10b55}, {Lo: 0x10b60, Hi: 0x10b72}, {Lo: 0x10b80, Hi: 0x10b91}, {Lo: 0x10c00, Hi: 0x10c48}, {Lo: 0x10c80, Hi: 0x10cb2}, {Lo: 0x10cc0, Hi: 0x10cf2}, {Lo: 0x10d00, Hi: 0x10d27}, {Lo: 0x10d4a, Hi: 0x10d65}, {Lo: 0x10d69, Hi: 0x10d69}, {Lo: 0x10d6f, Hi: 0x10d85}, {Lo: 0x10e80, Hi: 0x10ea9}, {Lo: 0x10eab, Hi: 0x10eac}, {Lo: 0x10eb0, Hi: 0x10eb1}, {Lo: 0x10ec2, Hi: 0x10ec7}, {Lo: 0x10efa, Hi: 0x10efc}, {Lo: 0x10f00, Hi: 0x10f1c}, {Lo: 0x10f27, Hi: 0x10f27}, {Lo: 0x10f30, Hi: 0x10f45}, {Lo: 0x10f70, Hi: 0x10f81}, {Lo: 0x10fb0, Hi: 0x10fc4}, {Lo: 0x10fe0, Hi: 0x10ff6}, {Lo: 0x11000, Hi: 0x11045}, {Lo: 0x11071, Hi: 0x11075}, {Lo: 0x11080, Hi: 0x110b8}, {Lo: 0x110c2, Hi: 0x110c2}, {Lo: 0x110d0, Hi: 0x110e8}, {Lo: 0x11100, Hi: 0x11132}, {Lo: 0x11144, Hi: 0x11147}, {Lo: 0x11150, Hi: 0x11172}, {Lo: 0x11176, Hi: 0x11176}, {Lo: 0x11180, Hi: 0x111bf}, {Lo: 0x111c1, Hi: 0x111c4}, {Lo: 0x111ce, Hi: 0x111cf}, {Lo: 0x111da, Hi: 0x111da}, {Lo: 0x111dc, Hi: 0x111dc}, {Lo: 0x11200, Hi: 0x11211}, {Lo: 0x11213, Hi: 0x11234}, {Lo: 0x11237, Hi: 0x11237}, {Lo: 0x1123e, Hi: 0x11241}, {Lo: 0x11280, Hi: 0x11286}, {Lo: 0x11288, Hi: 0x11288}, {Lo: 0x1128a, Hi: 0x1128d}, {Lo: 0x1128f, Hi: 0x1129d}, {Lo: 0x1129f, Hi: 0x112a8}, {Lo: 0x112b0, Hi: 0x112e8}, {Lo: 0x11300, Hi: 0x11303}, {Lo: 0x11305, Hi: 0x1130c}, {Lo: 0x1130f, Hi: 0x11310}, {Lo: 0x11313, Hi: 0x11328}, {Lo: 0x1132a, Hi: 0x11330}, {Lo: 0x11332, Hi: 0x11333}, {Lo: 0x11335, Hi: 0x11339}, {Lo: 0x1133d, Hi: 0x11344}, {Lo: 0x11347, Hi: 0x11348}, {Lo: 0x1134b, Hi: 0x1134c}, {Lo: 0x11350, Hi: 0x11350}, {Lo: 0x11357, Hi: 0x11357}, {Lo: 0x1135d, Hi: 0x11363}, {Lo: 0x11380, Hi: 0x11389}, {Lo: 0x1138b, Hi: 0x1138b}, {Lo: 0x1138e, Hi: 0x1138e}, {Lo: 0x11390, Hi: 0x113b5}, {Lo: 0x113b7, Hi: 0x113c0}, {Lo: 0x113c2, Hi: 0x113c2}, {Lo: 0x113c5, Hi: 0x113c5}, {Lo: 0x113c7, Hi: 0x113ca}, {Lo: 0x113cc, Hi: 0x113cd}, {Lo: 0x113d1, Hi: 0x113d1}, {Lo: 0x113d3, Hi: 0x113d3}, {Lo: 0x11400, Hi: 0x11441}, {Lo: 0x11443, Hi: 0x11445}, {Lo: 0x11447, Hi: 0x1144a}, {Lo: 0x1145f, Hi: 0x11461}, {Lo: 0x11480, Hi: 0x114c1}, {Lo: 0x114c4, Hi: 0x114c5}, {Lo: 0x114c7, Hi: 0x114c7}, {Lo: 0x11580, Hi: 0x115b5}, {Lo: 0x115b8, Hi: 0x115be}, {Lo: 0x115d8, Hi: 0x115dd}, {Lo: 0x11600, Hi: 0x1163e}, {Lo: 0x11640, Hi: 0x11640}, {Lo: 0x11644, Hi: 0x11644}, {Lo: 0x11680, Hi: 0x116b5}, {Lo: 0x116b8, Hi: 0x116b8}, {Lo: 0x11700, Hi: 0x1171a}, {Lo: 0x1171d, Hi: 0x1172a}, {Lo: 0x11740, Hi: 0x11746}, {Lo: 0x11800, Hi: 0x11838}, {Lo: 0x118a0, Hi: 0x118df}, {Lo: 0x118ff, Hi: 0x11906}, {Lo: 0x11909, Hi: 0x11909}, {Lo: 0x1190c, Hi: 0x11913}, {Lo: 0x11915, Hi: 0x11916}, {Lo: 0x11918, Hi: 0x11935}, {Lo: 0x11937, Hi: 0x11938}, {Lo: 0x1193b, Hi: 0x1193c}, {Lo: 0x1193f, Hi: 0x11942}, {Lo: 0x119a0, Hi: 0x119a7}, {Lo: 0x119aa, Hi: 0x119d7}, {Lo: 0x119da, Hi: 0x119df}, {Lo: 0x119e1, Hi: 0x119e1}, {Lo: 0x119e3, Hi: 0x119e4}, {Lo: 0x11a00, Hi: 0x11a32}, {Lo: 0x11a35, Hi: 0x11a3e}, {Lo: 0x11a50, Hi: 0x11a97}, {Lo: 0x11a9d, Hi: 0x11a9d}, {Lo: 0x11ab0, Hi: 0x11af8}, {Lo: 0x11b60, Hi: 0x11b67}, {Lo: 0x11bc0, Hi: 0x11be0}, {Lo: 0x11c00, Hi: 0x11c08}, {Lo: 0x11c0a, Hi: 0x11c36}, {Lo: 0x11c38, Hi: 0x11c3e}, {Lo: 0x11c40, Hi: 0x11c40}, {Lo: 0x11c72, Hi: 0x11c8f}, {Lo: 0x11c92, Hi: 0x11ca7}, {Lo: 0x11ca9, Hi: 0x11cb6}, {Lo: 0x11d00, Hi: 0x11d06}, {Lo: 0x11d08, Hi: 0x11d09}, {Lo: 0x11d0b, Hi: 0x11d36}, {Lo: 0x11d3a, Hi: 0x11d3a}, {Lo: 0x11d3c, Hi: 0x11d3d}, {Lo: 0x11d3f, Hi: 0x11d41}, {Lo: 0x11d43, Hi: 0x11d43}, {Lo: 0x11d46, Hi: 0x11d47}, {Lo: 0x11d60, Hi: 0x11d65}, {Lo: 0x11d67, Hi: 0x11d68}, {Lo: 0x11d6a, Hi: 0x11d8e}, {Lo: 0x11d90, Hi: 0x11d91}, {Lo: 0x11d93, Hi: 0x11d96}, {Lo: 0x11d98, Hi: 0x11d98}, {Lo: 0x11db0, Hi: 0x11ddb}, {Lo: 0x11ee0, Hi: 0x11ef6}, {Lo: 0x11f00, Hi: 0x11f10}, {Lo: 0x11f12, Hi: 0x11f3a}, {Lo: 0x11f3e, Hi: 0x11f40}, {Lo: 0x11fb0, Hi: 0x11fb0}, {Lo: 0x12000, Hi: 0x12399}, {Lo: 0x12400, Hi: 0x1246e}, {Lo: 0x12480, Hi: 0x12543}, {Lo: 0x12f90, Hi: 0x12ff0}, {Lo: 0x13000, Hi: 0x1342f}, {Lo: 0x13441, Hi: 0x13446}, {Lo: 0x13460, Hi: 0x143fa}, {Lo: 0x14400, Hi: 0x14646}, {Lo: 0x16100, Hi: 0x1612e}, {Lo: 0x16800, Hi: 0x16a38}, {Lo: 0x16a40, Hi: 0x16a5e}, {Lo: 0x16a70, Hi: 0x16abe}, {Lo: 0x16ad0, Hi: 0x16aed}, {Lo: 0x16b00, Hi: 0x16b2f}, {Lo: 0x16b40, Hi: 0x16b43}, {Lo: 0x16b63, Hi: 0x16b77}, {Lo: 0x16b7d, Hi: 0x16b8f}, {Lo: 0x16d40, Hi: 0x16d6c}, {Lo: 0x16e40, Hi: 0x16e7f}, {Lo: 0x16ea0, Hi: 0x16eb8}, {Lo: 0x16ebb, Hi: 0x16ed3}, {Lo: 0x16f00, Hi: 0x16f4a}, {Lo: 0x16f4f, Hi: 0x16f87}, {Lo: 0x16f8f, Hi: 0x16f9f}, {Lo: 0x16fe0, Hi: 0x16fe1}, {Lo: 0x16fe3, Hi: 0x16fe3}, {Lo: 0x16ff0, Hi: 0x16ff6}, {Lo: 0x17000, Hi: 0x18cd5}, {Lo: 0x18cff, Hi: 0x18d1e}, {Lo: 0x18d80, Hi: 0x18df2}, {Lo: 0x1aff0, Hi: 0x1aff3}, {Lo: 0x1aff5, Hi: 0x1affb}, {Lo: 0x1affd, Hi: 0x1affe}, {Lo: 0x1b000, Hi: 0x1b122}, {Lo: 0x1b132, Hi: 0x1b132}, {Lo: 0x1b150, Hi: 0x1b152}, {Lo: 0x1b155, Hi: 0x1b155}, {Lo: 0x1b164, Hi: 0x1b167}, {Lo: 0x1b170, Hi: 0x1b2fb}, {Lo: 0x1bc00, Hi: 0x1bc6a}, {Lo: 0x1bc70, Hi: 0x1bc7c}, {Lo: 0x1bc80, Hi: 0x1bc88}, {Lo: 0x1bc90, Hi: 0x1bc99}, {Lo: 0x1bc9e, Hi: 0x1bc9e}, {Lo: 0x1d400, Hi: 0x1d454}, {Lo: 0x1d456, Hi: 0x1d49c}, {Lo: 0x1d49e, Hi: 0x1d49f}, {Lo: 0x1d4a2, Hi: 0x1d4a2}, {Lo: 0x1d4a5, Hi: 0x1d4a6}, {Lo: 0x1d4a9, Hi: 0x1d4ac}, {Lo: 0x1d4ae, Hi: 0x1d4b9}, {Lo: 0x1d4bb, Hi: 0x1d4bb}, {Lo: 0x1d4bd, Hi: 0x1d4c3}, {Lo: 0x1d4c5, Hi: 0x1d505}, {Lo: 0x1d507, Hi: 0x1d50a}, {Lo: 0x1d50d, Hi: 0x1d514}, {Lo: 0x1d516, Hi: 0x1d51c}, {Lo: 0x1d51e, Hi: 0x1d539}, {Lo: 0x1d53b, Hi: 0x1d53e}, {Lo: 0x1d540, Hi: 0x1d544}, {Lo: 0x1d546, Hi: 0x1d546}, {Lo: 0x1d54a, Hi: 0x1d550}, {Lo: 0x1d552, Hi: 0x1d6a5}, {Lo: 0x1d6a8, Hi: 0x1d6c0}, {Lo: 0x1d6c2, Hi: 0x1d6da}, {Lo: 0x1d6dc, Hi: 0x1d6fa}, {Lo: 0x1d6fc, Hi: 0x1d714}, {Lo: 0x1d716, Hi: 0x1d734}, {Lo: 0x1d736, Hi: 0x1d74e}, {Lo: 0x1d750, Hi: 0x1d76e}, {Lo: 0x1d770, Hi: 0x1d788}, {Lo: 0x1d78a, Hi: 0x1d7a8}, {Lo: 0x1d7aa, Hi: 0x1d7c2}, {Lo: 0x1d7c4, Hi: 0x1d7cb}, {Lo: 0x1df00, Hi: 0x1df1e}, {Lo: 0x1df25, Hi: 0x1df2a}, {Lo: 0x1e000, Hi: 0x1e006}, {Lo: 0x1e008, Hi: 0x1e018}, {Lo: 0x1e01b, Hi: 0x1e021}, {Lo: 0x1e023, Hi: 0x1e024}, {Lo: 0x1e026, Hi: 0x1e02a}, {Lo: 0x1e030, Hi: 0x1e06d}, {Lo: 0x1e08f, Hi: 0x1e08f}, {Lo: 0x1e100, Hi: 0x1e12c}, {Lo: 0x1e137, Hi: 0x1e13d}, {Lo: 0x1e14e, Hi: 0x1e14e}, {Lo: 0x1e290, Hi: 0x1e2ad}, {Lo: 0x1e2c0, Hi: 0x1e2eb}, {Lo: 0x1e4d0, Hi: 0x1e4eb}, {Lo: 0x1e5d0, Hi: 0x1e5ed}, {Lo: 0x1e5f0, Hi: 0x1e5f0}, {Lo: 0x1e6c0, Hi: 0x1e6de}, {Lo: 0x1e6e0, Hi: 0x1e6f5}, {Lo: 0x1e6fe, Hi: 0x1e6ff}, {Lo: 0x1e7e0, Hi: 0x1e7e6}, {Lo: 0x1e7e8, Hi: 0x1e7eb}, {Lo: 0x1e7ed, Hi: 0x1e7ee}, {Lo: 0x1e7f0, Hi: 0x1e7fe}, {Lo: 0x1e800, Hi: 0x1e8c4}, {Lo: 0x1e900, Hi: 0x1e943}, {Lo: 0x1e947, Hi: 0x1e947}, {Lo: 0x1e94b, Hi: 0x1e94b}, {Lo: 0x1ee00, Hi: 0x1ee03}, {Lo: 0x1ee05, Hi: 0x1ee1f}, {Lo: 0x1ee21, Hi: 0x1ee22}, {Lo: 0x1ee24, Hi: 0x1ee24}, {Lo: 0x1ee27, Hi: 0x1ee27}, {Lo: 0x1ee29, Hi: 0x1ee32}, {Lo: 0x1ee34, Hi: 0x1ee37}, {Lo: 0x1ee39, Hi: 0x1ee39}, {Lo: 0x1ee3b, Hi: 0x1ee3b}, {Lo: 0x1ee42, Hi: 0x1ee42}, {Lo: 0x1ee47, Hi: 0x1ee47}, {Lo: 0x1ee49, Hi: 0x1ee49}, {Lo: 0x1ee4b, Hi: 0x1ee4b}, {Lo: 0x1ee4d, Hi: 0x1ee4f}, {Lo: 0x1ee51, Hi: 0x1ee52}, {Lo: 0x1ee54, Hi: 0x1ee54}, {Lo: 0x1ee57, Hi: 0x1ee57}, {Lo: 0x1ee59, Hi: 0x1ee59}, {Lo: 0x1ee5b, Hi: 0x1ee5b}, {Lo: 0x1ee5d, Hi: 0x1ee5d}, {Lo: 0x1ee5f, Hi: 0x1ee5f}, {Lo: 0x1ee61, Hi: 0x1ee62}, {Lo: 0x1ee64, Hi: 0x1ee64}, {Lo: 0x1ee67, Hi: 0x1ee6a}, {Lo: 0x1ee6c, Hi: 0x1ee72}, {Lo: 0x1ee74, Hi: 0x1ee77}, {Lo: 0x1ee79, Hi: 0x1ee7c}, {Lo: 0x1ee7e, Hi: 0x1ee7e}, {Lo: 0x1ee80, Hi: 0x1ee89}, {Lo: 0x1ee8b, Hi: 0x1ee9b}, {Lo: 0x1eea1, Hi: 0x1eea3}, {Lo: 0x1eea5, Hi: 0x1eea9}, {Lo: 0x1eeab, Hi: 0x1eebb}, {Lo: 0x1f130, Hi: 0x1f149}, {Lo: 0x1f150, Hi: 0x1f169}, {Lo: 0x1f170, Hi: 0x1f189}, {Lo: 0x20000, Hi: 0x2a6df}, {Lo: 0x2a700, Hi: 0x2b81d}, {Lo: 0x2b820, Hi: 0x2cead}, {Lo: 0x2ceb0, Hi: 0x2ebe0}, {Lo: 0x2ebf0, Hi: 0x2ee5d}, {Lo: 0x2f800, Hi: 0x2fa1d}, {Lo: 0x30000, Hi: 0x3134a}, {Lo: 0x31350, Hi: 0x33479}}
+
+var ranges9 = []lex.Range{{Lo: 0x0, Hi: '"'}, {Lo: '$', Hi: '&'}, {Lo: '(', Hi: 'z'}, {Lo: '|', Hi: '|'}, {Lo: '~', Hi: 0x10ffff}}

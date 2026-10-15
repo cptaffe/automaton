@@ -1,63 +1,22 @@
 package lex
 
 import (
-	"bytes"
-	"context"
-	"fmt"
 	"io"
-	"sort"
+	"slices"
 	"unicode/utf8"
 )
 
-type Range struct {
-	Lo, Hi rune
-	Class  int
-}
+const EOF rune = -1
 
-type Act struct {
-	Emit int
-	Do   int
-	Goto int
-	Push int
-	Pop  bool
-}
-
-type State struct {
-	Next   []int
-	Accept int
-}
-
-type Scope struct {
-	Name   string
-	Start  int
-	States []State
-	Acts   []Act
-}
-
-type Spec struct {
-	Ranges []Range
-	Scopes []Scope
-	Tokens []string
-	Does   []string
-}
-
-func (s *Spec) Token(kind int) string {
-	if kind < 1 || kind > len(s.Tokens) {
-		return ""
-	}
-
-	return s.Tokens[kind-1]
-}
-
-type Token struct {
-	Kind int
+type Token[K ~int] struct {
+	Kind K
 	Text string
 	Do   int
 	At   Pos
 	Err  error
 }
 
-func (t Token) End() int { return t.At.Offset + len(t.Text) }
+func (t Token[K]) End() int { return t.At.Offset + len(t.Text) }
 
 type Pos struct {
 	Offset int
@@ -65,7 +24,7 @@ type Pos struct {
 	Col    int
 }
 
-func (p Pos) after(text []byte) Pos {
+func (p Pos) After(text []byte) Pos {
 	p.Offset += len(text)
 
 	for len(text) > 0 {
@@ -82,253 +41,151 @@ func (p Pos) after(text []byte) Pos {
 	return p
 }
 
-func (s *Spec) class(r rune) int {
-	at := sort.Search(len(s.Ranges), func(i int) bool { return s.Ranges[i].Hi >= r })
+type Range struct{ Lo, Hi rune }
 
-	if at < len(s.Ranges) && s.Ranges[at].Lo <= r {
-		return s.Ranges[at].Class
-	}
+func In(rs []Range, r rune) bool {
+	at, found := slices.BinarySearchFunc(rs, r, func(x Range, r rune) int {
+		switch {
+		case x.Hi < r:
+			return -1
+		case x.Lo > r:
+			return 1
+		}
 
-	return 0
+		return 0
+	})
+
+	return found && at < len(rs)
 }
 
-type lexer struct {
-	ctx   context.Context
-	spec  *Spec
+type Input struct {
 	r     io.Reader
-	in    bytes.Buffer
+	buf   []byte
+	read  int
 	eof   bool
-	pos   Pos
-	scope int
-	stack []int
-	quiet [][]bool
-	items chan Token
+	err   error
+	at    Pos
+	start Pos
+	first rune
+	quiet bool
+	mark  mark
 }
 
-func Lex(ctx context.Context, spec *Spec, r io.Reader, scope string) (<-chan Token, error) {
-	at := 0
+type mark struct {
+	rule  int
+	read  int
+	quiet bool
+}
 
-	for i := range spec.Scopes {
-		if spec.Scopes[i].Name == scope {
-			at = i + 1
+func NewInput(r io.Reader) Input { return Input{r: r, at: Pos{Line: 1, Col: 1}} }
+
+func (in *Input) Next() rune {
+	if in.read < len(in.buf) {
+		if b := in.buf[in.read]; b < utf8.RuneSelf {
+			in.read++
+
+			return rune(b)
 		}
 	}
 
-	if at == 0 {
-		return nil, fmt.Errorf("no scope called %s", scope)
-	}
-
-	l := &lexer{ctx: ctx, spec: spec, r: r, pos: Pos{Line: 1, Col: 1}, scope: at, quiet: quiet(spec), items: make(chan Token, 64)}
-
-	go l.run()
-
-	return l.items, nil
+	return in.next()
 }
 
-func (l *lexer) run() {
-	defer close(l.items)
-
-	for l.match() {
+func (in *Input) next() rune {
+	for !in.eof && !utf8.FullRune(in.buf[in.read:]) {
+		in.fill()
 	}
+
+	if in.read == len(in.buf) {
+		return EOF
+	}
+
+	r, w := utf8.DecodeRune(in.buf[in.read:])
+	in.read += w
+
+	return r
 }
 
-func (l *lexer) emit(t Token) bool {
-	select {
-	case l.items <- t:
+func (in *Input) Quiet(q bool) { in.quiet = q }
+
+func (in *Input) Mark(rule int) { in.mark = mark{rule: rule, read: in.read, quiet: in.quiet} }
+
+func (in *Input) Begin() bool {
+	in.read, in.mark, in.quiet, in.start = 0, mark{}, false, in.at
+
+	for !in.eof && !utf8.FullRune(in.buf) {
+		in.fill()
+	}
+
+	if len(in.buf) == 0 {
 		return true
-	case <-l.ctx.Done():
-		return false
 	}
-}
 
-func (l *lexer) errorf(at Pos, format string, args ...any) bool {
-	l.emit(Token{At: at, Err: fmt.Errorf(format, args...)})
+	in.first, _ = utf8.DecodeRune(in.buf)
 
 	return false
 }
 
-func (l *lexer) match() bool {
-	s := &l.spec.Scopes[l.scope-1]
-	at := l.pos
-	m, err := l.scan(s)
+func (in *Input) First() rune { return in.first }
 
-	if err != nil {
-		return l.errorf(l.pos, "%w", err)
-	}
+func (in *Input) Start() Pos { return in.start }
 
-	if l.in.Len() == 0 && !m.dropped {
-		if len(l.stack) > 0 {
-			return l.errorf(at, "the input ends inside %s", s.Name)
-		}
+func (in *Input) Back() int {
+	in.read = in.mark.read
 
-		return false
-	}
-
-	if m.rule == 0 {
-		return l.errorf(at, "%s: no rule reads %q", s.Name, m.first)
-	}
-
-	act := s.Acts[m.rule-1]
-	text := l.in.Next(m.back)
-	l.pos = l.pos.after(text)
-
-	if !l.apply(s, act, at) {
-		return false
-	}
-
-	if act.Emit == 0 {
-		return true
-	}
-
-	return l.emit(Token{Kind: act.Emit, Do: act.Do, Text: string(text), At: at})
+	return in.mark.rule
 }
 
-type attempt struct {
-	state     int
-	read      int
-	rule      int
-	back      int
-	backState int
-	first     rune
-	dropped   bool
+func (in *Input) Take() (string, Pos) {
+	s := string(in.buf[:in.read])
+	in.Skip()
+
+	return s, in.start
 }
 
-func (m *attempt) step(next, w, accept int) {
-	m.state, m.read = next, m.read+w
+func (in *Input) Skip() {
+	in.at = in.at.After(in.buf[:in.read])
+	in.buf, in.read = in.buf[in.read:], 0
+}
 
-	if accept != 0 {
-		m.rule, m.back, m.backState = accept, m.read, next
+func (in *Input) At() Pos { return in.at }
+
+func (in *Input) Err() error { return in.err }
+
+func (in *Input) fill() {
+	in.drop()
+
+	if len(in.buf) == cap(in.buf) {
+		in.buf = slices.Grow(in.buf, 4096)
+	}
+
+	n, err := in.r.Read(in.buf[len(in.buf):cap(in.buf)])
+	in.buf = in.buf[:len(in.buf)+n]
+
+	switch {
+	case err == io.EOF:
+		in.eof = true
+	case err != nil:
+		in.eof, in.err = true, err
 	}
 }
 
-func (m *attempt) droppable() (n, state int) {
-	if m.rule == 0 {
-		return m.read, m.state
+func (in *Input) drop() {
+	n := in.read
+
+	switch {
+	case in.mark.rule != 0 && in.mark.quiet:
+		n = in.mark.read
+	case in.mark.rule != 0 || !in.quiet:
+		return
 	}
 
-	return m.back, m.backState
-}
-
-func (l *lexer) scan(s *Scope) (attempt, error) {
-	m := attempt{state: s.Start}
-
-	for {
-		buf := l.in.Bytes()
-
-		if !l.eof && !utf8.FullRune(buf[m.read:]) {
-			l.drop(&m)
-
-			if err := l.fill(); err != nil {
-				return m, err
-			}
-
-			continue
-		}
-
-		if m.read == len(buf) {
-			return m, nil
-		}
-
-		r, w := utf8.DecodeRune(buf[m.read:])
-
-		if m.read == 0 && !m.dropped {
-			m.first = r
-		}
-
-		next := s.States[m.state].Next[l.spec.class(r)]
-
-		if next == 0 {
-			return m, nil
-		}
-
-		m.step(next, w, s.States[next].Accept)
-	}
-}
-
-func (l *lexer) drop(m *attempt) {
-	n, state := m.droppable()
-
-	if n > 0 && l.quiet[l.scope-1][state] {
-		l.pos = l.pos.after(l.in.Next(n))
-		m.read, m.back, m.dropped = m.read-n, 0, true
-	}
-}
-
-func (l *lexer) apply(s *Scope, act Act, at Pos) bool {
-	if act.Push != 0 {
-		n := len(l.stack)
-		l.stack = append(l.stack[:n:n], act.Push)
+	if n == 0 {
+		return
 	}
 
-	switch n := len(l.stack); {
-	case act.Pop && n == 0:
-		return l.errorf(at, "%s: returns with nothing to return to", s.Name)
-	case act.Pop:
-		l.scope, l.stack = l.stack[n-1], l.stack[:n-1]
-	case act.Goto != 0:
-		l.scope = act.Goto
-	}
-
-	return true
-}
-
-func (l *lexer) fill() error {
-	l.in.Grow(4096)
-	p := l.in.AvailableBuffer()
-	n, err := l.r.Read(p[:cap(p)])
-	l.in.Write(p[:n])
-
-	if err == io.EOF {
-		l.eof = true
-
-		return nil
-	}
-
-	return err
-}
-
-func quiet(spec *Spec) [][]bool {
-	out := make([][]bool, len(spec.Scopes))
-
-	for i := range spec.Scopes {
-		out[i] = spec.Scopes[i].quiet()
-	}
-
-	return out
-}
-
-func (s *Scope) quiet() []bool {
-	loud := make([]bool, len(s.States))
-
-	for st, state := range s.States {
-		loud[st] = state.Accept != 0 && s.Acts[state.Accept-1].Emit != 0
-	}
-
-	for changed := true; changed; {
-		changed = false
-
-		for st := 1; st < len(s.States); st++ {
-			if !loud[st] && s.reaches(st, loud) {
-				loud[st], changed = true, true
-			}
-		}
-	}
-
-	out := make([]bool, len(s.States))
-
-	for st := 1; st < len(s.States); st++ {
-		out[st] = !loud[st]
-	}
-
-	return out
-}
-
-func (s *Scope) reaches(st int, in []bool) bool {
-	for _, to := range s.States[st].Next {
-		if to != 0 && in[to] {
-			return true
-		}
-	}
-
-	return false
+	in.at = in.at.After(in.buf[:n])
+	in.buf = append(in.buf[:0], in.buf[n:]...)
+	in.read -= n
+	in.mark.read = max(in.mark.read-n, 0)
 }
