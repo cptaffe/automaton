@@ -113,18 +113,9 @@ func (n *nfa[S]) closure(of []int) []int {
 type NFA[S Symbol] struct {
 	n     nfa[S]
 	start int
-	begun bool
 }
 
-func (a *NFA[S]) State() int {
-	s := a.n.state()
-
-	if !a.begun {
-		a.start, a.begun = s, true
-	}
-
-	return s
-}
+func (a *NFA[S]) State() int { return a.n.state() }
 
 func (a *NFA[S]) On(from int, s Set[S], to int) { a.n.on(from, s, to) }
 
@@ -132,7 +123,7 @@ func (a *NFA[S]) Eps(from, to int) { a.n.eps(from, to) }
 
 func (a *NFA[S]) Accepts(s int, m Match) { a.n.accept[s] = m }
 
-func (a *NFA[S]) Start(s int) { a.start, a.begun = s, true }
+func (a *NFA[S]) Start(s int) { a.start = s }
 
 func (a *NFA[S]) Sets() []Set[S] {
 	var out []Set[S]
