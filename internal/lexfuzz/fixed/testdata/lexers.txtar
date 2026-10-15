@@ -1,0 +1,501 @@
+100 lexers grown from seed 1.
+-- l1 --
+start {
+  ((([abc])+)+)*  emit x
+  any  ignore
+}
+-- l2 --
+start {
+  [bc]  emit x
+  any  ignore
+}
+-- l3 --
+start {
+  ((([abc])+)* | [a])  emit x
+  any  ignore
+}
+-- l4 --
+start {
+  [ab]  emit x
+  any  ignore
+}
+-- l5 --
+start {
+  ((([abc])+)+ | [b])  emit x
+  any  ignore
+}
+-- l6 --
+start {
+  ((([c] [ab]))*)*  emit x
+  any  ignore
+}
+-- l7 --
+start {
+  [ac]  emit x
+  any  ignore
+}
+-- l8 --
+start {
+  ([abc] | [a])  emit x
+  any  ignore
+}
+-- l9 --
+start {
+  ((([ab] [a]))?)+  emit x
+  any  ignore
+}
+-- l10 --
+start {
+  [ab]  emit x
+  any  ignore
+}
+-- l11 --
+start {
+  ((([a] [ab]))? (([a] [a]) | [a]))  emit x
+  any  ignore
+}
+-- l12 --
+start {
+  ((([a])? [a]) [a])  emit x
+  any  ignore
+}
+-- l13 --
+start {
+  ((([c])* [a]) [a])  emit x
+  any  ignore
+}
+-- l14 --
+start {
+  ([a])?  emit x
+  any  ignore
+}
+-- l15 --
+start {
+  ((([abc])+)* (([a])+)?)  emit x
+  any  ignore
+}
+-- l16 --
+start {
+  ([a])?  emit x
+  any  ignore
+}
+-- l17 --
+start {
+  ((([c] [a]))+)?  emit x
+  any  ignore
+}
+-- l18 --
+start {
+  [c]  emit x
+  any  ignore
+}
+-- l19 --
+start {
+  [b]  emit x
+  any  ignore
+}
+-- l20 --
+start {
+  ([c])*  emit x
+  any  ignore
+}
+-- l21 --
+start {
+  [a]  emit x
+  any  ignore
+}
+-- l22 --
+start {
+  ((([bc])*)* [ac])  emit x
+  any  ignore
+}
+-- l23 --
+start {
+  ((([ac])? ([a] | [a])))?  emit x
+  any  ignore
+}
+-- l24 --
+start {
+  ((([a])+)* | [a])  emit x
+  any  ignore
+}
+-- l25 --
+start {
+  ([abc] | (([a] [a]))*)  emit x
+  any  ignore
+}
+-- l26 --
+start {
+  ((([bc] [abc]) | ([ac] [a])) [a])  emit x
+  any  ignore
+}
+-- l27 --
+start {
+  ((([a] [a]))+ | [a])  emit x
+  any  ignore
+}
+-- l28 --
+start {
+  [bc]  emit x
+  any  ignore
+}
+-- l29 --
+start {
+  ([b] (([b])?)*)  emit x
+  any  ignore
+}
+-- l30 --
+start {
+  (([a] | [a]) [a])  emit x
+  any  ignore
+}
+-- l31 --
+start {
+  ((([a] [bc]) ([a] | [a])) [a])  emit x
+  any  ignore
+}
+-- l32 --
+start {
+  [abc]  emit x
+  any  ignore
+}
+-- l33 --
+start {
+  [b]  emit x
+  any  ignore
+}
+-- l34 --
+start {
+  [ac]  emit x
+  any  ignore
+}
+-- l35 --
+start {
+  (([ac])*)?  emit x
+  any  ignore
+}
+-- l36 --
+start {
+  ([a] ([ac] | ([abc] [b])))  emit x
+  any  ignore
+}
+-- l37 --
+start {
+  [a]  emit x
+  any  ignore
+}
+-- l38 --
+start {
+  ((([a] [abc]) | ([a])+) [a])  emit x
+  any  ignore
+}
+-- l39 --
+start {
+  ([a])+  emit x
+  any  ignore
+}
+-- l40 --
+start {
+  ((([a] [a]))* | [a])  emit x
+  any  ignore
+}
+-- l41 --
+start {
+  ([ac] | [a])  emit x
+  any  ignore
+}
+-- l42 --
+start {
+  ([a])*  emit x
+  any  ignore
+}
+-- l43 --
+start {
+  ((([a] [a]))*)*  emit x
+  any  ignore
+}
+-- l44 --
+start {
+  ([b] ([a] ([a] [a])))  emit x
+  any  ignore
+}
+-- l45 --
+start {
+  (([a])+)+  emit x
+  any  ignore
+}
+-- l46 --
+start {
+  [a]  emit x
+  any  ignore
+}
+-- l47 --
+start {
+  ((([ab] [a]) | [a]) | [a])  emit x
+  any  ignore
+}
+-- l48 --
+start {
+  ([ac])*  emit x
+  any  ignore
+}
+-- l49 --
+start {
+  ([a])?  emit x
+  any  ignore
+}
+-- l50 --
+start {
+  ((([ac])?)*)*  emit x
+  any  ignore
+}
+-- l51 --
+start {
+  [abc]  emit x
+  any  ignore
+}
+-- l52 --
+start {
+  ([a] [abc])  emit x
+  any  ignore
+}
+-- l53 --
+start {
+  ((([bc])+)*)+  emit x
+  any  ignore
+}
+-- l54 --
+start {
+  ((([abc])? | ([a])*) | (([a] | [a]))+)  emit x
+  any  ignore
+}
+-- l55 --
+start {
+  ((([abc] [c]))+ (([a] [a]) [a]))  emit x
+  any  ignore
+}
+-- l56 --
+start {
+  ((([bc] [bc]) ([c] | [a])) [a])  emit x
+  any  ignore
+}
+-- l57 --
+start {
+  [c]  emit x
+  any  ignore
+}
+-- l58 --
+start {
+  (([a] [a]) [a])  emit x
+  any  ignore
+}
+-- l59 --
+start {
+  (([a] [a]))*  emit x
+  any  ignore
+}
+-- l60 --
+start {
+  ((([a])+ ([bc] [ab])))+  emit x
+  any  ignore
+}
+-- l61 --
+start {
+  (([c])+)+  emit x
+  any  ignore
+}
+-- l62 --
+start {
+  ((([b] | [b]) ([ac] | [a])))*  emit x
+  any  ignore
+}
+-- l63 --
+start {
+  ((([b] | [a]) [a]) [a])  emit x
+  any  ignore
+}
+-- l64 --
+start {
+  (([b])+ [a])  emit x
+  any  ignore
+}
+-- l65 --
+start {
+  ([ac])?  emit x
+  any  ignore
+}
+-- l66 --
+start {
+  [c]  emit x
+  any  ignore
+}
+-- l67 --
+start {
+  ([a] [a])  emit x
+  any  ignore
+}
+-- l68 --
+start {
+  ((([ab] | [abc]))+ (([a] [a]))+)  emit x
+  any  ignore
+}
+-- l69 --
+start {
+  ([c] [a])  emit x
+  any  ignore
+}
+-- l70 --
+start {
+  (([ab])+ (([a] [a]) | [a]))  emit x
+  any  ignore
+}
+-- l71 --
+start {
+  ((([a])*)? | (([a])+)*)  emit x
+  any  ignore
+}
+-- l72 --
+start {
+  ((([abc] [a]))? | [a])  emit x
+  any  ignore
+}
+-- l73 --
+start {
+  ([b])+  emit x
+  any  ignore
+}
+-- l74 --
+start {
+  ([a] (([ac])* ([c])*))  emit x
+  any  ignore
+}
+-- l75 --
+start {
+  ((([a])?)* [c])  emit x
+  any  ignore
+}
+-- l76 --
+start {
+  ([a])+  emit x
+  any  ignore
+}
+-- l77 --
+start {
+  ((([abc])? | [c]))?  emit x
+  any  ignore
+}
+-- l78 --
+start {
+  [b]  emit x
+  any  ignore
+}
+-- l79 --
+start {
+  ((([a])* ([a] | [a])))+  emit x
+  any  ignore
+}
+-- l80 --
+start {
+  (([a])+)?  emit x
+  any  ignore
+}
+-- l81 --
+start {
+  (([a] [a]) | [a])  emit x
+  any  ignore
+}
+-- l82 --
+start {
+  ((([ac] [c]) ([a])?) [a])  emit x
+  any  ignore
+}
+-- l83 --
+start {
+  ([a])?  emit x
+  any  ignore
+}
+-- l84 --
+start {
+  (([ac] ([bc])?))*  emit x
+  any  ignore
+}
+-- l85 --
+start {
+  ((([a] [a]))+ [a])  emit x
+  any  ignore
+}
+-- l86 --
+start {
+  (([a] | [a]) [a])  emit x
+  any  ignore
+}
+-- l87 --
+start {
+  ((([a] [a]))?)?  emit x
+  any  ignore
+}
+-- l88 --
+start {
+  [b]  emit x
+  any  ignore
+}
+-- l89 --
+start {
+  [c]  emit x
+  any  ignore
+}
+-- l90 --
+start {
+  ([b] [bc])  emit x
+  any  ignore
+}
+-- l91 --
+start {
+  [a]  emit x
+  any  ignore
+}
+-- l92 --
+start {
+  ((([c] [b]))? [a])  emit x
+  any  ignore
+}
+-- l93 --
+start {
+  [ab]  emit x
+  any  ignore
+}
+-- l94 --
+start {
+  ((([b])+ | ([bc])+) [a])  emit x
+  any  ignore
+}
+-- l95 --
+start {
+  ([a] | [a])  emit x
+  any  ignore
+}
+-- l96 --
+start {
+  [ab]  emit x
+  any  ignore
+}
+-- l97 --
+start {
+  [a]  emit x
+  any  ignore
+}
+-- l98 --
+start {
+  ((([a] [a]) [a]) | [a])  emit x
+  any  ignore
+}
+-- l99 --
+start {
+  ((([a] | [a]))* [a])  emit x
+  any  ignore
+}
+-- l100 --
+start {
+  ((([ab] [b]) ([b])*) | [a])  emit x
+  any  ignore
+}
