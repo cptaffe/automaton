@@ -1,6 +1,10 @@
 package regextest
 
-import "github.com/cptaffe/automaton/fa"
+import (
+	"strings"
+
+	"github.com/cptaffe/automaton/fa"
+)
 
 const Letters = "abc"
 
@@ -8,6 +12,7 @@ type Pattern struct {
 	FA     fa.Expr[rune]
 	Regexp string
 	Lex    string
+	Hotkey string
 }
 
 type decoder struct{ data []byte }
@@ -33,19 +38,19 @@ func (d *decoder) pattern(depth int) Pattern {
 	switch op {
 	case 1:
 		a, b := d.pattern(depth+1), d.pattern(depth+1)
-		return Pattern{fa.Cat(a.FA, b.FA), "(?:" + a.Regexp + ")(?:" + b.Regexp + ")", "(" + a.Lex + " " + b.Lex + ")"}
+		return Pattern{fa.Cat(a.FA, b.FA), "(?:" + a.Regexp + ")(?:" + b.Regexp + ")", "(" + a.Lex + " " + b.Lex + ")", "(" + a.Hotkey + " " + b.Hotkey + ")"}
 	case 2:
 		a, b := d.pattern(depth+1), d.pattern(depth+1)
-		return Pattern{fa.Alt(a.FA, b.FA), "(?:" + a.Regexp + "|" + b.Regexp + ")", "(" + a.Lex + " | " + b.Lex + ")"}
+		return Pattern{fa.Alt(a.FA, b.FA), "(?:" + a.Regexp + "|" + b.Regexp + ")", "(" + a.Lex + " | " + b.Lex + ")", "(" + a.Hotkey + " | " + b.Hotkey + ")"}
 	case 3:
 		a := d.pattern(depth + 1)
-		return Pattern{fa.Star(a.FA), "(?:" + a.Regexp + ")*", "(" + a.Lex + ")*"}
+		return Pattern{fa.Star(a.FA), "(?:" + a.Regexp + ")*", "(" + a.Lex + ")*", "(" + a.Hotkey + ")*"}
 	case 4:
 		a := d.pattern(depth + 1)
-		return Pattern{fa.Plus(a.FA), "(?:" + a.Regexp + ")+", "(" + a.Lex + ")+"}
+		return Pattern{fa.Plus(a.FA), "(?:" + a.Regexp + ")+", "(" + a.Lex + ")+", "(" + a.Hotkey + ")+"}
 	case 5:
 		a := d.pattern(depth + 1)
-		return Pattern{fa.Opt(a.FA), "(?:" + a.Regexp + ")?", "(" + a.Lex + ")?"}
+		return Pattern{fa.Opt(a.FA), "(?:" + a.Regexp + ")?", "(" + a.Lex + ")?", "(" + a.Hotkey + ")?"}
 	}
 	mask := d.next()%7 + 1
 	var runes []rune
@@ -55,7 +60,11 @@ func (d *decoder) pattern(depth int) Pattern {
 		}
 	}
 	set := "[" + string(runes) + "]"
-	return Pattern{fa.Lit(fa.Text(string(runes))), set, set}
+	keys := make([]string, 0, len(runes))
+	for _, r := range runes {
+		keys = append(keys, string(r))
+	}
+	return Pattern{fa.Lit(fa.Text(string(runes))), set, set, "(" + strings.Join(keys, " | ") + ")"}
 }
 
 func Words(n int) []string {
