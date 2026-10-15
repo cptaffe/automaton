@@ -23,6 +23,7 @@ type FlatRule struct {
 
 type FlatScope struct {
 	Name string
+	Of   string
 	Line int
 }
 
@@ -35,16 +36,6 @@ type Flat struct {
 }
 
 func (f *Flat) Name() string { return base(f.Path) }
-
-func (f *Flat) Scope(name string) *FlatScope {
-	for i := range f.Scopes {
-		if f.Scopes[i].Name == name {
-			return &f.Scopes[i]
-		}
-	}
-
-	return nil
-}
 
 func (f *Flat) Of(name string) []FlatRule {
 	var out []FlatRule

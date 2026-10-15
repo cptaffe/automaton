@@ -4,7 +4,6 @@ import (
 	"cmp"
 	"fmt"
 	"slices"
-	"strings"
 )
 
 func Expand(f *File) (*Flat, error) {
@@ -100,7 +99,7 @@ func (e *expander) instantiate(s *Scope, in instance) (string, error) {
 	}
 
 	e.done[in.at] = true
-	e.out.Scopes = append(e.out.Scopes, FlatScope{Name: in.at, Line: s.Line})
+	e.out.Scopes = append(e.out.Scopes, FlatScope{Name: in.at, Of: s.Name, Line: s.Line})
 
 	return in.at, e.rules(s.Name, in, false)
 }
@@ -213,7 +212,7 @@ func (e *expander) unreached() error {
 
 func (f *Flat) instantiates(scope string) bool {
 	for _, s := range f.Scopes {
-		if s.Name == scope || strings.HasPrefix(s.Name, scope+"(") {
+		if s.Of == scope {
 			return true
 		}
 	}
@@ -344,16 +343,4 @@ func (g callGraph) reaches(from, to string) bool {
 	}
 
 	return false
-}
-
-func (f *Flat) Instantiations() []string {
-	var out []string
-
-	for _, s := range f.Scopes {
-		if strings.Contains(s.Name, "(") {
-			out = append(out, s.Name)
-		}
-	}
-
-	return out
 }

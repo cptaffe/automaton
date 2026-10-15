@@ -70,8 +70,6 @@ type File struct {
 	Shadowed []string
 }
 
-func (f *File) Name() string { return base(f.Path) }
-
 func base(path string) string {
 	return strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
 }

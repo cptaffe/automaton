@@ -149,8 +149,16 @@ klass(then) {
 		moves = append(moves, r.Scope+" "+r.Text+" => "+r.Acts.Goto+" "+r.Acts.Push)
 	}
 
-	if got, want := flat.Instantiations(), []string{"klass(start)", "klass(other)"}; !reflect.DeepEqual(got, want) {
-		t.Errorf("instantiations %q; want %q", got, want)
+	var copies []string
+
+	for _, s := range flat.Scopes {
+		if s.Of == "klass" {
+			copies = append(copies, s.Name)
+		}
+	}
+
+	if want := []string{"klass(start)", "klass(other)"}; !reflect.DeepEqual(copies, want) {
+		t.Errorf("klass is copied as %q; want %q", copies, want)
 	}
 
 	if want := []string{
