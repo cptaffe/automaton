@@ -111,7 +111,7 @@ func (b *subsets[S]) add(of []int) State {
 	row := make([]State, b.d.part.Len()+1)
 
 	for c, part := range b.d.part.All() {
-		if to := b.n.step(set, part.r[0].Lo); len(to) > 0 {
+		if to := b.n.step(set, part.Min()); len(to) > 0 {
 			row[c] = b.add(to)
 		}
 	}

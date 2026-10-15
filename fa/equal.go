@@ -60,7 +60,7 @@ func samples[S Symbol](a, b *DFA[S]) []S {
 	out := make([]S, 0, joint.Len())
 
 	for _, part := range joint.All() {
-		out = append(out, part.r[0].Lo)
+		out = append(out, part.Min())
 	}
 
 	return out

@@ -114,6 +114,8 @@ func (s Set[S]) Ranges() []Range[S] { return append([]Range[S](nil), s.r...) }
 
 func (s Set[S]) Empty() bool { return len(s.r) == 0 }
 
+func (s Set[S]) Min() S { return s.r[0].Lo }
+
 func (s Set[S]) Has(x S) bool {
 	at := sort.Search(len(s.r), func(i int) bool { return s.r[i].Hi >= x })
 

@@ -100,6 +100,24 @@ func TestNegateIsAnInverse(t *testing.T) {
 	}
 }
 
+func TestMinIsTheLeastMember(t *testing.T) {
+	for _, c := range []struct {
+		name  string
+		given fa.Set[int]
+		then  int
+	}{
+		{"one range", fa.Span(3, 9), 3},
+		{"two ranges given high first", fa.Of(fa.Range[int]{7, 9}, fa.Range[int]{2, 4}), 2},
+		{"below zero", fa.Span(-5, 5), -5},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			if got := c.given.Min(); got != c.then {
+				t.Errorf("the least of %v is %d; want %d", c.given.Ranges(), got, c.then)
+			}
+		})
+	}
+}
+
 func TestCategoryKeepsEveryRuneOfAStride(t *testing.T) {
 	given := &unicode.RangeTable{
 		R16: []unicode.Range16{{Lo: 'a', Hi: 'g', Stride: 3}},
