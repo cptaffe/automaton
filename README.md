@@ -7,6 +7,15 @@ Each language is checked for conflicts when it compiles, so a rule that can
 never fire, or two rules on the same input, is an error rather than a
 surprise. The runtimes use only the standard library.
 
+To generate code in a module, add the tool to its `go.mod`, which pins its
+version, and run it with `go tool genlex`:
+
+```sh
+go get -tool github.com/cptaffe/automaton/cmd/genlex
+```
+
+To draw from the command line, install the commands:
+
 ```sh
 go install github.com/cptaffe/automaton/cmd/...@latest
 ```
@@ -54,7 +63,7 @@ While only rules that ignore their input can still match, the text read so far
 is let go, so memory is bounded by the longest token, not the longest comment:
 
 ```go
-//go:generate go run github.com/cptaffe/automaton/cmd/genlex -go scan.gen.go -package scan comments.lex
+//go:generate go tool genlex -go scan.gen.go -package scan comments.lex
 
 toks, err := lex.Lex(ctx, scan.Spec, r, "start")
 if err != nil {
