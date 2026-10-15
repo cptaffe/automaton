@@ -19,12 +19,6 @@ const (
 
 type Classes[S Symbol] struct {
 	parts []Set[S]
-	index []indexed[S]
-}
-
-type indexed[S Symbol] struct {
-	Range[S]
-	class Class
 }
 
 func Partition[S Symbol](sets []Set[S]) *Classes[S] {
@@ -42,8 +36,6 @@ func Partition[S Symbol](sets []Set[S]) *Classes[S] {
 	for _, rs := range g.held {
 		c.parts = append(c.parts, Of(rs...))
 	}
-
-	c.reindex()
 
 	return c
 }
@@ -123,25 +115,15 @@ func (g *grouping[S]) add(sig string, r Range[S]) {
 	g.held[at] = append(g.held[at], r)
 }
 
-func (c *Classes[S]) reindex() {
-	for i, p := range c.parts {
-		for _, x := range p.r {
-			c.index = append(c.index, indexed[S]{x, Class(i)})
-		}
-	}
-
-	sort.Slice(c.index, func(i, j int) bool { return c.index[i].Lo < c.index[j].Lo })
-}
-
 func (c *Classes[S]) Len() int { return len(c.parts) - 1 }
 
 func (c *Classes[S]) Part(at Class) Set[S] { return c.parts[at] }
 
 func (c *Classes[S]) Of(x S) Class {
-	at := sort.Search(len(c.index), func(i int) bool { return c.index[i].Hi >= x })
-
-	if at < len(c.index) && c.index[at].Lo <= x {
-		return c.index[at].class
+	for i := 1; i < len(c.parts); i++ {
+		if c.parts[i].Has(x) {
+			return Class(i)
+		}
 	}
 
 	return NoClass
