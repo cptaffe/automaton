@@ -14,7 +14,6 @@ type yySymType struct {
 	str  string
 	move move
 	word word
-	sym  symv
 	pat  pat
 	cond seq.Cond
 	rule seq.Rule
@@ -565,7 +564,7 @@ yydefault:
 	case 23:
 		yyDollar = yyS[yypt-1 : yypt+1]
 		{
-			yyVAL.pat = pat{e: yyDollar[1].sym.e, set: true, line: yyDollar[1].sym.line, text: yyDollar[1].sym.lead + yyDollar[1].sym.text}
+			yyVAL.pat = symbol(yyDollar[1].word)
 		}
 	case 24:
 		yyDollar = yyS[yypt-1 : yypt+1]

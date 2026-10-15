@@ -12,15 +12,13 @@ import (
 	str  string
 	move move
 	word word
-	sym  symv
 	pat  pat
 	cond seq.Cond
 	rule seq.Rule
 	any  seq.Any
 }
 
-%token <word> IDENT DELAY BAR PLUS OPT MINUS LPAREN RPAREN CALL
-%token <sym> SYM
+%token <word> IDENT DELAY BAR PLUS OPT MINUS LPAREN RPAREN CALL SYM
 %token ARROW COLON DOTS DO WHEN AND OR NOT NEWLINE
 
 %type <str> action param_
@@ -96,7 +94,7 @@ diff:
 	;
 
 atom:
-	  SYM                  { $$ = pat{e: $1.e, set: true, line: $1.line, text: $1.lead + $1.text} }
+	  SYM                  { $$ = symbol($1) }
 	| IDENT                { $$ = name($1) }
 	| LPAREN pattern RPAREN
 		{

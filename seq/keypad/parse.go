@@ -32,7 +32,7 @@ func Alphabet(g *seq.Grammar) *seq.Alphabet {
 	return seq.NewAlphabet(strings.Split(keys, ""), append([]string{Answered}, delays...)...)
 }
 
-func classOf(r rune) ([]seq.Sym, bool) {
+func classOf(r rune) []seq.Sym {
 	from := strings.IndexRune(keys, r)
 	switch r {
 	case 'N':
@@ -41,15 +41,15 @@ func classOf(r rune) ([]seq.Sym, bool) {
 		from = 0
 	default:
 		if from < 0 {
-			return nil, false
+			return nil
 		}
-		return []seq.Sym{seq.Sym(from)}, true
+		return []seq.Sym{seq.Sym(from)}
 	}
-	var out []seq.Sym
+	out := make([]seq.Sym, 0, 10-from)
 	for k := from; k <= 9; k++ {
 		out = append(out, seq.Sym(k))
 	}
-	return out, true
+	return out
 }
 
 var kinds = map[int]int{
@@ -74,13 +74,6 @@ var kinds = map[int]int{
 }
 
 type word struct {
-	text string
-	line int
-	lead string
-}
-
-type symv struct {
-	e    seq.Atom
 	text string
 	line int
 	lead string
@@ -147,8 +140,6 @@ func (l *lexer) lex(v *yySymType) (int, string) {
 		}
 		l.bare = true
 		return NEWLINE, "a new line"
-	case scan.TokSym:
-		v.sym = symv{symbolOf(tok.Text), tok.Text, tok.At.Line, lead}
 	case scan.TokDeclaration:
 		l.Fail("%s is not a declaration", tok.Text)
 		return 0, ""
@@ -187,9 +178,9 @@ func (l *lexer) token() (lex.Token, string, bool) {
 	}
 }
 
-func symbolOf(text string) seq.Atom {
-	syms, _ := classOf(rune(text[0]))
-	return seq.Atom{Syms: syms, Text: text}
+func symbol(w word) pat {
+	c := seq.Atom{Syms: classOf(rune(w.text[0])), Text: w.text}
+	return pat{e: c, set: true, line: w.line, text: w.lead + w.text}
 }
 
 func name(w word) pat {
