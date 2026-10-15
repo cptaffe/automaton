@@ -2,8 +2,8 @@ package draw
 
 import (
 	"fmt"
+	"maps"
 	"slices"
-	"sort"
 	"strings"
 
 	"github.com/cptaffe/automaton/dot"
@@ -34,17 +34,17 @@ func (m machine) Starts() []dot.Start {
 }
 
 type targets struct {
-	order []int
-	syms  map[int][]seq.Sym
-	rest  int
+	syms map[int][]seq.Sym
+	rest int
 }
 
 func (m machine) Moves(s int) []dot.Move {
 	st := &m.t.States[s]
 	t := m.targets(st)
 	gotos := m.gotos(st)
-	out := make([]dot.Move, len(t.order), len(t.order)+len(gotos))
-	for i, to := range t.order {
+	order := slices.Sorted(maps.Keys(t.syms))
+	out := make([]dot.Move, len(order), len(order)+len(gotos))
+	for i, to := range order {
 		out[i] = m.move(t, to)
 	}
 	return append(out, gotos...)
@@ -56,14 +56,10 @@ func (m machine) targets(st *seq.State) targets {
 		if to == 0 {
 			continue
 		}
-		if _, ok := t.syms[to]; !ok {
-			t.order = append(t.order, to)
-		}
 		if syms := m.syms(fa.Class(k)); len(syms) > 0 {
 			t.syms[to] = append(t.syms[to], syms...)
 		}
 	}
-	sort.Ints(t.order)
 	for _, syms := range t.syms {
 		slices.Sort(syms)
 	}
