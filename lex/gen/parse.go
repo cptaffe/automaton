@@ -33,29 +33,21 @@ func (p *parser) preload() {
 
 func (p *parser) define(w word, e fa.Expr[rune]) {
 	name := w.text
+	was := p.given[name]
+	_, class := unicodeClass(name)
+	_, taken := p.named[name]
 
-	if was := p.given[name]; was != "" {
+	switch {
+	case was != "":
 		p.file.Shadowed = append(p.file.Shadowed,
 			fmt.Sprintf("%s:%d: %s is defined here and %s; the definition wins",
 				p.From(), w.line, name, was))
 		delete(p.given, name)
-		p.named[name] = e
-		p.file.Defs = append(p.file.Defs, Def{Name: name, Expr: e})
-
-		return
-	}
-
-	if _, ok := unicodeClass(name); ok {
+	case class:
 		p.file.Shadowed = append(p.file.Shadowed,
 			fmt.Sprintf("%s:%d: %s is defined here and is a class name already; the definition wins",
 				p.From(), w.line, name))
-		p.named[name] = e
-		p.file.Defs = append(p.file.Defs, Def{Name: name, Expr: e})
-
-		return
-	}
-
-	if _, ok := p.named[name]; ok {
+	case taken:
 		p.FailAt(w.line, "%s is defined twice", name)
 
 		return
