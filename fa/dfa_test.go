@@ -372,3 +372,16 @@ func TestEdgesJoinTheClassesThatShareATarget(t *testing.T) {
 		t.Errorf("the edges from the start are %q; want %q", got, then)
 	}
 }
+
+func TestAllVisitsEveryStateButNoState(t *testing.T) {
+	d := build(t, []fa.Rule[rune]{{Name: "ab", Expr: text("ab")}})
+
+	var got []fa.State
+	for s := range d.All() {
+		got = append(got, s)
+	}
+
+	if then := []fa.State{1, 2, 3}; !reflect.DeepEqual(got, then) || d.States() != len(then) {
+		t.Errorf("All visits %v of %d states; want %v", got, d.States(), then)
+	}
+}

@@ -169,6 +169,16 @@ func (d *DFA[S]) Index() Index[S] { return d.index }
 
 func (d *DFA[S]) States() int { return len(d.nodes) - 1 }
 
+func (d *DFA[S]) All() iter.Seq[State] {
+	return func(yield func(State) bool) {
+		for s := State(1); int(s) < len(d.nodes); s++ {
+			if !yield(s) {
+				return
+			}
+		}
+	}
+}
+
 func (d *DFA[S]) Start() State { return d.start }
 
 func (d *DFA[S]) Next(state State, class Class) State { return d.nodes[state].next[class] }
