@@ -68,7 +68,7 @@ func (c Class) set() fa.Set[Sym] {
 	if c.Any {
 		return c.keys
 	}
-	var rs []fa.Range[Sym]
+	rs := make([]fa.Range[Sym], 0, len(c.Syms))
 	for _, s := range c.Syms {
 		rs = append(rs, fa.Range[Sym]{Lo: s, Hi: s})
 	}
