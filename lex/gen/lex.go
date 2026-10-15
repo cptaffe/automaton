@@ -21,11 +21,8 @@ type word struct {
 type parser struct {
 	*lex.Reader
 
-	bare  bool
 	named map[string]fa.Expr[rune]
-
 	given map[string]string
-	order []string
 
 	file *File
 	ctx  string
@@ -47,11 +44,11 @@ func newParser(ctx context.Context, r io.Reader, from string, bare bool) (*parse
 		return nil, err
 	}
 
-	p := &parser{Reader: in, bare: bare, named: predefined(bare), given: given(bare),
+	p := &parser{Reader: in, named: predefined(bare), given: given(bare),
 		file: &File{Path: from}}
 
 	if !bare {
-		for _, name := range builtinNames(bare) {
+		for _, name := range builtinNames() {
 			p.file.Defs = append(p.file.Defs, Def{Name: name, Expr: p.named[name]})
 		}
 	}

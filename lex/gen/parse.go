@@ -50,7 +50,6 @@ func (p *parser) define(w word, e fa.Expr[rune]) {
 				p.From(), w.line, name, was))
 		delete(p.given, name)
 		p.named[name] = e
-		p.order = append(p.order, name)
 		p.file.Defs = append(p.file.Defs, Def{Name: name, Expr: e})
 
 		return
@@ -61,7 +60,6 @@ func (p *parser) define(w word, e fa.Expr[rune]) {
 			fmt.Sprintf("%s:%d: %s is defined here and is a class name already; the definition wins",
 				p.From(), w.line, name))
 		p.named[name] = e
-		p.order = append(p.order, name)
 		p.file.Defs = append(p.file.Defs, Def{Name: name, Expr: e})
 
 		return
@@ -74,7 +72,6 @@ func (p *parser) define(w word, e fa.Expr[rune]) {
 	}
 
 	p.named[name] = e
-	p.order = append(p.order, name)
 	p.file.Defs = append(p.file.Defs, Def{Name: name, Expr: e})
 }
 
@@ -236,13 +233,13 @@ func (p *parser) category(name string) fa.Set[rune] {
 	return s
 }
 
-func builtinNames(bare bool) []string {
-	out := []string{"any"}
+func builtinNames() []string {
+	pre := prelude()
+	out := make([]string, 0, len(pre)+1)
+	out = append(out, "any")
 
-	if !bare {
-		for _, d := range prelude() {
-			out = append(out, d.Name)
-		}
+	for _, d := range pre {
+		out = append(out, d.Name)
 	}
 
 	sort.Strings(out)
