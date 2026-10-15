@@ -64,8 +64,7 @@ func (m *Machine) Waits() []string {
 	var out []string
 	st := &m.t.States[m.state]
 	for s := Sym(m.t.Alpha.Keys()); int(s) < m.t.Alpha.Size(); s++ {
-		k := m.t.Index.Of(s)
-		if st.Next[k] != 0 || len(st.Any[k]) > 0 {
+		if st.waits(m.t.Index.Of(s)) {
 			out = append(out, m.t.Alpha.Name(s))
 		}
 	}

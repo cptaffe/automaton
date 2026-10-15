@@ -37,6 +37,10 @@ type State struct {
 	Live   []Cond
 }
 
+func (st *State) waits(k fa.Class) bool {
+	return st.Next[k] != 0 || len(st.Any[k]) > 0
+}
+
 type Table struct {
 	Name      string
 	Note      string
@@ -75,7 +79,6 @@ type compiler struct {
 	anys    []Any
 	entries []entry
 	sig     []string
-	index   map[string]int
 }
 
 func Compile(g *Grammar, a *Alphabet) (*Table, error) {
@@ -86,18 +89,17 @@ func Compile(g *Grammar, a *Alphabet) (*Table, error) {
 	if err != nil {
 		return nil, err
 	}
-	c := &compiler{g: g, index: map[string]int{}}
+	c := &compiler{g: g}
 	if err := c.bind(a); err != nil {
 		return nil, err
 	}
 	part := c.partition(a)
 	t := &Table{Name: g.Name, Note: g.Note, Alpha: a, Partition: part, Index: part.Index(), Delays: g.Delays}
 	c.t = t
-	for i, name := range positions(g) {
+	for _, name := range positions(g) {
 		t.Scopes = append(t.Scopes, Scope{Name: name})
-		c.index[name] = i + 1
 	}
-	c.state("")
+	c.state()
 	for i := range t.Scopes {
 		if err := c.scope(i); err != nil {
 			return nil, err
@@ -214,7 +216,7 @@ func (c *compiler) scope(i int) error {
 	var wilds []wild
 	wildcard := func(x Any, when Cond) {
 		keys, _, _ := setOf(x.Elem)
-		wilds = append(wilds, wild{keys, &Accept{Action: x.Action, Goto: c.index[x.Goto], When: when, Pattern: "... " + x.Pattern, Line: x.Line}})
+		wilds = append(wilds, wild{keys, &Accept{Action: x.Action, Goto: c.t.Scope(x.Goto), When: when, Pattern: "... " + x.Pattern, Line: x.Line}})
 	}
 	var lower func(at string, when Cond, origin string)
 	lower = func(at string, when Cond, origin string) {
@@ -268,7 +270,7 @@ func (c *compiler) build(scope string, entries []entry, first int, wilds []wild)
 		return base + int(s)
 	}
 	for s := fa.State(1); int(s) <= d.States(); s++ {
-		n := c.state("")
+		n := c.state()
 		for k := range t.Partition.All() {
 			t.States[n].Next[k] = at(d.Next(s, k))
 		}
@@ -303,7 +305,7 @@ func (c *compiler) finish(s int, done, going []int) {
 	finished := map[string]*Accept{}
 	for _, i := range done {
 		e := c.entries[i]
-		acc := &Accept{Action: e.rule.Action, Goto: c.index[e.rule.Goto], When: e.when,
+		acc := &Accept{Action: e.rule.Action, Goto: t.Scope(e.rule.Goto), When: e.when,
 			Pattern: e.rule.Pattern, Line: e.rule.Line, Peeks: e.rule.Peek != nil, Operand: operand(e.rule)}
 		if was, ok := finished[e.origin]; ok {
 			c.conflict(acc.Line, "%q and %q both finish here -- two rules, one key sequence", was.Pattern, acc.Pattern)
@@ -403,8 +405,8 @@ func signature(done, going []int, wilds []wild) string {
 	return b.String()
 }
 
-func (c *compiler) state(sig string) int {
-	c.sig = append(c.sig, sig)
+func (c *compiler) state() int {
+	c.sig = append(c.sig, "")
 	return c.t.state()
 }
 
@@ -438,7 +440,7 @@ func (t *Table) Waiting() []string {
 func (t *Table) waits(sym Sym) bool {
 	k := t.Index.Of(sym)
 	for _, st := range t.States {
-		if st.Next[k] != 0 || len(st.Any[k]) > 0 {
+		if st.waits(k) {
 			return true
 		}
 	}
