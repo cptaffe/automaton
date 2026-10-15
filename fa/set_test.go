@@ -174,8 +174,8 @@ func TestPartitionCutsSetsWhereTheyOverlap(t *testing.T) {
 			p := fa.Split(c.given)
 			got := make([]string, 0, p.Len())
 
-			for at := fa.Class(1); int(at) <= p.Len(); at++ {
-				got = append(got, p.Part(at).String())
+			for _, part := range p.All() {
+				got = append(got, part.String())
 			}
 
 			if !reflect.DeepEqual(got, c.then) {

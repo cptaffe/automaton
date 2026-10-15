@@ -262,7 +262,7 @@ func (c *compiler) build(scope string, entries []entry, first int, wilds []wild)
 	}
 	for s := fa.State(1); int(s) <= d.States(); s++ {
 		n := c.state("")
-		for k := fa.Class(1); int(k) <= t.Partition.Len(); k++ {
+		for k := range t.Partition.All() {
 			t.States[n].Next[k] = at(d.Next(s, k))
 		}
 		for _, w := range wilds {

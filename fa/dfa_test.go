@@ -64,9 +64,9 @@ func table[S fa.Symbol](d *fa.DFA[S]) []string {
 	for s := fa.State(0); int(s) <= d.States(); s++ {
 		row := fmt.Sprintf("%d done %v going %v", s, d.Done(s), d.Going(s))
 
-		for c := fa.Class(1); int(c) <= d.Partition().Len(); c++ {
+		for c, part := range d.Partition().All() {
 			if to := d.Next(s, c); to != fa.NoState {
-				row += fmt.Sprintf(" %s->%d", d.Partition().Part(c), to)
+				row += fmt.Sprintf(" %s->%d", part, to)
 			}
 		}
 

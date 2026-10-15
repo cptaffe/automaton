@@ -110,8 +110,8 @@ func (b *subsets[S]) add(of []int) State {
 
 	row := make([]State, b.d.part.Len()+1)
 
-	for c := Class(1); int(c) <= b.d.part.Len(); c++ {
-		if to := b.n.step(set, b.d.part.Part(c).r[0].Lo); len(to) > 0 {
+	for c, part := range b.d.part.All() {
+		if to := b.n.step(set, part.r[0].Lo); len(to) > 0 {
 			row[c] = b.add(to)
 		}
 	}

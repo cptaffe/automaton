@@ -51,16 +51,16 @@ func samples[S Symbol](a, b *DFA[S]) []S {
 	sets := make([]Set[S], 0, a.part.Len()+b.part.Len())
 
 	for _, d := range []*DFA[S]{a, b} {
-		for c := Class(1); int(c) <= d.part.Len(); c++ {
-			sets = append(sets, d.part.Part(c))
+		for _, part := range d.part.All() {
+			sets = append(sets, part)
 		}
 	}
 
 	joint := Split(sets)
 	out := make([]S, 0, joint.Len())
 
-	for c := Class(1); int(c) <= joint.Len(); c++ {
-		out = append(out, joint.Part(c).r[0].Lo)
+	for _, part := range joint.All() {
+		out = append(out, part.r[0].Lo)
 	}
 
 	return out

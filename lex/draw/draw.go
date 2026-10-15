@@ -63,8 +63,7 @@ func (d machine) Starts() []dot.Start {
 func (d machine) Moves(s int) []dot.Move {
 	by := map[fa.State]fa.Set[rune]{}
 	var order []fa.State
-	c := d.m.DFA.Partition()
-	for k := fa.Class(1); int(k) <= c.Len(); k++ {
+	for k, part := range d.m.DFA.Partition().All() {
 		to := d.m.DFA.Next(fa.State(s), k)
 		if to == fa.NoState {
 			continue
@@ -72,7 +71,7 @@ func (d machine) Moves(s int) []dot.Move {
 		if _, ok := by[to]; !ok {
 			order = append(order, to)
 		}
-		by[to] = by[to].Union(c.Part(k))
+		by[to] = by[to].Union(part)
 	}
 	sort.Slice(order, func(i, j int) bool { return order[i] < order[j] })
 	out := make([]dot.Move, len(order))

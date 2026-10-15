@@ -2,6 +2,7 @@ package fa
 
 import (
 	"fmt"
+	"iter"
 	"sort"
 )
 
@@ -118,6 +119,16 @@ func (g *grouping[S]) add(sig string, r Range[S]) {
 func (p *Partition[S]) Len() int { return len(p.parts) - 1 }
 
 func (p *Partition[S]) Part(at Class) Set[S] { return p.parts[at] }
+
+func (p *Partition[S]) All() iter.Seq2[Class, Set[S]] {
+	return func(yield func(Class, Set[S]) bool) {
+		for i := 1; i < len(p.parts); i++ {
+			if !yield(Class(i), p.parts[i]) {
+				return
+			}
+		}
+	}
+}
 
 func (p *Partition[S]) Covers(s Set[S]) []Class {
 	var out []Class

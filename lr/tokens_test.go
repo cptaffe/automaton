@@ -157,7 +157,7 @@ func TestEachClassHoldsTheWordItReads(t *testing.T) {
 
 	got := make([][]string, 0, m.DFA().Partition().Len())
 
-	for c := fa.Class(1); int(c) <= m.DFA().Partition().Len(); c++ {
+	for c := range m.DFA().Partition().All() {
 		got = append(got, m.In(c))
 	}
 
