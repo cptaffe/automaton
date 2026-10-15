@@ -6,9 +6,13 @@
 <!-- Title: comments Pages: 1 -->
 <svg width="379pt" height="468pt"
  viewBox="0.00 0.00 379.00 468.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<style>@media (prefers-color-scheme: dark) {
+#graph0 > text[fill="#343a40"] { fill: #dee2e6 }
+.edge [stroke="#495057"] { stroke: #adb5bd }
+.edge [fill="#495057"] { fill: #adb5bd }
+}</style>
 <g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 463.71)">
 <title>comments</title>
-<polygon fill="white" stroke="none" points="-4,4 -4,-463.71 375.45,-463.71 375.45,4 -4,4"/>
 <g id="clust1" class="cluster group">
 <title>cluster_0</title>
 <path fill="#f8f9fa" stroke="#dee2e6" d="M30.12,-186.71C30.12,-186.71 341.32,-186.71 341.32,-186.71 347.32,-186.71 353.32,-192.71 353.32,-198.71 353.32,-198.71 353.32,-439.71 353.32,-439.71 353.32,-445.71 347.32,-451.71 341.32,-451.71 341.32,-451.71 30.12,-451.71 30.12,-451.71 24.12,-451.71 18.12,-445.71 18.12,-439.71 18.12,-439.71 18.12,-198.71 18.12,-198.71 18.12,-192.71 24.12,-186.71 30.12,-186.71"/>
