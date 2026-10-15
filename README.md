@@ -90,9 +90,7 @@ Both dialects compile to the same kind of table:
 - A machine starts in the first scope, and after each match returns to the
   start of the scope it is in.
 - `-> scope` after a rule moves to that scope.
-- `-> scope` on a line of its own reads that scope's rules in, and
-  `-> scope when ...` does so only while the condition holds. A key is taken
-  only when a rule that holds can use it.
+- A key is taken only when a rule that holds can use it.
 - A delay declared with `%delay` is a symbol in its own right: it arrives when
   the machine has waited that long. A rule that would otherwise be the start
   of a longer one ends with it, as `NXX XXXX (T | #)` does; without it the
@@ -155,9 +153,11 @@ plan's name goes to its first scope.
 
 ### Hotkeys
 
-Shortcuts run rc scripts that share a prelude. `main` reads in `acme`'s rules
-only while Acme has the keyboard. `control-x` is a prefix, as in Emacs: a key
-no rule names after it is taken and does nothing, and so is a second's pause:
+Shortcuts run rc scripts that share a prelude. `-> scope` on a line of its own
+reads that scope's rules in, and `-> scope when ...` does so only while the
+condition holds, so `main` reads in `acme`'s rules only while Acme has the
+keyboard. `control-x` is a prefix, as in Emacs: a key no rule names after it is
+taken and does nothing, and so is a second's pause:
 
 ```
 %{
