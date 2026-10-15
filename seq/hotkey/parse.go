@@ -399,54 +399,51 @@ func (p pat) words() []word {
 }
 
 func Canon(s string) (string, error) {
-	mods := map[string]bool{}
-	for {
-		found := false
-		for _, m := range modifiers {
-			if p := m + "-"; strings.HasPrefix(s, p) && len(s) > len(p) {
-				if mods[m] {
-					return "", fmt.Errorf("%s twice", m)
-				}
-				mods[m] = true
-				s = s[len(p):]
-				found = true
-			}
-		}
-		if !found {
-			break
-		}
+	have, name, twice := split(s)
+	if twice != "" {
+		return "", fmt.Errorf("%s twice", twice)
 	}
-	var have []string
-	for m := range mods {
-		have = append(have, m)
-	}
-	return Key(have, s), nil
+	return spell(have, name), nil
 }
 
 func Key(mods []string, name string) string {
-	have := map[string]bool{}
+	have := make(map[string]bool, len(mods))
 	for _, m := range mods {
 		have[m] = true
 	}
-	var parts []string
+	return spell(have, name)
+}
+
+func Name(key string) string {
+	_, name, _ := split(key)
+	return name
+}
+
+func split(key string) (have map[string]bool, name, twice string) {
+	have = map[string]bool{}
+	for {
+		cut := false
+		for _, m := range modifiers {
+			if p := m + "-"; strings.HasPrefix(key, p) && len(key) > len(p) {
+				if have[m] && twice == "" {
+					twice = m
+				}
+				have[m] = true
+				key, cut = key[len(p):], true
+			}
+		}
+		if !cut {
+			return have, key, twice
+		}
+	}
+}
+
+func spell(have map[string]bool, name string) string {
+	parts := make([]string, 0, len(modifiers)+1)
 	for _, m := range modifiers {
 		if have[m] {
 			parts = append(parts, m)
 		}
 	}
 	return strings.Join(append(parts, name), "-")
-}
-
-func Name(key string) string {
-	for {
-		cut := false
-		for _, m := range modifiers {
-			if p := m + "-"; strings.HasPrefix(key, p) && len(key) > len(p) {
-				key, cut = key[len(p):], true
-			}
-		}
-		if !cut {
-			return key
-		}
-	}
 }
