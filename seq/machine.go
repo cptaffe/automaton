@@ -37,14 +37,16 @@ func (m *Machine) Step(s Sym, env Env) (bool, []*Accept) {
 	var fired []*Accept
 	for {
 		o, f := m.next(s, env)
-		fired = append(fired, f...)
+		if f != nil {
+			fired = append(fired, f)
+		}
 		if o != reread {
 			return o == taken, fired
 		}
 	}
 }
 
-func (m *Machine) next(s Sym, env Env) (outcome, []*Accept) {
+func (m *Machine) next(s Sym, env Env) (outcome, *Accept) {
 	if m.state != 0 {
 		o, f := m.from(m.state, s, env)
 		if o != missed || m.t.Alpha.IsEvent(s) {
@@ -71,7 +73,7 @@ func (m *Machine) Waits() []string {
 	return out
 }
 
-func (m *Machine) from(at int, s Sym, env Env) (outcome, []*Accept) {
+func (m *Machine) from(at int, s Sym, env Env) (outcome, *Accept) {
 	k := m.t.Index.Of(s)
 	if n := m.t.States[at].Next[k]; n != 0 {
 		ready, going := m.ready(n, env), m.going(n, env)
@@ -111,10 +113,10 @@ func (m *Machine) going(s int, env Env) bool {
 	return false
 }
 
-func (m *Machine) fire(a *Accept) []*Accept {
+func (m *Machine) fire(a *Accept) *Accept {
 	m.state = 0
 	if a.Goto != 0 {
 		m.scope = a.Goto
 	}
-	return []*Accept{a}
+	return a
 }
