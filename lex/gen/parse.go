@@ -123,11 +123,19 @@ func (p *parser) rule(r Rule) {
 	p.file.Rules = append(p.file.Rules, r)
 }
 
-func (p *parser) text(s string) fa.Expr[rune] {
+func (p *parser) text(s string) fa.Expr[rune] { return p.literal(s, fa.One[rune]) }
+
+func (p *parser) anycase(s string) fa.Expr[rune] {
+	return p.literal(s, func(r rune) fa.Set[rune] {
+		return fa.Text(string(unicode.ToLower(r)) + string(unicode.ToUpper(r)))
+	})
+}
+
+func (p *parser) literal(s string, set func(rune) fa.Set[rune]) fa.Expr[rune] {
 	e := make([]fa.Expr[rune], 0, len(s))
 
 	for _, r := range s {
-		e = append(e, fa.Lit(fa.One(r)))
+		e = append(e, fa.Lit(set(r)))
 	}
 
 	if len(e) == 0 {
@@ -165,22 +173,6 @@ func (p *parser) without(a, b fa.Expr[rune]) fa.Expr[rune] {
 	}
 
 	return fa.Lit(got)
-}
-
-func (p *parser) anycase(s string) fa.Expr[rune] {
-	e := make([]fa.Expr[rune], 0, len(s))
-
-	for _, r := range s {
-		e = append(e, fa.Lit(fa.Text(string(unicode.ToLower(r))+string(unicode.ToUpper(r)))))
-	}
-
-	if len(e) == 0 {
-		p.FailAt(p.Line(), "an empty literal matches nothing, so it would never advance")
-
-		return fa.Empty[rune]()
-	}
-
-	return fa.Cat(e...)
 }
 
 func (p *parser) runes(s string) fa.Set[rune] { return fa.Text(s) }
