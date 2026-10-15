@@ -35,7 +35,7 @@ func (r Rule) node() Node {
 		label += "\n  " + alt
 	}
 
-	n := Node{ID: quote(r.Name, "n"), Label: label, Style: "rounded", Flush: true}
+	n := Node{ID: r.Name, Label: label, Style: "rounded", Flush: true}
 
 	if r.Start {
 		n.Class = "start"
@@ -46,7 +46,7 @@ func (r Rule) node() Node {
 
 func (l loops) edge(from, to string) Edge {
 	at := l.group[from]
-	e := Edge{From: quote(from, "n"), To: quote(to, "n")}
+	e := Edge{From: from, To: to}
 
 	if at != 0 && l.group[to] == at {
 		e.Class = "cycle"

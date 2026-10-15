@@ -60,10 +60,11 @@ func TestGenlexWritesTheTableAndTheDrawings(t *testing.T) {
 	if got, want := names(file), []string{"TokClose", "TokNewline", "TokOpen", "TokWord", "Spec"}; file.Name.Name != "scan" || !reflect.DeepEqual(got, want) {
 		t.Errorf("package %s declares %q; want package scan declaring %q", file.Name.Name, got, want)
 	}
-	if got, want := lines(t, filepath.Join(dir, "comments.dot"), `(?m)^\s+(m\d+_s\d+ -> m\d+_s\d+)`), []string{
-		"m0_s1 -> m0_s2", "m0_s1 -> m0_s3", "m0_s1 -> m0_s4", "m0_s1 -> m0_s5", "m0_s2 -> m0_s2", "m0_s4 -> m0_s6", "m0_s5 -> m0_s5",
-		"m1_s1 -> m1_s2", "m1_s1 -> m1_s3", "m1_s1 -> m1_s4", "m1_s3 -> m1_s5", "m1_s4 -> m1_s6",
-		"m0_s6 -> m1_s1",
+	if got, want := lines(t, filepath.Join(dir, "comments.dot"), `(?m)^\s+("m\d+_s\d+" -> "m\d+_s\d+")`), []string{
+		`"m0_s1" -> "m0_s2"`, `"m0_s1" -> "m0_s3"`, `"m0_s1" -> "m0_s4"`, `"m0_s1" -> "m0_s5"`,
+		`"m0_s2" -> "m0_s2"`, `"m0_s4" -> "m0_s6"`, `"m0_s5" -> "m0_s5"`, `"m1_s1" -> "m1_s2"`,
+		`"m1_s1" -> "m1_s3"`, `"m1_s1" -> "m1_s4"`, `"m1_s3" -> "m1_s5"`, `"m1_s4" -> "m1_s6"`,
+		`"m0_s6" -> "m1_s1"`,
 	}; !reflect.DeepEqual(got, want) {
 		t.Errorf("the drawing's edges are %q; want %q", got, want)
 	}

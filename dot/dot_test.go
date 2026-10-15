@@ -394,6 +394,22 @@ func TestEachDrawingIsReadByGraphviz(t *testing.T) {
 			},
 		},
 		{
+			name: "IDs with dashes and dots",
+			given: dot.Graph{
+				Name:   "g",
+				Look:   "machine",
+				Groups: []dot.Group{{ID: "note-network", Label: "note-network", Nodes: []dot.Node{{ID: "note-network.start", Label: "start"}}}},
+				Nodes:  []dot.Node{{ID: "note-network.end", Label: "end"}},
+				Edges:  []dot.Edge{{From: "note-network.start", To: "note-network.end", Label: "x"}},
+			},
+			then: dottest.Drawing{
+				Name:  "g",
+				Boxes: []string{`note-network\l: note-network.start`},
+				Nodes: []string{"note-network.start start", "note-network.end end"},
+				Edges: []string{"note-network.start -x-> note-network.end"},
+			},
+		},
+		{
 			name:  "Shape",
 			given: dot.Shape([]dot.Rule{{Name: "e", Alts: []string{"N", "L e R"}, Start: true}}, "g"),
 			then: dottest.Drawing{

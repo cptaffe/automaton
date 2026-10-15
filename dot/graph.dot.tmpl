@@ -10,7 +10,7 @@ digraph {{ q .Name }} {
 {{- end }}
 {{- range .Groups }}
 
-  subgraph cluster_{{ .ID }} {
+  subgraph {{ q (print "cluster_" .ID) }} {
     label={{ flush .Label }}
     labeljust=l
     style=rounded
@@ -27,12 +27,12 @@ digraph {{ q .Name }} {
   {{ template "node" . }}
 {{- end }}
 {{ range .Edges }}
-  {{ .From }} -> {{ .To }} [label={{ brk .Label }}, {{ .Paint }}{{ with .Class }}, class={{ printf "%q" . }}{{ end }}{{ if .Dashed }}, style=dashed{{ end }}{{ if .Loose }}, constraint=false{{ end }}]
+  {{ q .From }} -> {{ q .To }} [label={{ brk .Label }}, {{ .Paint }}{{ with .Class }}, class={{ printf "%q" . }}{{ end }}{{ if .Dashed }}, style=dashed{{ end }}{{ if .Loose }}, constraint=false{{ end }}]
 {{- end }}
 }
 
 {{- define "node" -}}
-{{ .ID }} [label={{ if .Caption }}<<font point-size="7" color="#868e96">{{ html .Caption }}</font><br/>{{ html .Label }}>{{ else if .Flush }}{{ flush .Label }}{{ else }}{{ q .Label }}{{ end }}{{ with .Shape }}, shape={{ . }}{{ end }}, style="{{ with .Style }}{{ . }},{{ end }}filled", {{ .Paint }}{{ with .Class }}, class={{ printf "%q" . }}{{ end }}{{ if .Twice }}, peripheries=2{{ end }}]
+{{ q .ID }} [label={{ if .Caption }}<<font point-size="7" color="#868e96">{{ html .Caption }}</font><br/>{{ html .Label }}>{{ else if .Flush }}{{ flush .Label }}{{ else }}{{ q .Label }}{{ end }}{{ with .Shape }}, shape={{ . }}{{ end }}, style="{{ with .Style }}{{ . }},{{ end }}filled", {{ .Paint }}{{ with .Class }}, class={{ printf "%q" . }}{{ end }}{{ if .Twice }}, peripheries=2{{ end }}]
 {{- end -}}
 
 {{- define "look" -}}
