@@ -55,25 +55,12 @@ type Atom struct {
 	Any   bool
 	Text  string
 
-	sym  Sym
 	keys fa.Set[Sym]
 }
 
 func (c Atom) IsEvent() bool { return c.Event != "" }
 
-func (c Atom) set() fa.Set[Sym] {
-	if c.Event != "" {
-		return fa.One(c.sym)
-	}
-	if c.Any {
-		return c.keys
-	}
-	rs := make([]fa.Range[Sym], 0, len(c.Syms))
-	for _, s := range c.Syms {
-		rs = append(rs, fa.Range[Sym]{Lo: s, Hi: s})
-	}
-	return fa.Of(rs...)
-}
+func (c Atom) set() fa.Set[Sym] { return c.keys }
 
 func (c Atom) wide() bool {
 	return c.Any || len(c.Syms) > 1

@@ -330,13 +330,18 @@ func resolve(c Atom, a *Alphabet) (Atom, error) {
 		return c, nil
 	}
 	if c.Event == "" {
+		rs := make([]fa.Range[Sym], 0, len(c.Syms))
+		for _, s := range c.Syms {
+			rs = append(rs, fa.Range[Sym]{Lo: s, Hi: s})
+		}
+		c.keys = fa.Of(rs...)
 		return c, nil
 	}
 	s, ok := a.Of(c.Event)
 	if !ok {
 		return c, fmt.Errorf("%q is in a pattern and nothing declares it", c.Event)
 	}
-	c.sym = s
+	c.keys = fa.One(s)
 	return c, nil
 }
 
