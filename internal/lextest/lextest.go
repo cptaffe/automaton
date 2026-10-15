@@ -72,7 +72,7 @@ func (f File) build(src string) (*gen.Flat, []gen.Machine, []string, error) {
 		return nil, nil, nil, err
 	}
 
-	ms, dead, err := gen.Build(flat)
+	ms, dead, err := gen.Build(flat, 0)
 
 	return flat, ms, dead, err
 }

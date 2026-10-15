@@ -69,7 +69,7 @@ func TestTokensDrawsTheMachineOverTheGrammar(t *testing.T) {
 		},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			m := draw.Tokens(&lr.Grammar{Rules: c.given}, "g")
+			m := tokens(t, &lr.Grammar{Rules: c.given}, "g")
 			g := dot.Draw(m)
 
 			if got := (drawing{m.Note(), dottest.Nodes(g), dottest.Edges(g)}); !reflect.DeepEqual(got, c.then) {
@@ -82,7 +82,7 @@ func TestTokensDrawsTheMachineOverTheGrammar(t *testing.T) {
 func TestAGrammarOfNoTokensHasNoMachine(t *testing.T) {
 	given := &lr.Grammar{Rules: []lr.Rule{{Name: "a", Alts: []string{"nothing"}}}}
 
-	m := draw.Tokens(given, "g")
+	m := tokens(t, given, "g")
 
 	if m != nil {
 		t.Errorf("the machine has %d states", m.States())
@@ -122,4 +122,13 @@ func TestShapeDrawsEachRuleAndWhatItNames(t *testing.T) {
 			}
 		})
 	}
+}
+
+func tokens(t *testing.T, g *lr.Grammar, name string) dot.Machine {
+	t.Helper()
+	m, err := draw.Tokens(g, name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return m
 }

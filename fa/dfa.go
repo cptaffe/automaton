@@ -33,11 +33,13 @@ func Sets[S Symbol](rules []Rule[S]) []Set[S] {
 	return out
 }
 
+const DefaultMaxStates = 10_000
+
 func Build[S Symbol](rules []Rule[S]) (*DFA[S], error) {
-	return BuildWith(rules, Partition(Sets(rules)))
+	return BuildWith(rules, Partition(Sets(rules)), 0)
 }
 
-func BuildWith[S Symbol](rules []Rule[S], classes *Classes[S]) (*DFA[S], error) {
+func BuildWith[S Symbol](rules []Rule[S], classes *Classes[S], max int) (*DFA[S], error) {
 	if err := classes.refine(Sets(rules)); err != nil {
 		return nil, err
 	}
@@ -58,21 +60,31 @@ func BuildWith[S Symbol](rules []Rule[S], classes *Classes[S]) (*DFA[S], error) 
 		n.accept[end] = Match(i + 1)
 	}
 
-	return n.determinise(start, classes), nil
+	return n.determinise(start, classes, max)
 }
 
-func (n *nfa[S]) determinise(start int, classes *Classes[S]) *DFA[S] {
+func (n *nfa[S]) determinise(start int, classes *Classes[S], max int) (*DFA[S], error) {
+	if max <= 0 {
+		max = DefaultMaxStates
+	}
+
 	d := &DFA[S]{classes: classes, nodes: []node{{next: make([]State, classes.Len()+1)}}}
-	b := &subsets[S]{n: n, d: d, seen: map[string]State{}}
+	b := &subsets[S]{n: n, d: d, seen: map[string]State{}, max: max}
 	d.start = b.add([]int{start})
 
-	return d
+	if b.over {
+		return nil, fmt.Errorf("the patterns need more than %d states to match together", max)
+	}
+
+	return d, nil
 }
 
 type subsets[S Symbol] struct {
 	n    *nfa[S]
 	d    *DFA[S]
 	seen map[string]State
+	max  int
+	over bool
 }
 
 func (b *subsets[S]) add(of []int) State {
@@ -82,6 +94,12 @@ func (b *subsets[S]) add(of []int) State {
 
 	if at, ok := b.seen[key]; ok {
 		return at
+	}
+
+	if b.over || len(b.d.nodes) > b.max {
+		b.over = true
+
+		return NoState
 	}
 
 	at := State(len(b.d.nodes))

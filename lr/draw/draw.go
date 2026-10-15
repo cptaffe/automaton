@@ -22,10 +22,10 @@ func Shape(g *lr.Grammar, name string) dot.Graph {
 	return dot.Shape(rules(g), name)
 }
 
-func Tokens(g *lr.Grammar, name string) dot.Machine {
-	t := g.Tokens()
-	if t == nil {
-		return nil
+func Tokens(g *lr.Grammar, name string) (dot.Machine, error) {
+	t, err := g.Tokens()
+	if t == nil || err != nil {
+		return nil, err
 	}
 	m := tokens{t: t, name: name}
 	head := fmt.Sprintf("%s over tokens -- %s, %s", name, dot.Plural(m.States(), "state"), dot.Plural(len(t.Words()), "token"))
@@ -41,7 +41,7 @@ func Tokens(g *lr.Grammar, name string) dot.Machine {
 		}
 		m.note = fmt.Sprintf("%s; %s %s, so this reads more than the grammar does", head, strings.Join(nested, ", "), verb)
 	}
-	return m
+	return m, nil
 }
 
 type tokens struct {

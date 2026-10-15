@@ -177,7 +177,7 @@ func TestARuleThatMatchesNothingIsRefused(t *testing.T) {
 func TestClassesThatSplitASetAreRefused(t *testing.T) {
 	given := fa.Partition([]fa.Set[rune]{fa.Span('a', 'm'), fa.Span('h', 'z')})
 
-	_, err := fa.BuildWith([]fa.Rule[rune]{{Name: "middle", Expr: fa.Lit(fa.Span('d', 'p'))}}, given)
+	_, err := fa.BuildWith([]fa.Rule[rune]{{Name: "middle", Expr: fa.Lit(fa.Span('d', 'p'))}}, given, 0)
 
 	if err == nil || !strings.Contains(err.Error(), "the classes split d-p") {
 		t.Errorf("the refusal is %v", err)
@@ -340,5 +340,22 @@ func TestAFallbackTakesWhatNothingElseDoes(t *testing.T) {
 
 	if !reflect.DeepEqual(got, then) {
 		t.Errorf("x s beside x and any letter is\n%s\nwant\n%s", strings.Join(got, "\n"), strings.Join(then, "\n"))
+	}
+}
+
+func TestABuildStopsAtItsBudgetOfStates(t *testing.T) {
+	a, b := fa.Lit(fa.One('a')), fa.Lit(fa.One('b'))
+	either := fa.Alt(a, b)
+	given := make([]fa.Expr[rune], 0, 12)
+	given = append(given, fa.Star(either), a)
+	for range 10 {
+		given = append(given, either)
+	}
+	rules := []fa.Rule[rune]{{Expr: fa.Cat(given...), Name: "tenth from the end"}}
+
+	_, err := fa.BuildWith(rules, fa.Partition(fa.Sets(rules)), 100)
+
+	if err == nil || err.Error() != "the patterns need more than 100 states to match together" {
+		t.Errorf("got %v; want the budget refused", err)
 	}
 }

@@ -246,7 +246,7 @@ func (c *compiler) build(scope string, entries []entry, first int, wilds []wild)
 		}
 		rules[i] = fa.Rule[Sym]{Expr: x, Name: e.rule.Pattern}
 	}
-	d, err := fa.BuildWith(rules, t.Classes)
+	d, err := fa.BuildWith(rules, t.Classes, 0)
 	if err != nil {
 		return 0, fmt.Errorf("%s: %s: %w", c.g.Name, scope, err)
 	}

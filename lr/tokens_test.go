@@ -78,7 +78,7 @@ func TestRightRecursionIsExact(t *testing.T) {
 		t.Fatalf("right recursion should not self-embed, got %v", nested)
 	}
 
-	m := tokensOf(rs)
+	m := tokens(t, rs)
 
 	for _, want := range [][]string{
 		{"ITEM"},
@@ -104,7 +104,7 @@ func TestSelfEmbeddingReadsMore(t *testing.T) {
 		t.Fatalf("expr should self-embed, got %v", nested)
 	}
 
-	m := tokensOf(rs)
+	m := tokens(t, rs)
 
 	if !reads(t, m, "LP", "LP", "NUM", "RP", "RP") {
 		t.Error("a doubly bracketed number is an expr and is not accepted")
@@ -143,7 +143,7 @@ func TestTokensIsTheMachineOverTheGrammarsWords(t *testing.T) {
 		},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			m := tokensOf(c.given)
+			m := tokens(t, c.given)
 
 			if got := rows(m.DFA(), m.Words()); !reflect.DeepEqual(got, c.then) {
 				t.Errorf("the machine is\n%s\nwant\n%s", strings.Join(got, "\n"), strings.Join(c.then, "\n"))
@@ -153,7 +153,7 @@ func TestTokensIsTheMachineOverTheGrammarsWords(t *testing.T) {
 }
 
 func TestEachClassHoldsTheWordItReads(t *testing.T) {
-	m := tokensOf(grammar([2]string{"pair", "A B| B A"}))
+	m := tokens(t, grammar([2]string{"pair", "A B| B A"}))
 
 	got := make([][]string, 0, m.DFA().Classes().Len())
 
@@ -167,7 +167,7 @@ func TestEachClassHoldsTheWordItReads(t *testing.T) {
 }
 
 func TestAWordTheGrammarNeverNamesGoesNowhere(t *testing.T) {
-	m := tokensOf(grammar([2]string{"pair", "A B| B A"}))
+	m := tokens(t, grammar([2]string{"pair", "A B| B A"}))
 
 	got := m.Step(m.DFA().Start(), "C")
 
@@ -177,7 +177,7 @@ func TestAWordTheGrammarNeverNamesGoesNowhere(t *testing.T) {
 }
 
 func TestAGrammarOfNoWordsHasNoMachine(t *testing.T) {
-	m := tokensOf(grammar([2]string{"empty", "nothing"}))
+	m := tokens(t, grammar([2]string{"empty", "nothing"}))
 
 	if m != nil {
 		t.Errorf("the machine has %d states", m.DFA().States())
@@ -218,4 +218,13 @@ func TestReadRefusesWhatIsNotAReport(t *testing.T) {
 			}
 		})
 	}
+}
+
+func tokens(t *testing.T, rs []Rule) *Tokens {
+	t.Helper()
+	m, err := tokensOf(rs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return m
 }

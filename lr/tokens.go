@@ -13,13 +13,13 @@ type Tokens struct {
 	at    map[string]int
 }
 
-func (g *Grammar) Tokens() *Tokens { return tokensOf(g.Rules) }
+func (g *Grammar) Tokens() (*Tokens, error) { return tokensOf(g.Rules) }
 
-func tokensOf(rs []Rule) *Tokens {
+func tokensOf(rs []Rule) (*Tokens, error) {
 	v := vocabOf(rs)
 
 	if len(v.words) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	g := &nest{vocab: v, spans: map[string]span{}}
@@ -38,7 +38,12 @@ func tokensOf(rs []Rule) *Tokens {
 	g.n.Start(top.open)
 	g.n.Accepts(top.shut, fa.Match(1))
 
-	return &Tokens{dfa: g.n.DFA().Minimise(), words: v.words, at: v.at}
+	d, err := g.n.DFA()
+	if err != nil {
+		return nil, err
+	}
+
+	return &Tokens{dfa: d.Minimise(), words: v.words, at: v.at}, nil
 }
 
 func symbols(alt string) []string {

@@ -16,8 +16,8 @@ type Machine struct {
 	Covered []string
 }
 
-func Build(f *Flat) ([]Machine, []string, error) {
-	b := builder{flat: f, classes: f.alphabet(), live: map[int]bool{}}
+func Build(f *Flat, max int) ([]Machine, []string, error) {
+	b := builder{flat: f, classes: f.alphabet(), live: map[int]bool{}, max: max}
 
 	var out []Machine
 
@@ -50,6 +50,7 @@ type builder struct {
 	flat    *Flat
 	classes *fa.Classes[rune]
 	live    map[int]bool
+	max     int
 }
 
 func (b *builder) machine(s FlatScope) (Machine, error) {
@@ -66,7 +67,7 @@ func (b *builder) machine(s FlatScope) (Machine, error) {
 		in[i] = fa.Rule[rune]{Expr: r.Expr, Name: label(r)}
 	}
 
-	d, err := fa.BuildWith(in, b.classes)
+	d, err := fa.BuildWith(in, b.classes, b.max)
 
 	if err != nil {
 		return Machine{}, fmt.Errorf("%s: in %s, %w", f.Path, s.Name, err)

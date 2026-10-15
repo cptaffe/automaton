@@ -148,4 +148,4 @@ func (a *NFA[S]) Sets() []Set[S] {
 	return out
 }
 
-func (a *NFA[S]) DFA() *DFA[S] { return a.n.determinise(a.start, Partition(a.Sets())) }
+func (a *NFA[S]) DFA() (*DFA[S], error) { return a.n.determinise(a.start, Partition(a.Sets()), 0) }

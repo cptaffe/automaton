@@ -130,3 +130,15 @@ func source(t *testing.T, path, src string) {
 		t.Fatal(err)
 	}
 }
+
+func TestGenlexRefusesAScopeOverItsBudgetOfStates(t *testing.T) {
+	given := filepath.Join(t.TempDir(), "x.lex")
+	source(t, given, "start {\n  [ab]* \"a\" [ab] [ab] [ab]  emit x\n}\n")
+	var stderr bytes.Buffer
+
+	code := run([]string{"-max-states", "8", given}, &stderr)
+
+	if want := "genlex: " + given + ": in start, the patterns need more than 8 states to match together\n"; code != 1 || stderr.String() != want {
+		t.Errorf("exit %d, %q; want 1, %q", code, stderr.String(), want)
+	}
+}

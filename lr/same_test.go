@@ -97,13 +97,16 @@ func TestTheDrawingIsTheLRAutomatonWithoutItsStack(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			mine := g.Tokens()
+			mine, err := g.Tokens()
+			if err != nil {
+				t.Fatal(err)
+			}
 
 			if mine == nil {
 				t.Fatal("no machine over tokens")
 			}
 
-			theirs := stackless(ss, mine.at)
+			theirs := stackless(t, ss, mine.at)
 
 			if ok, why := same(mine.dfa, theirs, mine.words); !ok {
 				t.Errorf("the two constructions differ: %s", why)
@@ -172,8 +175,11 @@ func TestBothConstructionsGiveTheExpectedMachine(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			mine := g.Tokens()
-			theirs := stackless(ss, mine.at)
+			mine, err := g.Tokens()
+			if err != nil {
+				t.Fatal(err)
+			}
+			theirs := stackless(t, ss, mine.at)
 
 			if got := rows(mine.dfa, mine.words); !reflect.DeepEqual(got, c.then) {
 				t.Errorf("over the grammar the machine is\n%s\nwant\n%s", strings.Join(got, "\n"), strings.Join(c.then, "\n"))

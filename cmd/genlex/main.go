@@ -22,8 +22,9 @@ func run(args []string, stderr io.Writer) int {
 	goOut := fs.String("go", "", "write the table here, as Go")
 	pkg := fs.String("package", "", "the package the Go table belongs to")
 	verbose := fs.Bool("v", false, "describe each scope's machine")
+	max := fs.Int("max-states", 0, "the most states a scope's machine may have; 0 means 10000")
 	fs.Usage = func() {
-		fmt.Fprintln(stderr, "usage: genlex [-v] [-dot dir] [-go out.go -package name] file.lex...")
+		fmt.Fprintln(stderr, "usage: genlex [-v] [-max-states n] [-dot dir] [-go out.go -package name] file.lex...")
 		fs.PrintDefaults()
 	}
 	if err := fs.Parse(args); err != nil {
@@ -40,7 +41,7 @@ func run(args []string, stderr io.Writer) int {
 	case *goOut != "" && *pkg == "":
 		err = errors.New("-go needs -package")
 	}
-	o := output{dir: *dir, goOut: *goOut, pkg: *pkg, verbose: *verbose, stderr: stderr}
+	o := output{dir: *dir, goOut: *goOut, pkg: *pkg, verbose: *verbose, max: *max, stderr: stderr}
 	for _, path := range fs.Args() {
 		if err != nil {
 			break
@@ -59,6 +60,7 @@ type output struct {
 	goOut   string
 	pkg     string
 	verbose bool
+	max     int
 	stderr  io.Writer
 }
 
@@ -67,7 +69,7 @@ func (o output) one(path string) error {
 	if err != nil {
 		return err
 	}
-	ms, dead, err := gen.Build(flat)
+	ms, dead, err := gen.Build(flat, o.max)
 	if err != nil {
 		return err
 	}

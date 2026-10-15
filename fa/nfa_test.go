@@ -16,9 +16,9 @@ func TestAnNFAStartsAtItsFirstStateUnlessTold(t *testing.T) {
 	n.On(z, fa.One('b'), y)
 	n.Accepts(y, 1)
 
-	first := table(n.DFA())
+	first := table(built(t, &n))
 	n.Start(z)
-	moved := table(n.DFA())
+	moved := table(built(t, &n))
 
 	if then := []string{
 		"start 1",
@@ -59,7 +59,7 @@ func TestMinimisingDropsAStateThatNeverAccepts(t *testing.T) {
 	n.On(x, fa.One('a'), sink)
 	n.On(x, fa.One('b'), end)
 	n.Accepts(end, 1)
-	d := n.DFA()
+	d := built(t, &n)
 
 	got := table(d.Minimise())
 
@@ -73,4 +73,16 @@ func TestMinimisingDropsAStateThatNeverAccepts(t *testing.T) {
 	if !reflect.DeepEqual(got, then) {
 		t.Errorf("minimised, the machine is\n%s\nwant\n%s", strings.Join(got, "\n"), strings.Join(then, "\n"))
 	}
+}
+
+func built(t *testing.T, n *fa.NFA[rune]) *fa.DFA[rune] {
+	t.Helper()
+
+	d, err := n.DFA()
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return d
 }

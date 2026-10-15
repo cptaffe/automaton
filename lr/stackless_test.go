@@ -2,9 +2,10 @@ package lr
 
 import (
 	"github.com/cptaffe/automaton/fa"
+	"testing"
 )
 
-func stackless(ss []state, of map[string]int) *fa.DFA[int] {
+func stackless(t *testing.T, ss []state, of map[string]int) *fa.DFA[int] {
 	var n fa.NFA[int]
 
 	at := map[int]int{}
@@ -51,5 +52,9 @@ func stackless(ss []state, of map[string]int) *fa.DFA[int] {
 
 	n.Start(at[ss[0].at])
 
-	return n.DFA().Minimise()
+	d, err := n.DFA()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return d.Minimise()
 }

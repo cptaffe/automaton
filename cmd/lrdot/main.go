@@ -58,7 +58,10 @@ func one(in, out, name string, shapeOnly bool) error {
 	if err != nil {
 		return err
 	}
-	t := draw.Tokens(g, name)
+	t, err := draw.Tokens(g, name)
+	if err != nil {
+		return err
+	}
 	if t == nil || shapeOnly {
 		return nil
 	}
