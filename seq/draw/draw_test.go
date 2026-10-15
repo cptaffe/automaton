@@ -151,22 +151,22 @@ func TestADialPlanIsDrawnWhole(t *testing.T) {
 	if want := "plan -- 10 states, 7 classes"; g.Note != want {
 		t.Errorf("note %q; want %q", g.Note, want)
 	}
-	if want := []string{"start (start)", "2 operator (accept)", "3", "4", "5", "6", "7", "8", "9 short when on (accept)", "10 long (accept)"}; !reflect.DeepEqual(dottest.Nodes(g), want) {
+	if want := []string{"start (start)", "2 operator (accept)", "3", "4", "5", "6", "7", "8", "9 short (accept)", "10 long (accept)"}; !reflect.DeepEqual(dottest.Nodes(g), want) {
 		t.Errorf("nodes %q; want %q", dottest.Nodes(g), want)
 	}
 	want := []string{
 		"start -0-> 2 operator",
-		"start -2-8-> 3",
+		"start -2-8\nwhen on-> 3",
 		"start -9-> 4",
 		"2 operator --> start (goto)",
 		"3 -0-9-> 5",
-		"4 -0-5 7-9-> 5",
+		"4 -0-5 7-9\nwhen on-> 5",
 		"4 -6-> 6",
 		"5 -0-9-> 7",
-		"6 -1-9-> 7",
+		"6 -1-9\nwhen on-> 7",
 		"6 -0-> 8",
-		"7 -<T>-> 9 short when on (event)",
-		"8 -<T>-> 9 short when on (event)",
+		"7 -<T>-> 9 short (event)",
+		"8 -<T>\nwhen on-> 9 short (event)",
 		"8 -0-9-> 10 long",
 	}
 	if !reflect.DeepEqual(dottest.Edges(g), want) {
@@ -184,6 +184,62 @@ func TestAHotkeyFallbackIsDrawnAsAny(t *testing.T) {
 
 	if want := []string{"main -control-x-> 2", "2 -any-> 3", "2 -control-s-> 4 put"}; !reflect.DeepEqual(dottest.Edges(g), want) {
 		t.Errorf("edges %q; want %q", dottest.Edges(g), want)
+	}
+}
+
+func TestAConditionIsDrawnOnTheMoveWhereItStartsToHold(t *testing.T) {
+	hot := func(t *testing.T, src string) *seq.Table {
+		r, err := hotkey.Parse(strings.NewReader(src), "h", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return r.Table
+	}
+	pad := func(t *testing.T, src string) *seq.Table {
+		g, err := keypad.Parse(strings.NewReader(src), "p.tree")
+		if err != nil {
+			t.Fatal(err)
+		}
+		tab, err := keypad.Compile(g)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return tab
+	}
+	for _, c := range []struct {
+		name  string
+		given func(*testing.T, string) *seq.Table
+		when  string
+		then  []string
+	}{
+		{
+			name:  "a scope read in under a condition",
+			given: hot,
+			when:  "main:\n\t-> acme when app == \"devdraw\"\n\nacme:\n\tcontrol-x control-s { put }\n",
+			then:  []string{"main -control-x\nwhen app == \"devdraw\"-> 2", "2 -control-s-> 3 put"},
+		},
+		{
+			name:  "two rules that part at a key",
+			given: pad,
+			when:  "start:\n  1 2  do put when on\n  1 3  do del\n",
+			then:  []string{"start -1-> 2", "2 -2\nwhen on-> 3 put", "2 -3-> 4 del"},
+		},
+		{
+			name:  "a rule unlike the rest at its node",
+			given: hot,
+			when:  "main:\n\t-> a when on\n\t-> b\n\na:\n\tcontrol-s { put }\n\nb:\n\tcontrol-s { save }\n",
+			then:  []string{"main -control-s-> 2 put when on save"},
+		},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			tab := c.given(t, c.when)
+
+			got := dottest.Edges(draw.Draw(tab))
+
+			if !reflect.DeepEqual(got, c.then) {
+				t.Errorf("edges %q; want %q", got, c.then)
+			}
+		})
 	}
 }
 

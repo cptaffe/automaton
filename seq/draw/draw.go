@@ -46,6 +46,9 @@ func (m machine) Moves(s int) []dot.Move {
 	out := make([]dot.Move, len(order), len(order)+len(gotos))
 	for i, to := range order {
 		out[i] = m.move(t, to)
+		if g := m.guard(to); g != "" && g != m.entered(s) {
+			out[i].Label += "\nwhen " + g
+		}
 	}
 	return append(out, gotos...)
 }
@@ -108,11 +111,51 @@ func (m machine) Accepts(s int) (string, bool) {
 	if len(as) == 0 {
 		return "", false
 	}
+	g := m.guard(s)
 	labels := make([]string, len(as))
 	for i, a := range as {
+		if a.When != nil && a.When.String() == g {
+			a = &seq.Accept{Action: a.Action}
+		}
 		labels[i] = Label(a)
 	}
 	return strings.Join(labels, "\n"), true
+}
+
+func (m machine) entered(s int) string {
+	for _, scope := range m.t.Scopes {
+		if scope.Start == s {
+			return ""
+		}
+	}
+	return m.guard(s)
+}
+
+func (m machine) guard(s int) string {
+	st := &m.t.States[s]
+	cs := make([]seq.Cond, 0, len(st.Live)+len(st.Accept))
+	cs = append(cs, st.Live...)
+	for _, a := range st.Accept {
+		cs = append(cs, a.When)
+	}
+	var or seq.Or
+	seen := map[string]bool{}
+	for _, c := range cs {
+		if c == nil {
+			return ""
+		}
+		if !seen[c.String()] {
+			seen[c.String()] = true
+			or = append(or, c)
+		}
+	}
+	switch len(or) {
+	case 0:
+		return ""
+	case 1:
+		return or[0].String()
+	}
+	return or.String()
 }
 
 func (m machine) names(syms []seq.Sym) string {
