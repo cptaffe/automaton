@@ -1,7 +1,5 @@
 package dot
 
-//go:generate go run ../cmd/genlex -go internal/scan/scan.gen.go -package scan alt.lex
-
 import (
 	"context"
 	"slices"

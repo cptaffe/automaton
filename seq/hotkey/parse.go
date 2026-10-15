@@ -1,6 +1,5 @@
 package hotkey
 
-//go:generate go run ../../cmd/genlex -go internal/scan/scan.gen.go -package scan hotkey.lex
 //go:generate go tool goyacc -l -p yy -o gram.go -v "" gram.y
 
 import (

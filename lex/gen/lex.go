@@ -1,7 +1,5 @@
 package gen
 
-//go:generate go run ../../cmd/genlex -go internal/scan/scan.gen.go -package scan lex.lex
-
 import (
 	"context"
 	"fmt"

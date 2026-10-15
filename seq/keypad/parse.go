@@ -1,6 +1,5 @@
 package keypad
 
-//go:generate go run ../../cmd/genlex -go internal/scan/scan.gen.go -package scan tree.lex
 //go:generate go tool goyacc -l -p yy -o gram.go -v "" gram.y
 
 import (

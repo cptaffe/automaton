@@ -103,7 +103,7 @@ func TestAHyphenInsideANameIsPartOfIt(t *testing.T) {
 }
 
 func TestNoRulePointsAtABlankLine(t *testing.T) {
-	files, err := filepath.Glob("lex.lex")
+	files, err := filepath.Glob("internal/scan/lex.lex")
 
 	if err != nil || len(files) == 0 {
 		t.Fatalf("no lexers to read: %v", err)
