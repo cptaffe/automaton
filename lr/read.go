@@ -25,7 +25,6 @@ type Grammar struct {
 var item = regexp.MustCompile(`^\t(\S+):\s*(.*?)\s*\((\d+)\)\s*$`)
 
 func Read(r io.Reader) (*Grammar, error) {
-	seen := map[int]bool{}
 	lhs := map[int]string{}
 	alts := map[string][]string{}
 	first := map[string]int{}
@@ -46,11 +45,10 @@ func Read(r io.Reader) (*Grammar, error) {
 			return nil, fmt.Errorf("rule %s: %w", m[3], err)
 		}
 
-		if seen[n] || m[1] == "$accept" {
+		if _, ok := lhs[n]; ok || m[1] == "$accept" {
 			continue
 		}
 
-		seen[n] = true
 		name, body := m[1], clean(m[2])
 
 		if at, ok := first[name]; !ok || n < at {
@@ -61,17 +59,17 @@ func Read(r io.Reader) (*Grammar, error) {
 		lhs[n] = name
 	}
 
-	var out []Rule
+	if err := sc.Err(); err != nil {
+		return nil, err
+	}
+
+	out := make([]Rule, 0, len(alts))
 
 	for name := range alts {
 		out = append(out, Rule{Name: name, Alts: alts[name], At: first[name]})
 	}
 
 	sort.Slice(out, func(i, j int) bool { return out[i].At < out[j].At })
-
-	if err := sc.Err(); err != nil {
-		return nil, err
-	}
 
 	if len(out) == 0 {
 		return nil, errors.New("no grammar rules: this is not a report goyacc wrote with -v")
