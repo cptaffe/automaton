@@ -1,11 +1,14 @@
 package fa
 
-import "fmt"
+import (
+	"fmt"
+	"slices"
+)
 
 func Reachable(next [][]int, eq []int, starts ...int) []int {
 	out := make([]int, len(next))
 	at := map[int]int{0: 0}
-	work := append([]int(nil), starts...)
+	work := slices.Clone(starts)
 	for len(work) > 0 {
 		s := work[0]
 		work = work[1:]
@@ -35,10 +38,7 @@ func (d *DFA[S]) Minimise() *DFA[S] {
 	}
 	to := Reachable(next, Equivalent(next, sig), int(d.start))
 
-	n := 0
-	for _, t := range to {
-		n = max(n, t)
-	}
+	n := slices.Max(to)
 	out := &DFA[S]{part: d.part, index: d.index, start: State(to[d.start]), nodes: make([]node, n+1)}
 	for s := range out.nodes {
 		out.nodes[s].next = make([]State, d.part.Len()+1)
@@ -58,15 +58,8 @@ func (d *DFA[S]) Minimise() *DFA[S] {
 }
 
 func union(a, b []Match) []Match {
-	in := map[Match]bool{}
+	out := slices.Concat(a, b)
+	slices.Sort(out)
 
-	for _, m := range a {
-		in[m] = true
-	}
-
-	for _, m := range b {
-		in[m] = true
-	}
-
-	return sorted(in)
+	return slices.Compact(out)
 }

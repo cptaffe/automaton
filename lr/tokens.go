@@ -1,6 +1,7 @@
 package lr
 
 import (
+	"slices"
 	"sort"
 	"strings"
 
@@ -118,7 +119,7 @@ func (g *nest) alt(name, alt string) {
 
 func (t *Tokens) DFA() *fa.DFA[int] { return t.dfa }
 
-func (t *Tokens) Words() []string { return append([]string(nil), t.words...) }
+func (t *Tokens) Words() []string { return slices.Clone(t.words) }
 
 func (t *Tokens) Step(s fa.State, word string) fa.State {
 	r, ok := t.at[word]

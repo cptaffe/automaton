@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"os/exec"
+	"slices"
 	"strings"
 	"testing"
 
@@ -59,7 +60,7 @@ func Groups(g dot.Graph) []string {
 }
 
 func nodes(g dot.Graph) []dot.Node {
-	out := append([]dot.Node(nil), g.Nodes...)
+	out := slices.Clone(g.Nodes)
 
 	for _, gr := range g.Groups {
 		out = append(out, gr.Nodes...)

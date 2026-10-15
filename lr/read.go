@@ -2,11 +2,12 @@ package lr
 
 import (
 	"bufio"
+	"cmp"
 	"errors"
 	"fmt"
 	"io"
 	"regexp"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -69,7 +70,7 @@ func Read(r io.Reader) (*Grammar, error) {
 		out = append(out, Rule{Name: name, Alts: alts[name], At: first[name]})
 	}
 
-	sort.Slice(out, func(i, j int) bool { return out[i].At < out[j].At })
+	slices.SortFunc(out, func(a, b Rule) int { return cmp.Compare(a.At, b.At) })
 
 	if len(out) == 0 {
 		return nil, errors.New("no grammar rules: this is not a report goyacc wrote with -v")

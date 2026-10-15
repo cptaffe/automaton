@@ -1,7 +1,9 @@
 package fa
 
 import (
+	"cmp"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"unicode"
@@ -45,13 +47,7 @@ func Of[S Symbol](rs ...Range[S]) Set[S] {
 		}
 	}
 
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].Lo != out[j].Lo {
-			return out[i].Lo < out[j].Lo
-		}
-
-		return out[i].Hi < out[j].Hi
-	})
+	slices.SortFunc(out, func(a, b Range[S]) int { return cmp.Compare(a.Lo, b.Lo) })
 
 	var norm []Range[S]
 
@@ -110,7 +106,7 @@ func Category(t *unicode.RangeTable) Set[rune] {
 	return Of(rs...)
 }
 
-func (s Set[S]) Ranges() []Range[S] { return append([]Range[S](nil), s.r...) }
+func (s Set[S]) Ranges() []Range[S] { return slices.Clone(s.r) }
 
 func (s Set[S]) Empty() bool { return len(s.r) == 0 }
 
@@ -133,7 +129,7 @@ func (s Set[S]) Size() uint64 {
 }
 
 func (s Set[S]) Union(t Set[S]) Set[S] {
-	return Of(append(append([]Range[S](nil), s.r...), t.r...)...)
+	return Of(slices.Concat(s.r, t.r)...)
 }
 
 func (s Set[S]) Intersect(t Set[S]) Set[S] {
@@ -186,19 +182,7 @@ func (s Set[S]) Negate() Set[S] {
 	return Of(out...)
 }
 
-func (s Set[S]) Equal(t Set[S]) bool {
-	if len(s.r) != len(t.r) {
-		return false
-	}
-
-	for i := range s.r {
-		if s.r[i] != t.r[i] {
-			return false
-		}
-	}
-
-	return true
-}
+func (s Set[S]) Equal(t Set[S]) bool { return slices.Equal(s.r, t.r) }
 
 func (s Set[S]) String() string {
 	if s.Empty() {
@@ -253,18 +237,9 @@ func show[S Symbol](x S) string {
 }
 
 func hex(r rune) string {
-	const digits = "0123456789abcdef"
-	n := 4
-
 	if r > 0xffff {
-		n = 6
+		return fmt.Sprintf("%06x", r)
 	}
 
-	out := []byte{}
-
-	for i := n - 1; i >= 0; i-- {
-		out = append(out, digits[(r>>(4*i))&0xf])
-	}
-
-	return string(out)
+	return fmt.Sprintf("%04x", r)
 }

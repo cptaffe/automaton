@@ -1,5 +1,7 @@
 package fa
 
+import "slices"
+
 type edge[S Symbol] struct {
 	set  Set[S]
 	to   int
@@ -86,7 +88,7 @@ func (n *nfa[S]) build(e Expr[S], from int) int {
 
 func (n *nfa[S]) closure(of []int) []int {
 	seen := make([]bool, len(n.out))
-	todo := append([]int(nil), of...)
+	todo := slices.Clone(of)
 	var out []int
 
 	for len(todo) > 0 {

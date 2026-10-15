@@ -1,8 +1,9 @@
 package lr
 
 import (
-	"github.com/cptaffe/automaton/fa"
 	"testing"
+
+	"github.com/cptaffe/automaton/fa"
 )
 
 func stackless(t *testing.T, ss []state, of map[string]int) *fa.DFA[int] {

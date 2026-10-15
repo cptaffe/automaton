@@ -2,6 +2,8 @@ package fa
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 	"sort"
 	"strings"
 )
@@ -90,7 +92,7 @@ type subsets[S Symbol] struct {
 
 func (b *subsets[S]) add(of []int) State {
 	set := b.n.closure(of)
-	sort.Ints(set)
+	slices.Sort(set)
 	key := fmt.Sprint(set)
 
 	if at, ok := b.seen[key]; ok {
@@ -136,7 +138,7 @@ func (n *nfa[S]) matches(set []int) (done, going []Match) {
 		}
 	}
 
-	return sorted(ends), sorted(goes)
+	return slices.Sorted(maps.Keys(ends)), slices.Sorted(maps.Keys(goes))
 }
 
 func (n *nfa[S]) step(set []int, x S) []int {
@@ -161,18 +163,6 @@ func (n *nfa[S]) step(set []int, x S) []int {
 	return to
 }
 
-func sorted(in map[Match]bool) []Match {
-	out := make([]Match, 0, len(in))
-
-	for m := range in {
-		out = append(out, m)
-	}
-
-	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
-
-	return out
-}
-
 func (d *DFA[S]) Partition() *Partition[S] { return d.part }
 
 func (d *DFA[S]) Index() Index[S] { return d.index }
@@ -191,9 +181,9 @@ func (d *DFA[S]) Accept(state State) Match {
 	return NoMatch
 }
 
-func (d *DFA[S]) Done(state State) []Match { return append([]Match(nil), d.nodes[state].done...) }
+func (d *DFA[S]) Done(state State) []Match { return slices.Clone(d.nodes[state].done) }
 
-func (d *DFA[S]) Going(state State) []Match { return append([]Match(nil), d.nodes[state].going...) }
+func (d *DFA[S]) Going(state State) []Match { return slices.Clone(d.nodes[state].going) }
 
 func (d *DFA[S]) Step(state State, x S) State { return d.nodes[state].next[d.index.Of(x)] }
 

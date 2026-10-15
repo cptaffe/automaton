@@ -2,6 +2,7 @@ package draw
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -34,7 +35,7 @@ func Tokens(g *lr.Grammar, name string) (dot.Machine, error) {
 	case 0:
 		m.note = head + "; nothing self-embeds, so this is exactly the grammar"
 	default:
-		sort.Strings(nested)
+		slices.Sort(nested)
 		verb := "self-embed"
 		if len(nested) == 1 {
 			verb = "self-embeds"

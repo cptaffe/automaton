@@ -1,6 +1,9 @@
 package fa
 
-import "sort"
+import (
+	"cmp"
+	"slices"
+)
 
 type refinable struct {
 	sets    int
@@ -117,7 +120,7 @@ func bySig(sig []string) *refinable {
 
 func byLabel(ts []transition) *refinable {
 	r := newRefinable(len(ts))
-	sort.SliceStable(r.elems, func(i, j int) bool { return ts[r.elems[i]].label < ts[r.elems[j]].label })
+	slices.SortStableFunc(r.elems, func(a, b int) int { return cmp.Compare(ts[a].label, ts[b].label) })
 	for i, t := range r.elems {
 		if i > 0 && ts[t].label != ts[r.elems[i-1]].label {
 			r.past[r.sets-1], r.first[r.sets] = i, i

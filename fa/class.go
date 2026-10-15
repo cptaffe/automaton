@@ -1,8 +1,11 @@
 package fa
 
 import (
+	"cmp"
 	"fmt"
 	"iter"
+	"maps"
+	"slices"
 	"sort"
 )
 
@@ -62,13 +65,7 @@ func cutsOf[S Symbol](sets []Set[S]) cuts[S] {
 		}
 	}
 
-	c.at = make([]S, 0, len(in))
-
-	for r := range in {
-		c.at = append(c.at, r)
-	}
-
-	sort.Slice(c.at, func(i, j int) bool { return c.at[i] < c.at[j] })
+	c.at = slices.Sorted(maps.Keys(in))
 
 	return c
 }
@@ -180,7 +177,7 @@ func (p *Partition[S]) Index() Index[S] {
 		}
 	}
 
-	sort.Slice(ix, func(i, j int) bool { return ix[i].Lo < ix[j].Lo })
+	slices.SortFunc(ix, func(a, b Entry[S]) int { return cmp.Compare(a.Lo, b.Lo) })
 
 	return ix
 }

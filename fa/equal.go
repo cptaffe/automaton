@@ -1,5 +1,7 @@
 package fa
 
+import "slices"
+
 func Equal[S Symbol](a, b *DFA[S]) bool {
 	_, differ := Distinguish(a, b)
 
@@ -79,9 +81,7 @@ func witness[S Symbol](work []pair[S], at int) []S {
 		out = append(out, work[at].sym)
 	}
 
-	for i, j := 0, len(out)-1; i < j; i, j = i+1, j-1 {
-		out[i], out[j] = out[j], out[i]
-	}
+	slices.Reverse(out)
 
 	return out
 }
