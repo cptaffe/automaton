@@ -2,7 +2,7 @@ package gen
 
 import (
 	"fmt"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/cptaffe/automaton/fa"
@@ -106,7 +106,7 @@ func (b *builder) dead() []string {
 		}
 	}
 
-	sort.Strings(out)
+	slices.Sort(out)
 
 	return out
 }
@@ -138,7 +138,7 @@ func covers(rules []FlatRule, d *fa.DFA[rune], rule int) string {
 		}
 	}
 
-	sort.Strings(out)
+	slices.Sort(out)
 
 	if len(out) == 0 {
 		return "nothing, so it reads text no rule can reach"

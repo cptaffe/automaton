@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"sort"
+	"slices"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -24,7 +24,7 @@ func (p *parser) preload() {
 		names = append(names, d.Name)
 	}
 
-	sort.Strings(names)
+	slices.Sort(names)
 
 	for _, name := range names {
 		p.file.Defs = append(p.file.Defs, Def{Name: name, Expr: p.named[name]})

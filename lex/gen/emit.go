@@ -7,7 +7,6 @@ import (
 	"go/format"
 	"go/token"
 	"slices"
-	"sort"
 	"strings"
 	"unicode"
 
@@ -129,7 +128,7 @@ func numbered(f *Flat, of func(FlatActs) string) ([]string, map[string]int) {
 		}
 	}
 
-	sort.Strings(out)
+	slices.Sort(out)
 	at := map[string]int{}
 
 	for i, name := range out {

@@ -3,7 +3,7 @@ package seq
 import (
 	"fmt"
 	"regexp"
-	"sort"
+	"slices"
 	"strings"
 )
 
@@ -141,18 +141,12 @@ func AnyOf(a, b Cond) Cond {
 func Holds(c Cond, e Env) bool { return c == nil || c.Eval(e) }
 
 func names(cs []Cond) []string {
-	seen := map[string]bool{}
 	var out []string
 	for _, c := range cs {
-		for _, n := range c.Names() {
-			if !seen[n] {
-				seen[n] = true
-				out = append(out, n)
-			}
-		}
+		out = append(out, c.Names()...)
 	}
-	sort.Strings(out)
-	return out
+	slices.Sort(out)
+	return slices.Compact(out)
 }
 
 func join(cs []Cond, sep string) string {

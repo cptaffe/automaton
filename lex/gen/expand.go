@@ -1,9 +1,9 @@
 package gen
 
 import (
+	"cmp"
 	"fmt"
 	"slices"
-	"sort"
 	"strings"
 )
 
@@ -29,7 +29,7 @@ func Expand(f *File) (*Flat, error) {
 		return nil, err
 	}
 
-	sort.SliceStable(e.out.Scopes, func(i, j int) bool { return e.out.Scopes[i].Line < e.out.Scopes[j].Line })
+	slices.SortStableFunc(e.out.Scopes, func(a, b FlatScope) int { return cmp.Compare(a.Line, b.Line) })
 
 	if err := e.unreached(); err != nil {
 		return nil, err

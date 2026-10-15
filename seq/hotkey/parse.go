@@ -8,7 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"sort"
+	"maps"
+	"slices"
 	"strings"
 	"time"
 
@@ -300,7 +301,7 @@ type resolver struct {
 
 func (l *lexer) resolve(kb Keyboard) (*seq.Alphabet, error) {
 	r := &resolver{g: l.g, kb: kb}
-	for _, x := range append(append([]rule(nil), l.rules...), l.anys...) {
+	for _, x := range slices.Concat(l.rules, l.anys) {
 		for _, w := range x.keys.words() {
 			r.key(w)
 		}
@@ -348,12 +349,7 @@ func (r *resolver) key(w word) (string, bool) {
 }
 
 func (r *resolver) alphabet() {
-	events := make([]string, 0, len(r.g.Delays))
-	for name := range r.g.Delays {
-		events = append(events, name)
-	}
-	sort.Strings(events)
-	r.a = seq.NewAlphabet(r.kb.chords(), events...)
+	r.a = seq.NewAlphabet(r.kb.chords(), slices.Sorted(maps.Keys(r.g.Delays))...)
 }
 
 func (r *resolver) atom(w word) seq.Atom {

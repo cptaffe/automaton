@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"slices"
-	"sort"
 	"strings"
 	"time"
 
@@ -28,7 +27,7 @@ func Alphabet(g *seq.Grammar) *seq.Alphabet {
 			delays = append(delays, name)
 		}
 	}
-	sort.Strings(delays)
+	slices.Sort(delays)
 	return seq.NewAlphabet(strings.Split(keys, ""), append([]string{Answered}, delays...)...)
 }
 

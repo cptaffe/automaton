@@ -3,7 +3,6 @@ package seq
 import (
 	"fmt"
 	"slices"
-	"sort"
 	"strings"
 	"time"
 
@@ -105,7 +104,7 @@ func Compile(g *Grammar, a *Alphabet) (*Table, error) {
 			return nil, err
 		}
 	}
-	sort.Strings(t.Conflicts)
+	slices.Sort(t.Conflicts)
 	t.Conflicts = slices.Compact(t.Conflicts)
 	return c.minimal(), nil
 }
@@ -186,10 +185,7 @@ func (c *compiler) minimal() *Table {
 }
 
 func (t *Table) renumber(to []int) *Table {
-	n := 0
-	for _, s := range to {
-		n = max(n, s)
-	}
+	n := slices.Max(to)
 	out := *t
 	out.States = make([]State, n+1)
 	for s, st := range t.States {
@@ -438,7 +434,7 @@ func (t *Table) Waiting() []string {
 			out = append(out, name)
 		}
 	}
-	sort.Strings(out)
+	slices.Sort(out)
 	return out
 }
 
