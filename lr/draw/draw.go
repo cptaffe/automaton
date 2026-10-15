@@ -3,7 +3,6 @@ package draw
 import (
 	"fmt"
 	"slices"
-	"sort"
 	"strings"
 
 	"github.com/cptaffe/automaton/dot"
@@ -64,29 +63,14 @@ func (m tokens) Accepts(s int) (string, bool) {
 }
 
 func (m tokens) Moves(s int) []dot.Move {
-	d := m.t.DFA()
-	by := map[fa.State][]string{}
-	var order []fa.State
-	for c := range d.Partition().All() {
-		to := d.Next(fa.State(s), c)
-		if to == fa.NoState {
-			continue
-		}
-		if _, ok := by[to]; !ok {
-			order = append(order, to)
-		}
-		by[to] = append(by[to], m.t.In(c)...)
-	}
-	sort.Slice(order, func(i, j int) bool { return order[i] < order[j] })
-	out := make([]dot.Move, len(order))
-	for i, to := range order {
-		out[i] = dot.Move{To: int(to), Label: words(by[to])}
+	var out []dot.Move
+	for to, set := range m.t.DFA().Edges(fa.State(s)) {
+		out = append(out, dot.Move{To: int(to), Label: words(m.t.In(set))})
 	}
 	return out
 }
 
 func words(ws []string) string {
-	sort.Strings(ws)
 	if len(ws) > 4 {
 		return fmt.Sprintf("%s and %d more", strings.Join(ws[:4], " "), len(ws)-4)
 	}

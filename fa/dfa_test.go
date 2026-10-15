@@ -359,3 +359,20 @@ func TestABuildStopsAtItsBudgetOfStates(t *testing.T) {
 		t.Errorf("got %v; want the budget refused", err)
 	}
 }
+
+func TestEdgesJoinTheClassesThatShareATarget(t *testing.T) {
+	d := build(t, []fa.Rule[rune]{{Name: "one", Expr: fa.Alt(
+		fa.Lit(fa.Text("ab")),
+		fa.Lit(fa.Span('0', '9')),
+		fa.Cat(fa.Lit(fa.One('c')), fa.Lit(fa.One('c'))),
+	)}}).Minimise()
+
+	var got []string
+	for to, set := range d.Edges(d.Start()) {
+		got = append(got, fmt.Sprintf("%s->%d", set, to))
+	}
+
+	if then := []string{"0-9ab->2", "c->3"}; !reflect.DeepEqual(got, then) {
+		t.Errorf("the edges from the start are %q; want %q", got, then)
+	}
+}

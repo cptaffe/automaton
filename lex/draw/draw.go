@@ -2,7 +2,6 @@ package draw
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/cptaffe/automaton/dot"
@@ -61,22 +60,9 @@ func (d machine) Starts() []dot.Start {
 }
 
 func (d machine) Moves(s int) []dot.Move {
-	by := map[fa.State]fa.Set[rune]{}
-	var order []fa.State
-	for k, part := range d.m.DFA.Partition().All() {
-		to := d.m.DFA.Next(fa.State(s), k)
-		if to == fa.NoState {
-			continue
-		}
-		if _, ok := by[to]; !ok {
-			order = append(order, to)
-		}
-		by[to] = by[to].Union(part)
-	}
-	sort.Slice(order, func(i, j int) bool { return order[i] < order[j] })
-	out := make([]dot.Move, len(order))
-	for i, to := range order {
-		out[i] = dot.Move{To: int(to), Label: d.label(by[to])}
+	var out []dot.Move
+	for to, set := range d.m.DFA.Edges(fa.State(s)) {
+		out = append(out, dot.Move{To: int(to), Label: d.label(set)})
 	}
 	return out
 }

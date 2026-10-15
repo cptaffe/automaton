@@ -157,8 +157,8 @@ func TestEachClassHoldsTheWordItReads(t *testing.T) {
 
 	got := make([][]string, 0, m.DFA().Partition().Len())
 
-	for c := range m.DFA().Partition().All() {
-		got = append(got, m.In(c))
+	for _, part := range m.DFA().Partition().All() {
+		got = append(got, m.In(part))
 	}
 
 	if then := [][]string{{"A"}, {"B"}}; !reflect.DeepEqual(got, then) {

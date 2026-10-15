@@ -2,6 +2,7 @@ package fa
 
 import (
 	"fmt"
+	"iter"
 	"maps"
 	"slices"
 	"sort"
@@ -184,6 +185,24 @@ func (d *DFA[S]) Accept(state State) Match {
 func (d *DFA[S]) Done(state State) []Match { return slices.Clone(d.nodes[state].done) }
 
 func (d *DFA[S]) Going(state State) []Match { return slices.Clone(d.nodes[state].going) }
+
+func (d *DFA[S]) Edges(s State) iter.Seq2[State, Set[S]] {
+	by := map[State]Set[S]{}
+
+	for c, part := range d.part.All() {
+		if to := d.nodes[s].next[c]; to != NoState {
+			by[to] = by[to].Union(part)
+		}
+	}
+
+	return func(yield func(State, Set[S]) bool) {
+		for _, to := range slices.Sorted(maps.Keys(by)) {
+			if !yield(to, by[to]) {
+				return
+			}
+		}
+	}
+}
 
 func (d *DFA[S]) Step(state State, x S) State { return d.nodes[state].next[d.index.Of(x)] }
 

@@ -2,7 +2,6 @@ package lr
 
 import (
 	"slices"
-	"sort"
 	"strings"
 
 	"github.com/cptaffe/automaton/fa"
@@ -131,16 +130,16 @@ func (t *Tokens) Step(s fa.State, word string) fa.State {
 	return t.dfa.Step(s, r)
 }
 
-func (t *Tokens) In(c fa.Class) []string {
-	var out []string
+func (t *Tokens) In(s fa.Set[int]) []string {
+	out := make([]string, 0, s.Size())
 
-	for _, x := range t.dfa.Partition().Part(c).Ranges() {
+	for _, x := range s.Ranges() {
 		for w := x.Lo; w <= x.Hi; w++ {
 			out = append(out, t.words[w-1])
 		}
 	}
 
-	sort.Strings(out)
+	slices.Sort(out)
 
 	return out
 }
