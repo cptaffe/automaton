@@ -180,25 +180,32 @@ func (c *compiler) minimal() *Table {
 	}
 	next := t.next()
 	to := fa.Reachable(next, fa.Equivalent(next, c.sig), starts...)
+	return t.renumber(to)
+}
+
+func (t *Table) renumber(to []int) *Table {
 	n := 0
 	for _, s := range to {
 		n = max(n, s)
 	}
-	out := &Table{Name: t.Name, Note: t.Note, Alpha: t.Alpha, Partition: t.Partition, Index: t.Index, Delays: t.Delays, Conflicts: t.Conflicts, States: make([]State, n+1)}
+	out := *t
+	out.States = make([]State, n+1)
 	for s, st := range t.States {
 		if s != 0 && to[s] == 0 {
 			continue
 		}
-		st.Next = make([]int, len(next[s]))
-		for sym, n := range next[s] {
-			st.Next[sym] = to[n]
+		next := st.Next
+		st.Next = make([]int, len(next))
+		for k, n := range next {
+			st.Next[k] = to[n]
 		}
 		out.States[to[s]] = st
 	}
+	out.Scopes = make([]Scope, 0, len(t.Scopes))
 	for _, scope := range t.Scopes {
 		out.Scopes = append(out.Scopes, Scope{Name: scope.Name, Start: to[scope.Start]})
 	}
-	return out
+	return &out
 }
 
 func (c *compiler) scope(i int) error {
