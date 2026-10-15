@@ -86,8 +86,8 @@ Both dialects compile to the same kind of table:
   only when a rule that holds can use it.
 - A delay declared with `%delay` is a symbol in its own right: it arrives when
   the machine has waited that long. A rule that would otherwise be the start
-  of a longer one ends with it, as `NXX XXXX T` does; without it the pair is a
-  conflict.
+  of a longer one ends with it, as `NXX XXXX (T | #)` does; without it the
+  pair is a conflict.
 - `any` reads a key no other rule names at that point, and `... any` is a
   scope's default.
 - A scope can take a parameter, `dialing(then)`, and `this` names the scope a
@@ -105,22 +105,21 @@ with no rules, ends the plan:
 %delay abandon 16s
 
 start:
-  0 T           do operator         -> connected
-  0 NXX XXXX    do collect          -> connected
-  *98           do voicemail        -> dialing(mailbox)
-  NXX XXXX T    do local            -> connected
-  NXX XXXX #    do local            -> connected
-  960 NXX XXXX  do long-distance    -> connected
-  ... abandon   do dial-again
+  0 T               do operator         -> connected
+  0 NXX XXXX        do collect          -> connected
+  *98               do voicemail        -> dialing(mailbox)
+  NXX XXXX (T | #)  do local            -> connected
+  960 NXX XXXX      do long-distance    -> connected
+  ... abandon       do dial-again
 
 dialing(then):
-  answered      -> then
+  answered          -> then
 
 connected:
 
 mailbox:
-  1             do play       when messages
-  #             do hang-up    -> start
+  1                 do play       when messages
+  #                 do hang-up    -> start
 ```
 
 ```go

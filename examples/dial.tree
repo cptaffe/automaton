@@ -2,19 +2,18 @@
 %delay abandon 16s
 
 start:
-  0 T           do operator         -> connected
-  0 NXX XXXX    do collect          -> connected
-  *98           do voicemail        -> dialing(mailbox)
-  NXX XXXX T    do local            -> connected
-  NXX XXXX #    do local            -> connected
-  960 NXX XXXX  do long-distance    -> connected
-  ... abandon   do dial-again
+  0 T               do operator         -> connected
+  0 NXX XXXX        do collect          -> connected
+  *98               do voicemail        -> dialing(mailbox)
+  NXX XXXX (T | #)  do local            -> connected
+  960 NXX XXXX      do long-distance    -> connected
+  ... abandon       do dial-again
 
 dialing(then):
-  answered      -> then
+  answered          -> then
 
 connected:
 
 mailbox:
-  1             do play       when messages
-  #             do hang-up    -> start
+  1                 do play       when messages
+  #                 do hang-up    -> start

@@ -94,7 +94,7 @@ func TestGenseqDrawsEachTable(t *testing.T) {
 		when  string
 		then  drawn
 	}{
-		{"the dial plan is drawn", given, "dial.dot", drawn{"dial", `dial -- 38 states, 11 classes\l`, 38, 47}},
+		{"the dial plan is drawn", given, "dial.dot", drawn{"dial", `dial -- 37 states, 11 classes\l`, 37, 44}},
 		{"the hotkeys are drawn", given, "hotkeys.dot", drawn{"hotkeys", `hotkeys -- 8 states, 7 classes\l`, 8, 7}},
 	} {
 		t.Run(c.name, func(t *testing.T) {
