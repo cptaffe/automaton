@@ -49,7 +49,7 @@ func (a *Alphabet) Name(s Sym) string {
 	return a.names[s]
 }
 
-type Class struct {
+type Atom struct {
 	Syms  []Sym
 	Event string
 	Any   bool
@@ -59,9 +59,9 @@ type Class struct {
 	keys fa.Set[Sym]
 }
 
-func (c Class) IsEvent() bool { return c.Event != "" }
+func (c Atom) IsEvent() bool { return c.Event != "" }
 
-func (c Class) set() fa.Set[Sym] {
+func (c Atom) set() fa.Set[Sym] {
 	if c.Event != "" {
 		return fa.One(c.sym)
 	}
@@ -75,7 +75,7 @@ func (c Class) set() fa.Set[Sym] {
 	return fa.Of(rs...)
 }
 
-func (c Class) wide() bool {
+func (c Atom) wide() bool {
 	return c.Any || len(c.Syms) > 1
 }
 

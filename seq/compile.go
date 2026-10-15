@@ -315,7 +315,7 @@ func (c *compiler) conflict(line int, f string, args ...any) {
 	c.t.Conflicts = append(c.t.Conflicts, fmt.Sprintf("%s:%d: %s", c.g.Name, line, fmt.Sprintf(f, args...)))
 }
 
-func resolve(c Class, a *Alphabet) (Class, error) {
+func resolve(c Atom, a *Alphabet) (Atom, error) {
 	if c.Any {
 		c.keys = fa.Span(0, Sym(a.Keys()-1))
 		return c, nil
@@ -360,7 +360,7 @@ func operand(r Rule) *Slice {
 }
 
 func event(x Expr) bool {
-	c, ok := x.(Class)
+	c, ok := x.(Atom)
 	return ok && c.IsEvent()
 }
 
@@ -368,7 +368,7 @@ func wide(x Expr) bool {
 	if p, ok := x.(Plus); ok {
 		x = p.Of
 	}
-	c, ok := x.(Class)
+	c, ok := x.(Atom)
 	return ok && c.wide()
 }
 

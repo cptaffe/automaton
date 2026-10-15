@@ -18,12 +18,12 @@ func elems(a *seq.Alphabet, pattern string) []seq.Expr {
 		text := f
 		many := strings.HasSuffix(f, "+")
 		f = strings.TrimSuffix(f, "+")
-		var c seq.Class
+		var c seq.Atom
 		switch s, _ := a.Of(f); {
 		case f == "any":
-			c = seq.Class{Any: true}
+			c = seq.Atom{Any: true}
 		case a.IsEvent(s):
-			c = seq.Class{Event: f}
+			c = seq.Atom{Event: f}
 		default:
 			for _, name := range strings.Split(f, "|") {
 				s, ok := a.Of(name)
@@ -347,7 +347,7 @@ func TestABadGrammarDoesNotCompile(t *testing.T) {
 	a := alphabet()
 	x := func(line int, scope, pattern string) seq.Rule { return rule(a, line, scope, pattern, "x") }
 	peeking := seq.Rule{Scope: "s", Pattern: "a", Peek: elems(a, "a")[0], Action: "x", Line: 1}
-	nope := []seq.Expr{seq.Class{Event: "nope", Text: "nope"}}
+	nope := []seq.Expr{seq.Atom{Event: "nope", Text: "nope"}}
 	for _, c := range []struct {
 		name  string
 		given *seq.Grammar

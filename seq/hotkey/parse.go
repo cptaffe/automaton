@@ -356,16 +356,16 @@ func (r *resolver) alphabet() {
 	r.a = seq.NewAlphabet(r.kb.chords(), events...)
 }
 
-func (r *resolver) class(w word) seq.Class {
+func (r *resolver) atom(w word) seq.Atom {
 	if w.text == "any" {
-		return seq.Class{Any: true, Text: w.text}
+		return seq.Atom{Any: true, Text: w.text}
 	}
 	k, event := r.key(w)
 	if event {
-		return seq.Class{Event: k, Text: w.text}
+		return seq.Atom{Event: k, Text: w.text}
 	}
 	s, _ := r.a.Of(k)
-	return seq.Class{Syms: []seq.Sym{s}, Text: w.text}
+	return seq.Atom{Syms: []seq.Sym{s}, Text: w.text}
 }
 
 func (r *resolver) expr(n node) seq.Expr {
@@ -387,7 +387,7 @@ func (r *resolver) expr(n node) seq.Expr {
 	case '-':
 		return seq.Minus{From: kids[0], Take: kids[1]}
 	}
-	return r.class(n.w)
+	return r.atom(n.w)
 }
 
 func (p pat) words() []word {

@@ -15,7 +15,7 @@ type Plus struct{ Of Expr }
 type Opt struct{ Of Expr }
 type Minus struct{ From, Take Expr }
 
-func (Class) expr() {}
+func (Atom) expr()  {}
 func (Cat) expr()   {}
 func (Alt) expr()   {}
 func (Star) expr()  {}
@@ -43,7 +43,7 @@ func bind(e Expr, a *Alphabet) (Expr, error) {
 		return wrap(got), nil
 	}
 	switch e := e.(type) {
-	case Class:
+	case Atom:
 		return resolve(e, a)
 	case Cat:
 		got, err := each(e)
@@ -69,7 +69,7 @@ func bind(e Expr, a *Alphabet) (Expr, error) {
 
 func sets(e Expr, out []fa.Set[Sym]) []fa.Set[Sym] {
 	switch e := e.(type) {
-	case Class:
+	case Atom:
 		return append(out, e.set())
 	case Cat:
 		for _, x := range e {
@@ -106,7 +106,7 @@ func lower(e Expr) (fa.Expr[Sym], error) {
 		return out, nil
 	}
 	switch e := e.(type) {
-	case Class, Minus:
+	case Atom, Minus:
 		s, weak, err := setOf(e)
 		if err != nil {
 			return fa.Expr[Sym]{}, err
@@ -136,7 +136,7 @@ func lower(e Expr) (fa.Expr[Sym], error) {
 
 func setOf(e Expr) (fa.Set[Sym], bool, error) {
 	switch e := e.(type) {
-	case Class:
+	case Atom:
 		return e.set(), e.Any, nil
 	case Alt:
 		var out fa.Set[Sym]
@@ -169,7 +169,7 @@ func setOf(e Expr) (fa.Set[Sym], bool, error) {
 
 func text(e Expr) string {
 	switch e := e.(type) {
-	case Class:
+	case Atom:
 		return e.Text
 	case Minus:
 		return text(e.From) + " - " + text(e.Take)
@@ -184,9 +184,9 @@ func sequence(e Expr) ([]Expr, bool) {
 	}
 	for _, x := range items {
 		switch x := x.(type) {
-		case Class:
+		case Atom:
 		case Plus:
-			if _, ok := x.Of.(Class); !ok {
+			if _, ok := x.Of.(Atom); !ok {
 				return nil, false
 			}
 		default:

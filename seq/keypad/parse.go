@@ -80,7 +80,7 @@ type word struct {
 }
 
 type symv struct {
-	e    seq.Class
+	e    seq.Atom
 	text string
 	line int
 	lead string
@@ -187,15 +187,15 @@ func (l *lexer) token() (lex.Token, string, bool) {
 	}
 }
 
-func symbolOf(text string) seq.Class {
+func symbolOf(text string) seq.Atom {
 	syms, _ := classOf(rune(text[0]))
-	return seq.Class{Syms: syms, Text: text}
+	return seq.Atom{Syms: syms, Text: text}
 }
 
 func name(w word) pat {
-	c := seq.Class{Event: w.text, Text: w.text}
+	c := seq.Atom{Event: w.text, Text: w.text}
 	if w.text == "any" {
-		c = seq.Class{Any: true, Text: w.text}
+		c = seq.Atom{Any: true, Text: w.text}
 	}
 	return pat{e: c, set: true, line: w.line, text: w.lead + w.text}
 }
