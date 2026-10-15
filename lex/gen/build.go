@@ -76,9 +76,10 @@ func (b *builder) machine(s FlatScope) (Machine, error) {
 	d = d.Minimise()
 
 	m := Machine{Scope: s.Name, DFA: d, Rules: rules}
+	accepted := d.Accepted()
 
 	for i, r := range rules {
-		if reaches(d, i) {
+		if slices.Contains(accepted, fa.Match(i+1)) {
 			b.live[key(r)] = true
 
 			continue
@@ -88,7 +89,7 @@ func (b *builder) machine(s FlatScope) (Machine, error) {
 			continue
 		}
 
-		m.Covered = append(m.Covered, fmt.Sprintf("%s:%d: %s is covered in %s by %s", f.Path, r.Line, label(r), s.Name, covers(rules, d, i)))
+		m.Covered = append(m.Covered, fmt.Sprintf("%s:%d: %s is covered in %s by %s", f.Path, r.Line, label(r), s.Name, covers(rules, accepted, i)))
 	}
 
 	return m, nil
@@ -111,34 +112,19 @@ func (b *builder) dead() []string {
 	return out
 }
 
-func reaches(d *fa.DFA[rune], rule int) bool {
-	for s := fa.State(1); int(s) <= d.States(); s++ {
-		if d.Accept(s) == fa.Match(rule+1) {
-			return true
-		}
-	}
-
-	return false
-}
-
-func covers(rules []FlatRule, d *fa.DFA[rune], rule int) string {
+func covers(rules []FlatRule, accepted []fa.Match, rule int) string {
 	var out []string
-	seen := map[string]bool{}
 
-	for s := fa.State(1); int(s) <= d.States(); s++ {
-		a := d.Accept(s)
-
-		if a == fa.NoMatch || int(a) > rule {
-			continue
+	for _, a := range accepted {
+		if int(a) > rule {
+			break
 		}
 
-		if got := label(rules[a-1]); !seen[got] {
-			seen[got] = true
-			out = append(out, got)
-		}
+		out = append(out, label(rules[a-1]))
 	}
 
 	slices.Sort(out)
+	out = slices.Compact(out)
 
 	if len(out) == 0 {
 		return "nothing, so it reads text no rule can reach"

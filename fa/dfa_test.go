@@ -140,29 +140,25 @@ func TestOptReadsItsBodyOrNothing(t *testing.T) {
 	}
 }
 
-func TestARuleCoveredEverywhereIsReported(t *testing.T) {
-	rules := []fa.Rule[rune]{
-		{Name: "name", Expr: fa.Plus(fa.Lit(fa.Span('a', 'z')))},
-		{Name: "do", Expr: text("do")},
-	}
+func TestAcceptedLeavesOutARuleWrittenAfterOneThatCoversIt(t *testing.T) {
+	name := fa.Rule[rune]{Name: "name", Expr: fa.Plus(fa.Lit(fa.Span('a', 'z')))}
+	do := fa.Rule[rune]{Name: "do", Expr: text("do")}
 
-	got := build(t, rules).Unreachable(rules)
+	for _, c := range []struct {
+		name  string
+		given []fa.Rule[rune]
+		then  []fa.Match
+	}{
+		{"name first covers do", []fa.Rule[rune]{name, do}, []fa.Match{1}},
+		{"do first keeps both", []fa.Rule[rune]{do, name}, []fa.Match{1, 2}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			got := build(t, c.given).Accepted()
 
-	if then := []string{"do"}; !reflect.DeepEqual(got, then) {
-		t.Errorf("the dead rules are %v; want %v, as name is written first and covers do", got, then)
-	}
-}
-
-func TestALiveRuleIsNotReported(t *testing.T) {
-	rules := []fa.Rule[rune]{
-		{Name: "do", Expr: text("do")},
-		{Name: "name", Expr: fa.Plus(fa.Lit(fa.Span('a', 'z')))},
-	}
-
-	got := build(t, rules).Unreachable(rules)
-
-	if len(got) != 0 {
-		t.Errorf("the dead rules are %v; both are reachable", got)
+			if !reflect.DeepEqual(got, c.then) {
+				t.Errorf("the rules accepted are %v; want %v", got, c.then)
+			}
+		})
 	}
 }
 

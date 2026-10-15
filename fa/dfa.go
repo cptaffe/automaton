@@ -5,7 +5,6 @@ import (
 	"iter"
 	"maps"
 	"slices"
-	"sort"
 	"strings"
 )
 
@@ -206,24 +205,16 @@ func (d *DFA[S]) Edges(s State) iter.Seq2[State, Set[S]] {
 
 func (d *DFA[S]) Step(state State, x S) State { return d.nodes[state].next[d.index.Of(x)] }
 
-func (d *DFA[S]) Unreachable(rules []Rule[S]) []string {
-	live := map[Match]bool{}
+func (d *DFA[S]) Accepted() []Match {
+	in := map[Match]bool{}
 
 	for s := range d.nodes {
-		live[d.Accept(State(s))] = true
-	}
-
-	var out []string
-
-	for i, r := range rules {
-		if !live[Match(i+1)] {
-			out = append(out, r.Name)
+		if a := d.Accept(State(s)); a != NoMatch {
+			in[a] = true
 		}
 	}
 
-	sort.Strings(out)
-
-	return out
+	return slices.Sorted(maps.Keys(in))
 }
 
 func (d *DFA[S]) String() string {
