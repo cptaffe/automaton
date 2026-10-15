@@ -1,8 +1,14 @@
 package dot
 
+//go:generate go run ../cmd/genlex -go internal/scan/scan.gen.go -package scan alt.lex
+
 import (
+	"context"
 	"slices"
 	"strings"
+
+	"github.com/cptaffe/automaton/dot/internal/scan"
+	"github.com/cptaffe/automaton/lex"
 )
 
 type loops struct {
@@ -30,7 +36,7 @@ func read(rs []Rule) grammar {
 		seen := map[string]bool{}
 
 		for _, alt := range r.Alts {
-			for _, w := range word.FindAllString(alt, -1) {
+			for _, w := range tokens(alt) {
 				if gr.is[w] && !seen[w] {
 					seen[w] = true
 					gr.refs[r.Name] = append(gr.refs[r.Name], w)
@@ -40,6 +46,22 @@ func read(rs []Rule) grammar {
 	}
 
 	return gr
+}
+
+func tokens(alt string) []string {
+	toks, err := lex.Lex(context.Background(), scan.Spec, strings.NewReader(alt), "start")
+
+	if err != nil {
+		return nil
+	}
+
+	var out []string
+
+	for t := range toks {
+		out = append(out, t.Text)
+	}
+
+	return out
 }
 
 func (gr grammar) cycle(comp []string) bool {
@@ -135,7 +157,7 @@ func (l loops) nest(gr grammar) {
 		}
 
 		for _, alt := range r.Alts {
-			ws := strings.Fields(alt)
+			ws := tokens(alt)
 			var at []int
 
 			for i, w := range ws {

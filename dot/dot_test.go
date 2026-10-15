@@ -328,6 +328,18 @@ func TestAShapeDrawsRulesAndTheirLoops(t *testing.T) {
 			then:  []string{"e", "c"},
 		},
 		{
+			name:  "a name in quotes or brackets is not a reference",
+			given: []dot.Rule{{Name: "c", Alts: []string{`"c" x`, "'c'", "[c]"}}},
+			when:  func(rs []dot.Rule) []string { return dottest.Edges(dot.Shape(rs, "g")) },
+			then:  []string{},
+		},
+		{
+			name:  "a name next to punctuation is a reference without a space",
+			given: []dot.Rule{{Name: "e", Alts: []string{"(e);", "N"}}},
+			when:  dot.Nested,
+			then:  []string{"e"},
+		},
+		{
 			name:  "Nested names no rules of a grammar without loops",
 			given: []dot.Rule{{Name: "p", Alts: []string{"q q"}}, {Name: "q", Alts: []string{"N"}}},
 			when:  dot.Nested,

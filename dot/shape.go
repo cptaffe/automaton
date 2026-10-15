@@ -1,14 +1,10 @@
 package dot
 
-import "regexp"
-
 type Rule struct {
 	Name  string
 	Alts  []string
 	Start bool
 }
-
-var word = regexp.MustCompile(`[A-Za-z_][A-Za-z_0-9.-]*`)
 
 func Shape(rs []Rule, name string) Graph {
 	gr := read(rs)
