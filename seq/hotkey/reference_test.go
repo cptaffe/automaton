@@ -39,7 +39,7 @@ func (r *reference) continues(w []string) bool {
 		if len(middle) != len(w)-1 || strings.ContainsAny(middle, "xyz") {
 			continue
 		}
-		for _, more := range regextest.Words(6) {
+		for _, more := range continuations {
 			if x.middle.MatchString(middle + more) {
 				return true
 			}
@@ -68,6 +68,8 @@ func (r *reference) press(key string) seqtest.Step {
 	}
 	return seqtest.Step{Key: key, Taken: taken, Fired: fired, Pending: len(r.pending) > 0}
 }
+
+var continuations = regextest.Words(8)
 
 var keys = map[rune]string{'a': "a", 'b': "b", 'c': "c", 'x': "x", 'y': "y", 'z': "z", 'r': "return"}
 
