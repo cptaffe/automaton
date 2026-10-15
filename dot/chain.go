@@ -52,7 +52,7 @@ func follow(m Machine, skip map[int]bool, mv Move) run {
 	return got
 }
 
-func kept(m Machine) map[int]bool {
+func folded(m Machine) map[int]bool {
 	skip := through(m)
 
 	for s := 1; s <= m.States(); s++ {

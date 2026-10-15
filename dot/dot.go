@@ -26,6 +26,10 @@ type Move struct {
 	Dashed bool
 }
 
+func (mv Move) edge(from, to, label string) Edge {
+	return Edge{From: from, To: to, Label: " " + label + " ", Dashed: mv.Dashed, Class: mv.Class}
+}
+
 type Leaves interface {
 	Leaves(state int) (scope string, ok bool)
 }
@@ -52,13 +56,7 @@ func Draw(m Machine) Graph {
 
 	for s := 1; s <= m.States(); s++ {
 		for _, mv := range m.Moves(s) {
-			g.Edges = append(g.Edges, Edge{
-				From:   fmt.Sprintf("s%d", s),
-				To:     fmt.Sprintf("s%d", mv.To),
-				Label:  " " + mv.Label + " ",
-				Dashed: mv.Dashed,
-				Class:  mv.Class,
-			})
+			g.Edges = append(g.Edges, mv.edge(fmt.Sprintf("s%d", s), fmt.Sprintf("s%d", mv.To), mv.Label))
 		}
 	}
 

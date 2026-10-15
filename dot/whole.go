@@ -18,7 +18,7 @@ func Whole(ms []Machine, name string) Graph {
 	bs := make([]box, len(ms))
 
 	for i, m := range ms {
-		bs[i] = box{m: m, i: i, skip: kept(m)}
+		bs[i] = box{m: m, i: i, skip: folded(m)}
 	}
 
 	for _, b := range bs {
@@ -33,7 +33,7 @@ func Whole(ms []Machine, name string) Graph {
 	return g
 }
 
-func (b box) id(s int) string { return fmt.Sprintf("%s%d", tag(b.i), s) }
+func (b box) id(s int) string { return fmt.Sprintf("m%d_s%d", b.i, s) }
 
 func (b box) states() []int {
 	var out []int
@@ -62,13 +62,7 @@ func (b box) edges() []Edge {
 
 	for _, s := range b.states() {
 		for _, r := range runs(b.m, b.skip, s) {
-			out = append(out, Edge{
-				From:   b.id(s),
-				To:     b.id(r.to),
-				Label:  " " + times(r.move.Label, r.n) + " ",
-				Class:  r.move.Class,
-				Dashed: r.move.Dashed,
-			})
+			out = append(out, r.move.edge(b.id(s), b.id(r.to), times(r.move.Label, r.n)))
 		}
 	}
 
@@ -106,8 +100,6 @@ func (b box) hands(bs []box) []Edge {
 
 	return out
 }
-
-func tag(i int) string { return fmt.Sprintf("m%d_s", i) }
 
 func start(m Machine) int {
 	if s := m.Starts(); len(s) > 0 {
