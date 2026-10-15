@@ -64,9 +64,9 @@ func table[S fa.Symbol](d *fa.DFA[S]) []string {
 	for s := fa.State(0); int(s) <= d.States(); s++ {
 		row := fmt.Sprintf("%d done %v going %v", s, d.Done(s), d.Going(s))
 
-		for c := fa.Class(1); int(c) <= d.Classes().Len(); c++ {
+		for c := fa.Class(1); int(c) <= d.Partition().Len(); c++ {
 			if to := d.Next(s, c); to != fa.NoState {
-				row += fmt.Sprintf(" %s->%d", d.Classes().Part(c), to)
+				row += fmt.Sprintf(" %s->%d", d.Partition().Part(c), to)
 			}
 		}
 
@@ -175,7 +175,7 @@ func TestARuleThatMatchesNothingIsRefused(t *testing.T) {
 }
 
 func TestClassesThatSplitASetAreRefused(t *testing.T) {
-	given := fa.Partition([]fa.Set[rune]{fa.Span('a', 'm'), fa.Span('h', 'z')})
+	given := fa.Split([]fa.Set[rune]{fa.Span('a', 'm'), fa.Span('h', 'z')})
 
 	_, err := fa.BuildWith([]fa.Rule[rune]{{Name: "middle", Expr: fa.Lit(fa.Span('d', 'p'))}}, given, 0)
 
@@ -264,8 +264,8 @@ func TestAUnicodeRuleStaysSmall(t *testing.T) {
 		{Name: "number", Expr: fa.Plus(digit)},
 	})
 
-	if d.Classes().Len() != 2 {
-		t.Errorf("the alphabet is %d classes; letters and digits are two", d.Classes().Len())
+	if d.Partition().Len() != 2 {
+		t.Errorf("the alphabet is %d classes; letters and digits are two", d.Partition().Len())
 	}
 
 	if d.States() != 4 {
@@ -353,7 +353,7 @@ func TestABuildStopsAtItsBudgetOfStates(t *testing.T) {
 	}
 	rules := []fa.Rule[rune]{{Expr: fa.Cat(given...), Name: "tenth from the end"}}
 
-	_, err := fa.BuildWith(rules, fa.Partition(fa.Sets(rules)), 100)
+	_, err := fa.BuildWith(rules, fa.Split(fa.Sets(rules)), 100)
 
 	if err == nil || err.Error() != "the patterns need more than 100 states to match together" {
 		t.Errorf("got %v; want the budget refused", err)

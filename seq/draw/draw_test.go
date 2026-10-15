@@ -20,22 +20,24 @@ func table(accept map[int][]*seq.Accept, moves map[int]map[string]int) *seq.Tabl
 	for s := range a.Size() {
 		sets = append(sets, fa.One(seq.Sym(s)))
 	}
-	cs := fa.Partition(sets)
+	cs := fa.Split(sets)
+	ix := cs.Index()
 	states := make([]seq.State, 4)
 	for s := range states {
 		states[s].Next = make([]int, cs.Len()+1)
 		for key, to := range moves[s] {
 			sym, _ := a.Of(key)
-			states[s].Next[cs.Of(sym)] = to
+			states[s].Next[ix.Of(sym)] = to
 		}
 		states[s].Accept = accept[s]
 	}
 	return &seq.Table{
-		Name:    "t",
-		Alpha:   a,
-		Classes: cs,
-		Scopes:  []seq.Scope{{Name: "main", Start: 1}, {Name: "other", Start: 3}},
-		States:  states,
+		Name:      "t",
+		Alpha:     a,
+		Partition: cs,
+		Index:     ix,
+		Scopes:    []seq.Scope{{Name: "main", Start: 1}, {Name: "other", Start: 3}},
+		States:    states,
 	}
 }
 

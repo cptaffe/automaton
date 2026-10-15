@@ -17,7 +17,7 @@ type Machine struct {
 }
 
 func Build(f *Flat, max int) ([]Machine, []string, error) {
-	b := builder{flat: f, classes: f.alphabet(), live: map[int]bool{}, max: max}
+	b := builder{flat: f, part: f.alphabet(), live: map[int]bool{}, max: max}
 
 	var out []Machine
 
@@ -34,7 +34,7 @@ func Build(f *Flat, max int) ([]Machine, []string, error) {
 	return out, b.dead(), nil
 }
 
-func (f *Flat) alphabet() *fa.Classes[rune] {
+func (f *Flat) alphabet() *fa.Partition[rune] {
 	var all []fa.Rule[rune]
 
 	for _, s := range f.Scopes {
@@ -43,14 +43,14 @@ func (f *Flat) alphabet() *fa.Classes[rune] {
 		}
 	}
 
-	return fa.Partition(fa.Sets(all))
+	return fa.Split(fa.Sets(all))
 }
 
 type builder struct {
-	flat    *Flat
-	classes *fa.Classes[rune]
-	live    map[int]bool
-	max     int
+	flat *Flat
+	part *fa.Partition[rune]
+	live map[int]bool
+	max  int
 }
 
 func (b *builder) machine(s FlatScope) (Machine, error) {
@@ -67,7 +67,7 @@ func (b *builder) machine(s FlatScope) (Machine, error) {
 		in[i] = fa.Rule[rune]{Expr: r.Expr, Name: label(r)}
 	}
 
-	d, err := fa.BuildWith(in, b.classes, b.max)
+	d, err := fa.BuildWith(in, b.part, b.max)
 
 	if err != nil {
 		return Machine{}, fmt.Errorf("%s: in %s, %w", f.Path, s.Name, err)

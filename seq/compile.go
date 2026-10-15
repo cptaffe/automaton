@@ -41,7 +41,8 @@ type Table struct {
 	Name      string
 	Note      string
 	Alpha     *Alphabet
-	Classes   *fa.Classes[Sym]
+	Partition *fa.Partition[Sym]
+	Index     fa.Index[Sym]
 	Scopes    []Scope
 	States    []State
 	Delays    map[string]time.Duration
@@ -89,7 +90,8 @@ func Compile(g *Grammar, a *Alphabet) (*Table, error) {
 	if err := c.bind(a); err != nil {
 		return nil, err
 	}
-	t := &Table{Name: g.Name, Note: g.Note, Alpha: a, Classes: c.partition(a), Delays: g.Delays}
+	part := c.partition(a)
+	t := &Table{Name: g.Name, Note: g.Note, Alpha: a, Partition: part, Index: part.Index(), Delays: g.Delays}
 	c.t = t
 	for i, name := range positions(g) {
 		t.Scopes = append(t.Scopes, Scope{Name: name})
@@ -137,7 +139,7 @@ func (c *compiler) bind(a *Alphabet) error {
 	return nil
 }
 
-func (c *compiler) partition(a *Alphabet) *fa.Classes[Sym] {
+func (c *compiler) partition(a *Alphabet) *fa.Partition[Sym] {
 	sets := make([]fa.Set[Sym], 0, 1+len(c.rules)+len(c.anys))
 	sets = append(sets, fa.Span(0, Sym(a.Size()-1)))
 	for _, r := range c.rules {
@@ -146,7 +148,7 @@ func (c *compiler) partition(a *Alphabet) *fa.Classes[Sym] {
 	for _, x := range c.anys {
 		sets = append(sets, exprSets(x.Elem)...)
 	}
-	return fa.Partition(sets)
+	return fa.Split(sets)
 }
 
 func positions(g *Grammar) []string {
@@ -182,7 +184,7 @@ func (c *compiler) minimal() *Table {
 	for _, s := range to {
 		n = max(n, s)
 	}
-	out := &Table{Name: t.Name, Note: t.Note, Alpha: t.Alpha, Classes: t.Classes, Delays: t.Delays, Conflicts: t.Conflicts, States: make([]State, n+1)}
+	out := &Table{Name: t.Name, Note: t.Note, Alpha: t.Alpha, Partition: t.Partition, Index: t.Index, Delays: t.Delays, Conflicts: t.Conflicts, States: make([]State, n+1)}
 	for s, st := range t.States {
 		if s != 0 && to[s] == 0 {
 			continue
@@ -246,7 +248,7 @@ func (c *compiler) build(scope string, entries []entry, first int, wilds []wild)
 		}
 		rules[i] = fa.Rule[Sym]{Expr: x, Name: e.rule.Pattern}
 	}
-	d, err := fa.BuildWith(rules, t.Classes, 0)
+	d, err := fa.BuildWith(rules, t.Partition, 0)
 	if err != nil {
 		return 0, fmt.Errorf("%s: %s: %w", c.g.Name, scope, err)
 	}
@@ -260,11 +262,11 @@ func (c *compiler) build(scope string, entries []entry, first int, wilds []wild)
 	}
 	for s := fa.State(1); int(s) <= d.States(); s++ {
 		n := c.state("")
-		for k := fa.Class(1); int(k) <= t.Classes.Len(); k++ {
+		for k := fa.Class(1); int(k) <= t.Partition.Len(); k++ {
 			t.States[n].Next[k] = at(d.Next(s, k))
 		}
 		for _, w := range wilds {
-			for _, k := range t.Classes.Covers(w.keys) {
+			for _, k := range t.Partition.Covers(w.keys) {
 				t.States[n].Any[k] = append(t.States[n].Any[k], w.acc)
 			}
 		}
@@ -410,7 +412,7 @@ func (c *compiler) state(sig string) int {
 
 func (t *Table) state() int {
 	s := len(t.States)
-	n := t.Classes.Len() + 1
+	n := t.Partition.Len() + 1
 	t.States = append(t.States, State{Next: make([]int, n), Any: make([][]*Accept, n)})
 	return s
 }
@@ -436,7 +438,7 @@ func (t *Table) Waiting() []string {
 }
 
 func (t *Table) waits(sym Sym) bool {
-	k := t.Classes.Of(sym)
+	k := t.Index.Of(sym)
 	for _, st := range t.States {
 		if st.Next[k] != 0 || len(st.Any[k]) > 0 {
 			return true

@@ -7,9 +7,10 @@ import (
 )
 
 type DFA[S Symbol] struct {
-	classes *Classes[S]
-	nodes   []node
-	start   State
+	part  *Partition[S]
+	index Index[S]
+	nodes []node
+	start State
 }
 
 type node struct {
@@ -36,11 +37,11 @@ func Sets[S Symbol](rules []Rule[S]) []Set[S] {
 const DefaultMaxStates = 10_000
 
 func Build[S Symbol](rules []Rule[S]) (*DFA[S], error) {
-	return BuildWith(rules, Partition(Sets(rules)), 0)
+	return BuildWith(rules, Split(Sets(rules)), 0)
 }
 
-func BuildWith[S Symbol](rules []Rule[S], classes *Classes[S], max int) (*DFA[S], error) {
-	if err := classes.refine(Sets(rules)); err != nil {
+func BuildWith[S Symbol](rules []Rule[S], part *Partition[S], max int) (*DFA[S], error) {
+	if err := part.refine(Sets(rules)); err != nil {
 		return nil, err
 	}
 
@@ -60,15 +61,15 @@ func BuildWith[S Symbol](rules []Rule[S], classes *Classes[S], max int) (*DFA[S]
 		n.accept[end] = Match(i + 1)
 	}
 
-	return n.determinise(start, classes, max)
+	return n.determinise(start, part, max)
 }
 
-func (n *nfa[S]) determinise(start int, classes *Classes[S], max int) (*DFA[S], error) {
+func (n *nfa[S]) determinise(start int, part *Partition[S], max int) (*DFA[S], error) {
 	if max <= 0 {
 		max = DefaultMaxStates
 	}
 
-	d := &DFA[S]{classes: classes, nodes: []node{{next: make([]State, classes.Len()+1)}}}
+	d := &DFA[S]{part: part, index: part.Index(), nodes: []node{{next: make([]State, part.Len()+1)}}}
 	b := &subsets[S]{n: n, d: d, seen: map[string]State{}, max: max}
 	d.start = b.add([]int{start})
 
@@ -107,10 +108,10 @@ func (b *subsets[S]) add(of []int) State {
 	b.d.nodes = append(b.d.nodes, node{})
 	b.d.nodes[at].done, b.d.nodes[at].going = b.n.matches(set)
 
-	row := make([]State, b.d.classes.Len()+1)
+	row := make([]State, b.d.part.Len()+1)
 
-	for c := Class(1); int(c) <= b.d.classes.Len(); c++ {
-		if to := b.n.step(set, b.d.classes.Part(c).r[0].Lo); len(to) > 0 {
+	for c := Class(1); int(c) <= b.d.part.Len(); c++ {
+		if to := b.n.step(set, b.d.part.Part(c).r[0].Lo); len(to) > 0 {
 			row[c] = b.add(to)
 		}
 	}
@@ -172,7 +173,9 @@ func sorted(in map[Match]bool) []Match {
 	return out
 }
 
-func (d *DFA[S]) Classes() *Classes[S] { return d.classes }
+func (d *DFA[S]) Partition() *Partition[S] { return d.part }
+
+func (d *DFA[S]) Index() Index[S] { return d.index }
 
 func (d *DFA[S]) States() int { return len(d.nodes) - 1 }
 
@@ -192,7 +195,7 @@ func (d *DFA[S]) Done(state State) []Match { return append([]Match(nil), d.nodes
 
 func (d *DFA[S]) Going(state State) []Match { return append([]Match(nil), d.nodes[state].going...) }
 
-func (d *DFA[S]) Step(state State, x S) State { return d.nodes[state].next[d.classes.Of(x)] }
+func (d *DFA[S]) Step(state State, x S) State { return d.nodes[state].next[d.index.Of(x)] }
 
 func (d *DFA[S]) Unreachable(rules []Rule[S]) []string {
 	live := map[Match]bool{}
@@ -226,7 +229,7 @@ func (d *DFA[S]) String() string {
 
 		for c, to := range d.nodes[s].next {
 			if c > 0 && to != NoState {
-				fmt.Fprintf(&b, " %s->%d", d.classes.Part(Class(c)), to)
+				fmt.Fprintf(&b, " %s->%d", d.part.Part(Class(c)), to)
 			}
 		}
 

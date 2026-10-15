@@ -155,9 +155,9 @@ func TestTokensIsTheMachineOverTheGrammarsWords(t *testing.T) {
 func TestEachClassHoldsTheWordItReads(t *testing.T) {
 	m := tokens(t, grammar([2]string{"pair", "A B| B A"}))
 
-	got := make([][]string, 0, m.DFA().Classes().Len())
+	got := make([][]string, 0, m.DFA().Partition().Len())
 
-	for c := fa.Class(1); int(c) <= m.DFA().Classes().Len(); c++ {
+	for c := fa.Class(1); int(c) <= m.DFA().Partition().Len(); c++ {
 		got = append(got, m.In(c))
 	}
 

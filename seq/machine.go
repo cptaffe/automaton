@@ -64,7 +64,7 @@ func (m *Machine) Waits() []string {
 	var out []string
 	st := &m.t.States[m.state]
 	for s := Sym(m.t.Alpha.Keys()); int(s) < m.t.Alpha.Size(); s++ {
-		k := m.t.Classes.Of(s)
+		k := m.t.Index.Of(s)
 		if st.Next[k] != 0 || len(st.Any[k]) > 0 {
 			out = append(out, m.t.Alpha.Name(s))
 		}
@@ -73,7 +73,7 @@ func (m *Machine) Waits() []string {
 }
 
 func (m *Machine) from(at int, s Sym, env Env) (outcome, []*Accept) {
-	k := m.t.Classes.Of(s)
+	k := m.t.Index.Of(s)
 	if n := m.t.States[at].Next[k]; n != 0 {
 		ready, going := m.ready(n, env), m.going(n, env)
 		switch {

@@ -17,11 +17,11 @@ const (
 	NoMatch Match = 0
 )
 
-type Classes[S Symbol] struct {
+type Partition[S Symbol] struct {
 	parts []Set[S]
 }
 
-func Partition[S Symbol](sets []Set[S]) *Classes[S] {
+func Split[S Symbol](sets []Set[S]) *Partition[S] {
 	g := grouping[S]{seen: map[string]int{}}
 	none := string(make([]byte, len(sets)))
 
@@ -31,13 +31,13 @@ func Partition[S Symbol](sets []Set[S]) *Classes[S] {
 		}
 	}
 
-	c := &Classes[S]{parts: []Set[S]{{}}}
+	p := &Partition[S]{parts: []Set[S]{{}}}
 
 	for _, rs := range g.held {
-		c.parts = append(c.parts, Of(rs...))
+		p.parts = append(p.parts, Of(rs...))
 	}
 
-	return c
+	return p
 }
 
 type cuts[S Symbol] struct {
@@ -115,25 +115,15 @@ func (g *grouping[S]) add(sig string, r Range[S]) {
 	g.held[at] = append(g.held[at], r)
 }
 
-func (c *Classes[S]) Len() int { return len(c.parts) - 1 }
+func (p *Partition[S]) Len() int { return len(p.parts) - 1 }
 
-func (c *Classes[S]) Part(at Class) Set[S] { return c.parts[at] }
+func (p *Partition[S]) Part(at Class) Set[S] { return p.parts[at] }
 
-func (c *Classes[S]) Of(x S) Class {
-	for i := 1; i < len(c.parts); i++ {
-		if c.parts[i].Has(x) {
-			return Class(i)
-		}
-	}
-
-	return NoClass
-}
-
-func (c *Classes[S]) Covers(s Set[S]) []Class {
+func (p *Partition[S]) Covers(s Set[S]) []Class {
 	var out []Class
 
-	for i := 1; i < len(c.parts); i++ {
-		if !c.parts[i].Intersect(s).Empty() {
+	for i := 1; i < len(p.parts); i++ {
+		if !p.parts[i].Intersect(s).Empty() {
 			out = append(out, Class(i))
 		}
 	}
@@ -141,12 +131,12 @@ func (c *Classes[S]) Covers(s Set[S]) []Class {
 	return out
 }
 
-func (c *Classes[S]) refine(sets []Set[S]) error {
+func (p *Partition[S]) refine(sets []Set[S]) error {
 	for _, set := range sets {
 		var got Set[S]
 
-		for _, at := range c.Covers(set) {
-			got = got.Union(c.parts[at])
+		for _, at := range p.Covers(set) {
+			got = got.Union(p.parts[at])
 		}
 
 		if !got.Equal(set) {
@@ -155,4 +145,41 @@ func (c *Classes[S]) refine(sets []Set[S]) error {
 	}
 
 	return nil
+}
+
+type Index[S Symbol] []Entry[S]
+
+type Entry[S Symbol] struct {
+	Range[S]
+	Class Class
+}
+
+func (p *Partition[S]) Index() Index[S] {
+	n := 0
+
+	for _, s := range p.parts {
+		n += len(s.r)
+	}
+
+	ix := make(Index[S], 0, n)
+
+	for i, s := range p.parts {
+		for _, x := range s.r {
+			ix = append(ix, Entry[S]{x, Class(i)})
+		}
+	}
+
+	sort.Slice(ix, func(i, j int) bool { return ix[i].Lo < ix[j].Lo })
+
+	return ix
+}
+
+func (ix Index[S]) Of(x S) Class {
+	at := sort.Search(len(ix), func(i int) bool { return ix[i].Hi >= x })
+
+	if at < len(ix) && ix[at].Lo <= x {
+		return ix[at].Class
+	}
+
+	return NoClass
 }

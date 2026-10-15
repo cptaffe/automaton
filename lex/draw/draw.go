@@ -39,7 +39,7 @@ func Shape(f *gen.Flat) dot.Graph {
 func Summary(m gen.Machine) string {
 	return fmt.Sprintf("%s, %s, %s, %s", m.Scope,
 		dot.Plural(len(m.Rules), "rule"), dot.Plural(m.DFA.States(), "state"),
-		dot.Plural(m.DFA.Classes().Len(), "class"))
+		dot.Plural(m.DFA.Partition().Len(), "class"))
 }
 
 type machine struct {
@@ -63,7 +63,7 @@ func (d machine) Starts() []dot.Start {
 func (d machine) Moves(s int) []dot.Move {
 	by := map[fa.State]fa.Set[rune]{}
 	var order []fa.State
-	c := d.m.DFA.Classes()
+	c := d.m.DFA.Partition()
 	for k := fa.Class(1); int(k) <= c.Len(); k++ {
 		to := d.m.DFA.Next(fa.State(s), k)
 		if to == fa.NoState {

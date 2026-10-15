@@ -17,6 +17,6 @@ func BenchmarkPartitionUnicode(b *testing.B) {
 	}
 
 	for b.Loop() {
-		fa.Partition(sets)
+		fa.Split(sets)
 	}
 }

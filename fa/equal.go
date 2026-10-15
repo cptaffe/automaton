@@ -48,15 +48,15 @@ func Distinguish[S Symbol](a, b *DFA[S]) ([]S, bool) {
 }
 
 func samples[S Symbol](a, b *DFA[S]) []S {
-	sets := make([]Set[S], 0, a.classes.Len()+b.classes.Len())
+	sets := make([]Set[S], 0, a.part.Len()+b.part.Len())
 
 	for _, d := range []*DFA[S]{a, b} {
-		for c := Class(1); int(c) <= d.classes.Len(); c++ {
-			sets = append(sets, d.classes.Part(c))
+		for c := Class(1); int(c) <= d.part.Len(); c++ {
+			sets = append(sets, d.part.Part(c))
 		}
 	}
 
-	joint := Partition(sets)
+	joint := Split(sets)
 	out := make([]S, 0, joint.Len())
 
 	for c := Class(1); int(c) <= joint.Len(); c++ {

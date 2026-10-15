@@ -139,21 +139,22 @@ func TestCategoryHoldsTheEndsOfUnicodeStrides(t *testing.T) {
 
 func TestThePartitionIsCoarsest(t *testing.T) {
 	letters, digits := fa.Span('a', 'z'), fa.Span('0', '9')
-	c := fa.Partition([]fa.Set[rune]{letters, digits})
+	c := fa.Split([]fa.Set[rune]{letters, digits})
+	ix := c.Index()
 
 	if c.Len() != 2 {
 		t.Fatalf("letters and digits make %d parts; want 2", c.Len())
 	}
 
-	if c.Of('a') != c.Of('q') || c.Of('a') != c.Of('z') {
+	if ix.Of('a') != ix.Of('q') || ix.Of('a') != ix.Of('z') {
 		t.Error("two letters landed in different parts, and no set tells them apart")
 	}
 
-	if c.Of('a') == c.Of('5') {
+	if ix.Of('a') == ix.Of('5') {
 		t.Error("a letter and a digit landed in one part")
 	}
 
-	if c.Of('!') != fa.NoClass {
+	if ix.Of('!') != fa.NoClass {
 		t.Error("a rune in no set got a part")
 	}
 }
@@ -170,7 +171,7 @@ func TestPartitionCutsSetsWhereTheyOverlap(t *testing.T) {
 		{"two ranges that nothing splits", []fa.Set[rune]{fa.Of(fa.Range[rune]{'a', 'c'}, fa.Range[rune]{'x', 'z'}), fa.Span('0', '9')}, []string{"0-9", "a-cx-z"}},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			p := fa.Partition(c.given)
+			p := fa.Split(c.given)
 			got := make([]string, 0, p.Len())
 
 			for at := fa.Class(1); int(at) <= p.Len(); at++ {
@@ -191,7 +192,7 @@ func TestEverySetIsAUnionOfParts(t *testing.T) {
 		fa.Text("*#-"),
 		fa.Span('0', '9'),
 	}
-	c := fa.Partition(sets)
+	c := fa.Split(sets)
 
 	for _, s := range sets {
 		var built fa.Set[rune]
@@ -219,17 +220,18 @@ func TestUnicodeStaysTwoColumns(t *testing.T) {
 		t.Fatalf("unicode letters are %d runes; the table is not loaded", n)
 	}
 
-	c := fa.Partition([]fa.Set[rune]{letters, fa.Category(unicode.Nd)})
+	c := fa.Split([]fa.Set[rune]{letters, fa.Category(unicode.Nd)})
+	ix := c.Index()
 
 	if c.Len() != 2 {
 		t.Errorf("letters and decimal digits make %d parts; want 2", c.Len())
 	}
 
-	if c.Of('a') != c.Of('ß') || c.Of('a') != c.Of('漢') {
+	if ix.Of('a') != ix.Of('ß') || ix.Of('a') != ix.Of('漢') {
 		t.Error("a latin letter, an eszett and a han character are not one class")
 	}
 
-	if c.Of('a') == c.Of('5') {
+	if ix.Of('a') == ix.Of('5') {
 		t.Error("a letter and a digit are one class")
 	}
 }
@@ -305,8 +307,9 @@ func TestASetReachesTheTopOfItsType(t *testing.T) {
 		t.Errorf("all int64 but the top is %s", got)
 	}
 
-	c := fa.Partition([]fa.Set[byte]{top, fa.Span[byte](0, 255)})
-	if c.Len() != 2 || c.Of(255) == fa.NoClass || c.Of(255) != c.Of(250) || c.Of(0) == c.Of(255) {
-		t.Errorf("the classes of 0..255 split at 250 are %d, and 255 is in %d", c.Len(), c.Of(255))
+	c := fa.Split([]fa.Set[byte]{top, fa.Span[byte](0, 255)})
+	ix := c.Index()
+	if c.Len() != 2 || ix.Of(255) == fa.NoClass || ix.Of(255) != ix.Of(250) || ix.Of(0) == ix.Of(255) {
+		t.Errorf("the classes of 0..255 split at 250 are %d, and 255 is in %d", c.Len(), ix.Of(255))
 	}
 }

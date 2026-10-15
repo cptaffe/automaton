@@ -20,7 +20,7 @@ type machine struct{ t *seq.Table }
 func (m machine) Name() string { return m.t.Name }
 
 func (m machine) Note() string {
-	return fmt.Sprintf("%s -- %s, %s", m.t.Name, dot.Plural(m.States(), "state"), dot.Plural(m.t.Classes.Len(), "class"))
+	return fmt.Sprintf("%s -- %s, %s", m.t.Name, dot.Plural(m.States(), "state"), dot.Plural(m.t.Partition.Len(), "class"))
 }
 
 func (m machine) States() int { return len(m.t.States) - 1 }
@@ -73,7 +73,7 @@ func (m machine) targets(st *seq.State) targets {
 
 func (m machine) syms(c fa.Class) []seq.Sym {
 	var out []seq.Sym
-	for _, r := range m.t.Classes.Part(c).Ranges() {
+	for _, r := range m.t.Partition.Part(c).Ranges() {
 		for sym := r.Lo; sym <= r.Hi; sym++ {
 			out = append(out, sym)
 		}

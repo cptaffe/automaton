@@ -133,7 +133,7 @@ func (t *Tokens) Step(s fa.State, word string) fa.State {
 func (t *Tokens) In(c fa.Class) []string {
 	var out []string
 
-	for _, x := range t.dfa.Classes().Part(c).Ranges() {
+	for _, x := range t.dfa.Partition().Part(c).Ranges() {
 		for w := x.Lo; w <= x.Hi; w++ {
 			out = append(out, t.words[w-1])
 		}

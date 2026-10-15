@@ -66,7 +66,7 @@ func (m tokens) Moves(s int) []dot.Move {
 	d := m.t.DFA()
 	by := map[fa.State][]string{}
 	var order []fa.State
-	for c := fa.Class(1); int(c) <= d.Classes().Len(); c++ {
+	for c := fa.Class(1); int(c) <= d.Partition().Len(); c++ {
 		to := d.Next(fa.State(s), c)
 		if to == fa.NoState {
 			continue

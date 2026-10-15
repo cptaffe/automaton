@@ -248,7 +248,7 @@ func TestTheClassesCoverTheAlphabetAndNoMore(t *testing.T) {
 		{name: "past the alphabet", given: 3, then: false},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			in := tab.Classes.Of(c.given) != fa.NoClass
+			in := tab.Index.Of(c.given) != fa.NoClass
 
 			if in != c.then {
 				t.Errorf("symbol %d is in a class: %v; want %v", c.given, in, c.then)

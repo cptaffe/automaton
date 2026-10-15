@@ -39,9 +39,9 @@ func (d *DFA[S]) Minimise() *DFA[S] {
 	for _, t := range to {
 		n = max(n, t)
 	}
-	out := &DFA[S]{classes: d.classes, start: State(to[d.start]), nodes: make([]node, n+1)}
+	out := &DFA[S]{part: d.part, index: d.index, start: State(to[d.start]), nodes: make([]node, n+1)}
 	for s := range out.nodes {
-		out.nodes[s].next = make([]State, d.classes.Len()+1)
+		out.nodes[s].next = make([]State, d.part.Len()+1)
 	}
 	for s, nd := range d.nodes {
 		if s != 0 && to[s] == 0 {

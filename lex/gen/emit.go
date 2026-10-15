@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"go/format"
 	"go/token"
+	"slices"
 	"sort"
 	"strings"
 	"unicode"
@@ -74,7 +75,7 @@ func (n numbers) scope(f *Flat, m Machine) (lex.Scope, error) {
 }
 
 func row(d *fa.DFA[rune], from fa.State) []int {
-	out := make([]int, d.Classes().Len()+1)
+	out := make([]int, d.Partition().Len()+1)
 
 	for c := range out {
 		out[c] = int(d.Next(from, fa.Class(c)))
@@ -106,15 +107,15 @@ func commonRanges(f *Flat, ms []Machine) ([]lex.Range, error) {
 		return nil, nil
 	}
 
-	out := ranges(ms[0].DFA.Classes())
+	ix := ms[0].DFA.Index()
 
 	for _, m := range ms[1:] {
-		if !sameRanges(ranges(m.DFA.Classes()), out) {
+		if !slices.Equal(m.DFA.Index(), ix) {
 			return nil, fmt.Errorf("%s: %s reads a different alphabet; one file, one alphabet", f.Path, m.Scope)
 		}
 	}
 
-	return out, nil
+	return ranges(ix), nil
 }
 
 func numbered(f *Flat, of func(FlatActs) string) ([]string, map[string]int) {
@@ -138,32 +139,14 @@ func numbered(f *Flat, of func(FlatActs) string) ([]string, map[string]int) {
 	return out, at
 }
 
-func ranges(c *fa.Classes[rune]) []lex.Range {
-	var out []lex.Range
+func ranges(ix fa.Index[rune]) []lex.Range {
+	out := make([]lex.Range, 0, len(ix))
 
-	for i := 1; i <= c.Len(); i++ {
-		for _, x := range c.Part(fa.Class(i)).Ranges() {
-			out = append(out, lex.Range{Lo: x.Lo, Hi: x.Hi, Class: i})
-		}
+	for _, e := range ix {
+		out = append(out, lex.Range{Lo: e.Lo, Hi: e.Hi, Class: int(e.Class)})
 	}
-
-	sort.Slice(out, func(i, j int) bool { return out[i].Lo < out[j].Lo })
 
 	return out
-}
-
-func sameRanges(a, b []lex.Range) bool {
-	if len(a) != len(b) {
-		return false
-	}
-
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-
-	return true
 }
 
 func Go(spec *lex.Spec, pkg, from string) ([]byte, error) {

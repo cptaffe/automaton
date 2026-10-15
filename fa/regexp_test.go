@@ -27,7 +27,7 @@ func FuzzBuildAgreesWithRegexp(f *testing.F) {
 		re := regexp.MustCompile("^(?:" + src + ")$")
 		rules := []fa.Rule[rune]{{Expr: e, Name: src}}
 
-		d, err := fa.BuildWith(rules, fa.Partition(fa.Sets(rules)), 1000)
+		d, err := fa.BuildWith(rules, fa.Split(fa.Sets(rules)), 1000)
 
 		if err != nil {
 			if strings.Contains(err.Error(), "matches nothing at all") {
