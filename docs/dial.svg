@@ -10,6 +10,7 @@
 #graph0 > text[fill="#343a40"] { fill: #dee2e6 }
 .edge [stroke="#495057"] { stroke: #adb5bd }
 .edge [fill="#495057"] { fill: #adb5bd }
+.cluster > text[fill="#495057"] { fill: #adb5bd }
 }</style>
 <g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 298.92)">
 <title>dial</title>

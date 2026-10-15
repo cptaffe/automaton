@@ -7,6 +7,7 @@ dark='<style>@media (prefers-color-scheme: dark) {
 #graph0 > text[fill="#343a40"] { fill: #dee2e6 }
 .edge [stroke="#495057"] { stroke: #adb5bd }
 .edge [fill="#495057"] { fill: #adb5bd }
+.cluster > text[fill="#495057"] { fill: #adb5bd }
 }</style>'
 for f in docs/*.dot; do
 	dot -Tsvg -Gbgcolor=transparent "$f" |
