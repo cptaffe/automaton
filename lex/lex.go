@@ -44,18 +44,30 @@ func (p Pos) After(text []byte) Pos {
 type Range struct{ Lo, Hi rune }
 
 func In(rs []Range, r rune) bool {
-	at, found := slices.BinarySearchFunc(rs, r, func(x Range, r rune) int {
+	lo, hi := 0, len(rs)
+
+	for lo < hi {
+		m := int(uint(lo+hi) >> 1)
+
 		switch {
-		case x.Hi < r:
-			return -1
-		case x.Lo > r:
-			return 1
+		case rs[m].Hi < r:
+			lo = m + 1
+		case rs[m].Lo > r:
+			hi = m
+		default:
+			return true
 		}
+	}
 
-		return 0
-	})
+	return false
+}
 
-	return found && at < len(rs)
+func ASCII(lo, hi uint64, r rune) bool {
+	if r < 64 {
+		return lo>>uint(r)&1 != 0
+	}
+
+	return hi>>uint(r-64)&1 != 0
 }
 
 type Input struct {

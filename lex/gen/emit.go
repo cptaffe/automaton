@@ -222,9 +222,13 @@ func (g *writer) cond(set fa.Set[rune]) string {
 	rs := set.Ranges()
 
 	if len(rs) > 4 {
-		return fmt.Sprintf("lex.In(%s, r)", g.table(rs))
+		return g.large(rs)
 	}
 
+	return g.small(rs)
+}
+
+func (g *writer) small(rs []fa.Range[rune]) string {
 	parts := make([]string, 0, len(rs))
 
 	for _, x := range rs {
@@ -233,6 +237,40 @@ func (g *writer) cond(set fa.Set[rune]) string {
 		} else {
 			parts = append(parts, lit(x.Lo)+" <= r && r <= "+lit(x.Hi))
 		}
+	}
+
+	return strings.Join(parts, " || ")
+}
+
+func (g *writer) large(rs []fa.Range[rune]) string {
+	var lo, hi uint64
+	var wide []fa.Range[rune]
+
+	for _, x := range rs {
+		for c := x.Lo; c <= min(x.Hi, 0x7f); c++ {
+			if c < 64 {
+				lo |= 1 << c
+			} else {
+				hi |= 1 << (c - 64)
+			}
+		}
+
+		if x.Hi >= 0x80 {
+			wide = append(wide, fa.Range[rune]{Lo: max(x.Lo, 0x80), Hi: x.Hi})
+		}
+	}
+
+	parts := make([]string, 0, 2)
+
+	if lo|hi != 0 {
+		parts = append(parts, fmt.Sprintf("uint32(r) < 0x80 && lex.ASCII(%#x, %#x, r)", lo, hi))
+	}
+
+	switch {
+	case len(wide) > 4:
+		parts = append(parts, "r >= 0x80 && lex.In("+g.table(wide)+", r)")
+	case len(wide) > 0:
+		parts = append(parts, g.small(wide))
 	}
 
 	return strings.Join(parts, " || ")

@@ -65,7 +65,7 @@ func lexStart(l *lexer) stateFn {
 	l.Quiet(false)
 	r = l.Step()
 	switch {
-	case lex.In(ranges1, r):
+	case uint32(r) < 0x80 && lex.ASCII(0xffffff7afffff9ff, 0xf800000170000001, r) || 0x80 <= r && r <= 0x10ffff:
 		goto s2
 	case 0x9 <= r && r <= 0xa || r == ' ':
 		goto s3
@@ -123,7 +123,7 @@ s6:
 	l.Mark(3)
 	r = l.Step()
 	switch {
-	case lex.In(ranges2, r):
+	case uint32(r) < 0x80 && lex.ASCII(0x3ff600000000000, 0x7fffffe87fffffe, r):
 		goto s6
 	}
 	goto done
@@ -192,7 +192,7 @@ s13:
 	l.Mark(2)
 	r = l.Step()
 	switch {
-	case lex.In(ranges3, r):
+	case uint32(r) < 0x80 && lex.ASCII(0xfc009fffffffffff, 0xf8000001c0000001, r) || 0x80 <= r && r <= 0x10ffff:
 		goto s7
 	case r == ']':
 		goto s8
@@ -209,7 +209,7 @@ s14:
 	l.Mark(2)
 	r = l.Step()
 	switch {
-	case lex.In(ranges4, r):
+	case uint32(r) < 0x80 && lex.ASCII(0xf8009fffffffffff, 0xf8000001c0000001, r) || 0x80 <= r && r <= 0x10ffff:
 		goto s7
 	case r == ']':
 		goto s8
@@ -260,11 +260,3 @@ done:
 
 	return nil
 }
-
-var ranges1 = []lex.Range{{Lo: 0x0, Hi: 0x8}, {Lo: 0xb, Hi: 0x1f}, {Lo: '!', Hi: '!'}, {Lo: '#', Hi: '&'}, {Lo: '(', Hi: '@'}, {Lo: '\\', Hi: '^'}, {Lo: '`', Hi: '`'}, {Lo: '{', Hi: 0x10ffff}}
-
-var ranges2 = []lex.Range{{Lo: '-', Hi: '.'}, {Lo: '0', Hi: '9'}, {Lo: 'A', Hi: 'Z'}, {Lo: '_', Hi: '_'}, {Lo: 'a', Hi: 'z'}}
-
-var ranges3 = []lex.Range{{Lo: 0x0, Hi: ','}, {Lo: '/', Hi: '/'}, {Lo: ':', Hi: '@'}, {Lo: '^', Hi: '`'}, {Lo: '{', Hi: 0x10ffff}}
-
-var ranges4 = []lex.Range{{Lo: 0x0, Hi: ','}, {Lo: '/', Hi: '/'}, {Lo: ';', Hi: '@'}, {Lo: '^', Hi: '`'}, {Lo: '{', Hi: 0x10ffff}}

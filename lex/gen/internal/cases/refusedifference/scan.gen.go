@@ -63,7 +63,7 @@ func lexStart(l *lexer) stateFn {
 	l.Quiet(false)
 	r = l.Step()
 	switch {
-	case lex.In(ranges1, r):
+	case uint32(r) < 0x80 && lex.ASCII(0x0, 0x7df7ddc07fffffe, r):
 		goto s2
 	}
 	goto done
@@ -72,7 +72,7 @@ s2:
 	l.Mark(1)
 	r = l.Step()
 	switch {
-	case lex.In(ranges1, r):
+	case uint32(r) < 0x80 && lex.ASCII(0x0, 0x7df7ddc07fffffe, r):
 		goto s2
 	}
 	goto done
@@ -88,5 +88,3 @@ done:
 
 	return nil
 }
-
-var ranges1 = []lex.Range{{Lo: 'A', Hi: 'Z'}, {Lo: 'b', Hi: 'd'}, {Lo: 'f', Hi: 'h'}, {Lo: 'j', Hi: 'n'}, {Lo: 'p', Hi: 't'}, {Lo: 'v', Hi: 'z'}}
