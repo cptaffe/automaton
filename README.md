@@ -212,7 +212,7 @@ the machine over its tokens. It notes when the grammar nests too deeply for a
 machine to read it exactly:
 
 ```sh
-goyacc -o /dev/null -v y.output gram.y
+goyacc -o /dev/null -v y.output gram.go.y
 lrdot -name gram y.output gram.dot
 ```
 

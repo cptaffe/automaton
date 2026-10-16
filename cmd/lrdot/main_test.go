@@ -16,7 +16,7 @@ import (
 func report(t *testing.T) string {
 	t.Helper()
 	out := filepath.Join(t.TempDir(), "y.output")
-	cmd := exec.Command("go", "tool", "goyacc", "-l", "-p", "yy", "-o", os.DevNull, "-v", out, "gram.y")
+	cmd := exec.Command("go", "tool", "goyacc", "-l", "-p", "yy", "-o", os.DevNull, "-v", out, "gram.go.y")
 	cmd.Dir = "../../seq/keypad"
 	if b, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("goyacc: %v\n%s", err, b)

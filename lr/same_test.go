@@ -68,7 +68,7 @@ func TestTheDrawingIsTheLRAutomatonWithoutItsStack(t *testing.T) {
 
 		t.Run(name, func(t *testing.T) {
 			out := filepath.Join(t.TempDir(), "y.output")
-			cmd := exec.Command("go", "tool", "goyacc", "-l", "-p", "yy", "-o", os.DevNull, "-v", out, "gram.y")
+			cmd := exec.Command("go", "tool", "goyacc", "-l", "-p", "yy", "-o", os.DevNull, "-v", out, "gram.go.y")
 			cmd.Dir = dir
 
 			if got, err := cmd.CombinedOutput(); err != nil {
@@ -120,11 +120,11 @@ func yacc(t *testing.T, gram string) []byte {
 
 	dir := t.TempDir()
 
-	if err := os.WriteFile(filepath.Join(dir, "gram.y"), []byte(gram), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "gram.go.y"), []byte(gram), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
-	cmd := exec.Command("go", "tool", "goyacc", "-l", "-p", "yy", "-o", os.DevNull, "-v", filepath.Join(dir, "y.output"), filepath.Join(dir, "gram.y"))
+	cmd := exec.Command("go", "tool", "goyacc", "-l", "-p", "yy", "-o", os.DevNull, "-v", filepath.Join(dir, "y.output"), filepath.Join(dir, "gram.go.y"))
 
 	if got, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("goyacc: %v: %s", err, got)

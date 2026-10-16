@@ -1,6 +1,6 @@
 package hotkey
 
-//go:generate go tool goyacc -l -p yy -o gram.go -v "" gram.y
+//go:generate go tool goyacc -l -p yy -o gram.go -v "" gram.go.y
 
 import (
 	"errors"
