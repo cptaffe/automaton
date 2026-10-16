@@ -3,7 +3,6 @@ package hotkey
 //go:generate go tool goyacc -l -p yy -o gram.go -v "" gram.y
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -144,9 +143,7 @@ func Parse(r io.Reader, from string, kb Keyboard) (*Rules, error) {
 	if kb == nil {
 		kb = US
 	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	in := lex.NewReader(scan.Lex(ctx, lex.Terminated(r)), from)
+	in := lex.NewReader(scan.Lex(lex.Terminated(r)), from)
 	l := &lexer{Reader: in, bare: true, labels: map[int]string{}, scopes: map[string]bool{},
 		g: &seq.Grammar{Name: in.Name()}}
 	failed := yyParse(l) != 0

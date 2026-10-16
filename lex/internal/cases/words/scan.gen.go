@@ -3,8 +3,8 @@
 package words
 
 import (
-	"context"
 	"io"
+	"iter"
 
 	"github.com/cptaffe/automaton/lex"
 )
@@ -34,21 +34,25 @@ type stateFn func(*lexer) stateFn
 
 type lexer struct {
 	lex.Emitter[Tok, stateFn]
+	state stateFn
 }
 
-func Lex(ctx context.Context, r io.Reader) <-chan lex.Token[Tok] {
-	l := &lexer{Emitter: lex.NewEmitter[Tok, stateFn](ctx, r)}
-
-	go l.run()
-
-	return l.Items()
+func Lex(r io.Reader) lex.Tokens[Tok] {
+	return &lexer{Emitter: lex.NewEmitter[Tok, stateFn](r), state: lexStart}
 }
 
-func (l *lexer) run() {
-	defer l.Close()
+func (l *lexer) Next() (lex.Token[Tok], bool) {
+	for !l.Ready() && l.state != nil {
+		l.state = l.state(l)
+	}
 
-	for state := stateFn(lexStart); state != nil; {
-		state = state(l)
+	return l.Item()
+}
+
+func (l *lexer) All() iter.Seq[lex.Token[Tok]] {
+	return func(yield func(lex.Token[Tok]) bool) {
+		for t, ok := l.Next(); ok && yield(t); t, ok = l.Next() {
+		}
 	}
 }
 
@@ -62,7 +66,7 @@ func lexStart(l *lexer) stateFn {
 	var r rune
 
 	l.Quiet(false)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case r == 0x9 || r == ' ':
 		goto s2
@@ -85,7 +89,7 @@ func lexStart(l *lexer) stateFn {
 s2:
 	l.Quiet(true)
 	l.Mark(2)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case r == 0x9 || r == ' ':
 		goto s2
@@ -102,7 +106,7 @@ s4:
 s5:
 	l.Quiet(true)
 	l.Mark(1)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case 0x0 <= r && r <= 0x9 || 0xb <= r && r <= 0x10ffff:
 		goto s5
@@ -115,7 +119,7 @@ s6:
 s7:
 	l.Quiet(false)
 	l.Mark(4)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case 'a' <= r && r <= 'z':
 		goto s7
@@ -140,39 +144,27 @@ done:
 
 		return lexStart
 	case 3:
-		if !l.Emit(TokNewline, 0) {
-			return nil
-		}
+		l.Emit(TokNewline, 0)
 
 		return lexStart
 	case 4:
-		if !l.Emit(TokWord, 0) {
-			return nil
-		}
+		l.Emit(TokWord, 0)
 
 		return lexStart
 	case 5:
-		if !l.Emit(TokDefine, 0) {
-			return nil
-		}
+		l.Emit(TokDefine, 0)
 
 		return lexStart
 	case 6:
-		if !l.Emit(TokPlus, 0) {
-			return nil
-		}
+		l.Emit(TokPlus, 0)
 
 		return lexStart
 	case 7:
-		if !l.Emit(TokLbrace, 0) {
-			return nil
-		}
+		l.Emit(TokLbrace, 0)
 
 		return lexStart
 	case 8:
-		if !l.Emit(TokRbrace, 0) {
-			return nil
-		}
+		l.Emit(TokRbrace, 0)
 
 		return lexStart
 	}

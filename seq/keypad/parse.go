@@ -3,7 +3,6 @@ package keypad
 //go:generate go tool goyacc -l -p yy -o gram.go -v "" gram.y
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"slices"
@@ -101,9 +100,7 @@ type lexer struct {
 type move struct{ to, arg string }
 
 func Parse(r io.Reader, from string) (*seq.Grammar, error) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	in := lex.NewReader(scan.Lex(ctx, lex.Terminated(r)), from)
+	in := lex.NewReader(scan.Lex(lex.Terminated(r)), from)
 	l := &lexer{Reader: in, bare: true, g: &seq.Grammar{Name: in.Name()}}
 	if yyParse(l) != 0 && l.Err() == nil {
 		l.FailAt(l.tokLine, "%s", l.unexpected())

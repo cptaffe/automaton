@@ -1,7 +1,6 @@
 package lex_test
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -9,7 +8,6 @@ import (
 	"runtime"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/cptaffe/automaton/internal/lextest"
 	"github.com/cptaffe/automaton/lex"
@@ -130,7 +128,7 @@ func TestAKindNumbersTheSortedTokensFromOne(t *testing.T) {
 }
 
 func TestAnErrorCarriesItsFileAndLine(t *testing.T) {
-	r := lex.NewReader(cases.Lexers["words"].Lex(context.Background(), lex.Terminated(strings.NewReader("word\n!\n"))), "dir/t.lex")
+	r := lex.NewReader(cases.Lexers["words"].Lex(lex.Terminated(strings.NewReader("word\n!\n"))), "dir/t.lex")
 
 	for _, ok := r.Next(); ok; _, ok = r.Next() {
 	}
@@ -173,10 +171,7 @@ func TestColumnsCountCharactersAndOffsetsCountBytes(t *testing.T) {
 }
 
 func TestTheReaderStreamsAnEndlessInput(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	r := lex.NewReader(cases.Lexers["words"].Lex(ctx, lex.Terminated(endless{})), "t.lex")
+	r := lex.NewReader(cases.Lexers["words"].Lex(lex.Terminated(endless{})), "t.lex")
 
 	for i := range 1000 {
 		tok, ok := r.Next()
@@ -191,24 +186,15 @@ func TestTheReaderStreamsAnEndlessInput(t *testing.T) {
 	}
 }
 
-func TestCancellingClosesTheTokens(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	toks := words.Lex(ctx, endless{})
+func TestStoppingARangeLeavesTheRestToRead(t *testing.T) {
+	toks := words.Lex(endless{})
 
-	<-toks
-	cancel()
+	for range toks.All() {
+		break
+	}
 
-	deadline := time.After(5 * time.Second)
-
-	for {
-		select {
-		case _, ok := <-toks:
-			if !ok {
-				return
-			}
-		case <-deadline:
-			t.Fatal("the lexer was still sending tokens 5s after it was cancelled")
-		}
+	if tok, ok := toks.Next(); !ok || tok.Text != "\n" {
+		t.Errorf("after one token Next gives %q, %t; want the newline", tok.Text, ok)
 	}
 }
 
@@ -224,7 +210,7 @@ func TestTheReaderSuppliesAMissingLastNewline(t *testing.T) {
 		{"nothing at all", strings.NewReader(""), nil},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			r := lex.NewReader(cases.Lexers["words"].Lex(context.Background(), lex.Terminated(c.given)), "t.lex")
+			r := lex.NewReader(cases.Lexers["words"].Lex(lex.Terminated(c.given)), "t.lex")
 
 			var got []string
 

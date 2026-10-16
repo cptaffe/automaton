@@ -1,9 +1,9 @@
 package lextest
 
 import (
-	"context"
 	"fmt"
 	"io"
+	"iter"
 	"strings"
 	"testing"
 
@@ -66,33 +66,32 @@ func (f File) compile(src string) error {
 }
 
 type Lexer struct {
-	Lex  func(context.Context, io.Reader) <-chan lex.Token[int]
+	Lex  func(io.Reader) lex.Tokens[int]
 	Name func(int) string
 }
 
 func Of[K interface {
 	~int
 	fmt.Stringer
-}](lexf func(context.Context, io.Reader) <-chan lex.Token[K]) Lexer {
-	run := func(ctx context.Context, r io.Reader) <-chan lex.Token[int] {
-		out := make(chan lex.Token[int])
-
-		go func() {
-			defer close(out)
-
-			for t := range lexf(ctx, r) {
-				select {
-				case out <- lex.Token[int]{Kind: int(t.Kind), Text: t.Text, Do: t.Do, At: t.At, Err: t.Err}:
-				case <-ctx.Done():
-					return
-				}
-			}
-		}()
-
-		return out
-	}
+}](lexf func(io.Reader) lex.Tokens[K]) Lexer {
+	run := func(r io.Reader) lex.Tokens[int] { return ints[K]{lexf(r)} }
 
 	return Lexer{Lex: run, Name: func(k int) string { return K(k).String() }}
+}
+
+type ints[K ~int] struct{ toks lex.Tokens[K] }
+
+func (t ints[K]) Next() (lex.Token[int], bool) {
+	tok, ok := t.toks.Next()
+
+	return lex.Token[int]{Kind: int(tok.Kind), Text: tok.Text, Do: tok.Do, At: tok.At, Err: tok.Err}, ok
+}
+
+func (t ints[K]) All() iter.Seq[lex.Token[int]] {
+	return func(yield func(lex.Token[int]) bool) {
+		for tok, ok := t.Next(); ok && yield(tok); tok, ok = t.Next() {
+		}
+	}
 }
 
 func Read(t testing.TB, lx Lexer, input string) ([]string, error) {
@@ -115,12 +114,9 @@ func Read(t testing.TB, lx Lexer, input string) ([]string, error) {
 func Tokens(t testing.TB, lx Lexer, in io.Reader) []lex.Token[int] {
 	t.Helper()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	var out []lex.Token[int]
 
-	for tok := range lx.Lex(ctx, in) {
+	for tok := range lx.Lex(in).All() {
 		out = append(out, tok)
 
 		if tok.Err != nil {

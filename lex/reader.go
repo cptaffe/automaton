@@ -18,13 +18,13 @@ func (e *Error) Error() string { return fmt.Sprintf("%s:%d: %v", e.File, e.Line,
 func (e *Error) Unwrap() error { return e.Err }
 
 type Reader[K ~int] struct {
-	toks <-chan Token[K]
+	toks Tokens[K]
 	from string
 	line int
 	err  error
 }
 
-func NewReader[K ~int](toks <-chan Token[K], from string) *Reader[K] {
+func NewReader[K ~int](toks Tokens[K], from string) *Reader[K] {
 	return &Reader[K]{toks: toks, from: from, line: 1}
 }
 
@@ -60,7 +60,7 @@ func (t *terminated) Read(p []byte) (int, error) {
 }
 
 func (r *Reader[K]) Next() (Token[K], bool) {
-	tok, ok := <-r.toks
+	tok, ok := r.toks.Next()
 
 	if !ok {
 		return tok, false

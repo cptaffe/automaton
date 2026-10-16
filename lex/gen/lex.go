@@ -1,7 +1,6 @@
 package gen
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"strings"
@@ -36,8 +35,8 @@ type parser struct {
 	stmtText   string
 }
 
-func newParser(ctx context.Context, r io.Reader, from string, bare bool) *parser {
-	in := lex.NewReader(scan.Lex(ctx, lex.Terminated(r)), from)
+func newParser(r io.Reader, from string, bare bool) *parser {
+	in := lex.NewReader(scan.Lex(lex.Terminated(r)), from)
 
 	p := &parser{Reader: in,
 		named: map[string]fa.Expr[rune]{"any": fa.Lit(fa.Span(0, utf8.MaxRune))},

@@ -3,8 +3,8 @@
 package l16
 
 import (
-	"context"
 	"io"
+	"iter"
 
 	"github.com/cptaffe/automaton/lex"
 )
@@ -29,21 +29,25 @@ type stateFn func(*lexer) stateFn
 
 type lexer struct {
 	lex.Emitter[Tok, stateFn]
+	state stateFn
 }
 
-func Lex(ctx context.Context, r io.Reader) <-chan lex.Token[Tok] {
-	l := &lexer{Emitter: lex.NewEmitter[Tok, stateFn](ctx, r)}
-
-	go l.run()
-
-	return l.Items()
+func Lex(r io.Reader) lex.Tokens[Tok] {
+	return &lexer{Emitter: lex.NewEmitter[Tok, stateFn](r), state: lexStart}
 }
 
-func (l *lexer) run() {
-	defer l.Close()
+func (l *lexer) Next() (lex.Token[Tok], bool) {
+	for !l.Ready() && l.state != nil {
+		l.state = l.state(l)
+	}
 
-	for state := stateFn(lexStart); state != nil; {
-		state = state(l)
+	return l.Item()
+}
+
+func (l *lexer) All() iter.Seq[lex.Token[Tok]] {
+	return func(yield func(lex.Token[Tok]) bool) {
+		for t, ok := l.Next(); ok && yield(t); t, ok = l.Next() {
+		}
 	}
 }
 
@@ -57,7 +61,7 @@ func lexStart(l *lexer) stateFn {
 	var r rune
 
 	l.Quiet(false)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case 0x0 <= r && r <= '`' || 'b' <= r && r <= 0x10ffff:
 		goto s2
@@ -76,9 +80,7 @@ s3:
 done:
 	switch l.Back() {
 	case 1:
-		if !l.Emit(TokX, 0) {
-			return nil
-		}
+		l.Emit(TokX, 0)
 
 		return lexStart
 	case 2:

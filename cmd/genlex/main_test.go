@@ -57,7 +57,7 @@ func TestGenlexWritesTheLexerAndTheDrawings(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, want := names(file), []string{"Tok", "TokClose", "TokNewline", "TokOpen", "TokWord", "tokNames", "String", "stateFn", "lexer", "Lex", "run", "lexStart", "lexComment"}; file.Name.Name != "scan" || !reflect.DeepEqual(got, want) {
+	if got, want := names(file), []string{"Tok", "TokClose", "TokNewline", "TokOpen", "TokWord", "tokNames", "String", "stateFn", "lexer", "Lex", "Next", "All", "lexStart", "lexComment"}; file.Name.Name != "scan" || !reflect.DeepEqual(got, want) {
 		t.Errorf("package %s declares %q; want package scan declaring %q", file.Name.Name, got, want)
 	}
 	if got, want := lines(t, filepath.Join(dir, "comments.dot"), `(?m)^\s+("m\d+_s\d+" -> "m\d+_s\d+")`), []string{

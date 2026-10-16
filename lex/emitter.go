@@ -1,43 +1,43 @@
 package lex
 
 import (
-	"context"
 	"fmt"
 	"io"
+	"iter"
 )
+
+type Tokens[K ~int] interface {
+	Next() (Token[K], bool)
+	All() iter.Seq[Token[K]]
+}
 
 type Emitter[K ~int, S any] struct {
 	Input
-	ctx   context.Context
-	items chan Token[K]
+	item  Token[K]
+	ready bool
 	stack []S
 }
 
-func NewEmitter[K ~int, S any](ctx context.Context, r io.Reader) Emitter[K, S] {
-	return Emitter[K, S]{Input: NewInput(r), ctx: ctx, items: make(chan Token[K], 64)}
+func NewEmitter[K ~int, S any](r io.Reader) Emitter[K, S] {
+	return Emitter[K, S]{Input: NewInput(r)}
 }
 
-func (e *Emitter[K, S]) Items() <-chan Token[K] { return e.items }
+func (e *Emitter[K, S]) Ready() bool { return e.ready }
 
-func (e *Emitter[K, S]) Close() { close(e.items) }
+func (e *Emitter[K, S]) Item() (Token[K], bool) {
+	t, ok := e.item, e.ready
+	e.item, e.ready = Token[K]{}, false
 
-func (e *Emitter[K, S]) Emit(kind K, do int) bool {
+	return t, ok
+}
+
+func (e *Emitter[K, S]) Emit(kind K, do int) {
 	text, at := e.Take()
-
-	return e.send(Token[K]{Kind: kind, Do: do, Text: text, At: at})
+	e.item, e.ready = Token[K]{Kind: kind, Do: do, Text: text, At: at}, true
 }
 
 func (e *Emitter[K, S]) Errorf(at Pos, format string, args ...any) {
-	e.send(Token[K]{At: at, Err: fmt.Errorf(format, args...)})
-}
-
-func (e *Emitter[K, S]) send(t Token[K]) bool {
-	select {
-	case e.items <- t:
-		return true
-	case <-e.ctx.Done():
-		return false
-	}
+	e.item, e.ready = Token[K]{At: at, Err: fmt.Errorf(format, args...)}, true
 }
 
 func (e *Emitter[K, S]) Push(s S) { e.stack = append(e.stack, s) }

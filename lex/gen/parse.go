@@ -1,7 +1,6 @@
 package gen
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"slices"
@@ -224,9 +223,7 @@ func (p *parser) known() string {
 func Parse(r io.Reader, from string) (*File, error) { return parse(r, from, false) }
 
 func parse(r io.Reader, from string, bare bool) (*File, error) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	p := newParser(ctx, r, from, bare)
+	p := newParser(r, from, bare)
 
 	if yyParse(p) != 0 && p.Err() == nil {
 		p.FailAt(p.blame(), "%s", p.unexpected())

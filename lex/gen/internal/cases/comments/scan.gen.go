@@ -3,8 +3,8 @@
 package comments
 
 import (
-	"context"
 	"io"
+	"iter"
 
 	"github.com/cptaffe/automaton/lex"
 )
@@ -32,21 +32,25 @@ type stateFn func(*lexer) stateFn
 
 type lexer struct {
 	lex.Emitter[Tok, stateFn]
+	state stateFn
 }
 
-func Lex(ctx context.Context, r io.Reader) <-chan lex.Token[Tok] {
-	l := &lexer{Emitter: lex.NewEmitter[Tok, stateFn](ctx, r)}
-
-	go l.run()
-
-	return l.Items()
+func Lex(r io.Reader) lex.Tokens[Tok] {
+	return &lexer{Emitter: lex.NewEmitter[Tok, stateFn](r), state: lexStart}
 }
 
-func (l *lexer) run() {
-	defer l.Close()
+func (l *lexer) Next() (lex.Token[Tok], bool) {
+	for !l.Ready() && l.state != nil {
+		l.state = l.state(l)
+	}
 
-	for state := stateFn(lexStart); state != nil; {
-		state = state(l)
+	return l.Item()
+}
+
+func (l *lexer) All() iter.Seq[lex.Token[Tok]] {
+	return func(yield func(lex.Token[Tok]) bool) {
+		for t, ok := l.Next(); ok && yield(t); t, ok = l.Next() {
+		}
 	}
 }
 
@@ -60,7 +64,7 @@ func lexStart(l *lexer) stateFn {
 	var r rune
 
 	l.Quiet(false)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case r == 0x9 || r == ' ':
 		goto s2
@@ -75,7 +79,7 @@ func lexStart(l *lexer) stateFn {
 s2:
 	l.Quiet(true)
 	l.Mark(3)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case r == 0x9 || r == ' ':
 		goto s2
@@ -87,7 +91,7 @@ s3:
 	goto done
 s4:
 	l.Quiet(false)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case r == '*':
 		goto s6
@@ -96,7 +100,7 @@ s4:
 s5:
 	l.Quiet(false)
 	l.Mark(2)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case '0' <= r && r <= '9' || 'A' <= r && r <= 'Z' || r == '_' || 'a' <= r && r <= 'z':
 		goto s5
@@ -110,15 +114,11 @@ done:
 	switch l.Back() {
 	case 1:
 		l.Push(lexStart)
-		if !l.Emit(TokOpen, 0) {
-			return nil
-		}
+		l.Emit(TokOpen, 0)
 
 		return lexComment
 	case 2:
-		if !l.Emit(TokWord, 0) {
-			return nil
-		}
+		l.Emit(TokWord, 0)
 
 		return lexStart
 	case 3:
@@ -126,9 +126,7 @@ done:
 
 		return lexStart
 	case 4:
-		if !l.Emit(TokNewline, 0) {
-			return nil
-		}
+		l.Emit(TokNewline, 0)
 
 		return lexStart
 	}
@@ -148,7 +146,7 @@ func lexComment(l *lexer) stateFn {
 	var r rune
 
 	l.Quiet(false)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case 0x0 <= r && r <= ')' || '+' <= r && r <= '.' || '0' <= r && r <= 0x10ffff:
 		goto s2
@@ -165,7 +163,7 @@ s2:
 s3:
 	l.Quiet(false)
 	l.Mark(3)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case r == '/':
 		goto s5
@@ -174,7 +172,7 @@ s3:
 s4:
 	l.Quiet(false)
 	l.Mark(3)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case r == '*':
 		goto s6
@@ -192,9 +190,7 @@ done:
 	switch l.Back() {
 	case 1:
 		l.Push(lexComment)
-		if !l.Emit(TokOpen, 0) {
-			return nil
-		}
+		l.Emit(TokOpen, 0)
 
 		return lexComment
 	case 2:
@@ -204,9 +200,7 @@ done:
 			return nil
 		}
 
-		if !l.Emit(TokClose, 0) {
-			return nil
-		}
+		l.Emit(TokClose, 0)
 
 		return next
 	case 3:

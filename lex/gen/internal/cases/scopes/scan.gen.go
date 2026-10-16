@@ -3,8 +3,8 @@
 package scopes
 
 import (
-	"context"
 	"io"
+	"iter"
 
 	"github.com/cptaffe/automaton/lex"
 )
@@ -31,21 +31,25 @@ type stateFn func(*lexer) stateFn
 
 type lexer struct {
 	lex.Emitter[Tok, stateFn]
+	state stateFn
 }
 
-func Lex(ctx context.Context, r io.Reader) <-chan lex.Token[Tok] {
-	l := &lexer{Emitter: lex.NewEmitter[Tok, stateFn](ctx, r)}
-
-	go l.run()
-
-	return l.Items()
+func Lex(r io.Reader) lex.Tokens[Tok] {
+	return &lexer{Emitter: lex.NewEmitter[Tok, stateFn](r), state: lexHead}
 }
 
-func (l *lexer) run() {
-	defer l.Close()
+func (l *lexer) Next() (lex.Token[Tok], bool) {
+	for !l.Ready() && l.state != nil {
+		l.state = l.state(l)
+	}
 
-	for state := stateFn(lexHead); state != nil; {
-		state = state(l)
+	return l.Item()
+}
+
+func (l *lexer) All() iter.Seq[lex.Token[Tok]] {
+	return func(yield func(lex.Token[Tok]) bool) {
+		for t, ok := l.Next(); ok && yield(t); t, ok = l.Next() {
+		}
 	}
 }
 
@@ -59,7 +63,7 @@ func lexHead(l *lexer) stateFn {
 	var r rune
 
 	l.Quiet(false)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case r == 0xa:
 		goto s2
@@ -82,7 +86,7 @@ s3:
 s4:
 	l.Quiet(false)
 	l.Mark(2)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case 'A' <= r && r <= 'Z' || 'a' <= r && r <= 'z':
 		goto s4
@@ -91,7 +95,7 @@ s4:
 s5:
 	l.Quiet(false)
 	l.Mark(2)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case 'A' <= r && r <= 'Z' || 'a' <= r && r <= 'n' || 'p' <= r && r <= 'z':
 		goto s4
@@ -102,7 +106,7 @@ s5:
 s6:
 	l.Quiet(false)
 	l.Mark(1)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case 'A' <= r && r <= 'Z' || 'a' <= r && r <= 'z':
 		goto s4
@@ -111,15 +115,11 @@ s6:
 done:
 	switch l.Back() {
 	case 1:
-		if !l.Emit(TokKeyword, 0) {
-			return nil
-		}
+		l.Emit(TokKeyword, 0)
 
 		return lexBody
 	case 2:
-		if !l.Emit(TokName, 0) {
-			return nil
-		}
+		l.Emit(TokName, 0)
 
 		return lexHead
 	case 3:
@@ -127,9 +127,7 @@ done:
 
 		return lexHead
 	case 4:
-		if !l.Emit(TokNewline, 0) {
-			return nil
-		}
+		l.Emit(TokNewline, 0)
 
 		return lexHead
 	}
@@ -149,7 +147,7 @@ func lexBody(l *lexer) stateFn {
 	var r rune
 
 	l.Quiet(false)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case r == 0xa:
 		goto s2
@@ -170,7 +168,7 @@ s3:
 s4:
 	l.Quiet(false)
 	l.Mark(1)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case 'A' <= r && r <= 'Z' || 'a' <= r && r <= 'z':
 		goto s4
@@ -179,9 +177,7 @@ s4:
 done:
 	switch l.Back() {
 	case 1:
-		if !l.Emit(TokName, 0) {
-			return nil
-		}
+		l.Emit(TokName, 0)
 
 		return lexBody
 	case 2:
@@ -189,9 +185,7 @@ done:
 
 		return lexBody
 	case 3:
-		if !l.Emit(TokNewline, 0) {
-			return nil
-		}
+		l.Emit(TokNewline, 0)
 
 		return lexHead
 	}

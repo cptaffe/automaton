@@ -1,7 +1,6 @@
 package lex_test
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"reflect"
@@ -31,7 +30,7 @@ func TestAnErrorUnwrapsToItsCause(t *testing.T) {
 }
 
 func TestAReadErrorReachesTheCaller(t *testing.T) {
-	r := lex.NewReader(cases.Lexers["words"].Lex(context.Background(), lex.Terminated(broken{})), "t.lex")
+	r := lex.NewReader(cases.Lexers["words"].Lex(lex.Terminated(broken{})), "t.lex")
 
 	_, ok := r.Next()
 
@@ -52,7 +51,7 @@ func TestTheReaderNamesItsFileWithoutTheExtension(t *testing.T) {
 		{"a dot file", ".lex", ".lex"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			r := lex.NewReader(cases.Lexers["words"].Lex(context.Background(), lex.Terminated(strings.NewReader(""))), c.given)
+			r := lex.NewReader(cases.Lexers["words"].Lex(lex.Terminated(strings.NewReader(""))), c.given)
 
 			if got := r.Name(); got != c.then || r.From() != c.given {
 				t.Errorf("Name %q, From %q; want %q and %q", got, r.From(), c.then, c.given)
@@ -62,7 +61,7 @@ func TestTheReaderNamesItsFileWithoutTheExtension(t *testing.T) {
 }
 
 func TestTheReaderKeepsItsFirstFailure(t *testing.T) {
-	r := lex.NewReader(cases.Lexers["words"].Lex(context.Background(), lex.Terminated(strings.NewReader("a\nb\n"))), "t.lex")
+	r := lex.NewReader(cases.Lexers["words"].Lex(lex.Terminated(strings.NewReader("a\nb\n"))), "t.lex")
 
 	r.Next()
 	r.Next()
@@ -75,7 +74,7 @@ func TestTheReaderKeepsItsFirstFailure(t *testing.T) {
 }
 
 func TestTheReaderCountsTheLinesATokenSpans(t *testing.T) {
-	r := lex.NewReader(cases.Lexers["spanning"].Lex(context.Background(), lex.Terminated(strings.NewReader("/*\n\n*/\n"))), "t.lex")
+	r := lex.NewReader(cases.Lexers["spanning"].Lex(lex.Terminated(strings.NewReader("/*\n\n*/\n"))), "t.lex")
 
 	var got []int
 
@@ -89,15 +88,14 @@ func TestTheReaderCountsTheLinesATokenSpans(t *testing.T) {
 }
 
 func TestAReturnWithNothingPushedIsAnError(t *testing.T) {
-	e := lex.NewEmitter[int, int](context.Background(), strings.NewReader("a"))
+	e := lex.NewEmitter[int, int](strings.NewReader("a"))
 
 	e.Begin()
 	_, ok := e.Pop("start")
-	e.Close()
 
 	var got []string
 
-	for tok := range e.Items() {
+	if tok, sent := e.Item(); sent {
 		got = append(got, fmt.Sprintf("%d:%d %v", tok.At.Line, tok.At.Col, tok.Err))
 	}
 

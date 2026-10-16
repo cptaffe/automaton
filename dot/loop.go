@@ -1,7 +1,6 @@
 package dot
 
 import (
-	"context"
 	"slices"
 	"strings"
 
@@ -48,7 +47,7 @@ func read(rs []Rule) grammar {
 func tokens(alt string) []string {
 	var out []string
 
-	for t := range scan.Lex(context.Background(), strings.NewReader(alt)) {
+	for t := range scan.Lex(strings.NewReader(alt)).All() {
 		out = append(out, t.Text)
 	}
 

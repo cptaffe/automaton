@@ -30,7 +30,9 @@ func TestTheGoIsFormattedAndDeclaresTheLexer(t *testing.T) {
 				"const TokWord Tok = 3",
 				"func (t Tok) String() string",
 				"const DoName = 1",
-				"func Lex(ctx context.Context, r io.Reader) <-chan lex.Token[Tok]",
+				"func Lex(r io.Reader) lex.Tokens[Tok]",
+				"func (l *lexer) Next() (lex.Token[Tok], bool)",
+				"func (l *lexer) All() iter.Seq[lex.Token[Tok]]",
 			},
 		},
 		{
@@ -40,7 +42,9 @@ func TestTheGoIsFormattedAndDeclaresTheLexer(t *testing.T) {
 				"type Tok int",
 				"const TokWord Tok = 1",
 				"func (t Tok) String() string",
-				"func Lex(ctx context.Context, r io.Reader) <-chan lex.Token[Tok]",
+				"func Lex(r io.Reader) lex.Tokens[Tok]",
+				"func (l *lexer) Next() (lex.Token[Tok], bool)",
+				"func (l *lexer) All() iter.Seq[lex.Token[Tok]]",
 			},
 		},
 	} {

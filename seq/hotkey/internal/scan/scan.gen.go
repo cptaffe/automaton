@@ -3,8 +3,8 @@
 package scan
 
 import (
-	"context"
 	"io"
+	"iter"
 
 	"github.com/cptaffe/automaton/lex"
 )
@@ -58,21 +58,25 @@ type stateFn func(*lexer) stateFn
 
 type lexer struct {
 	lex.Emitter[Tok, stateFn]
+	state stateFn
 }
 
-func Lex(ctx context.Context, r io.Reader) <-chan lex.Token[Tok] {
-	l := &lexer{Emitter: lex.NewEmitter[Tok, stateFn](ctx, r)}
-
-	go l.run()
-
-	return l.Items()
+func Lex(r io.Reader) lex.Tokens[Tok] {
+	return &lexer{Emitter: lex.NewEmitter[Tok, stateFn](r), state: lexStart}
 }
 
-func (l *lexer) run() {
-	defer l.Close()
+func (l *lexer) Next() (lex.Token[Tok], bool) {
+	for !l.Ready() && l.state != nil {
+		l.state = l.state(l)
+	}
 
-	for state := stateFn(lexStart); state != nil; {
-		state = state(l)
+	return l.Item()
+}
+
+func (l *lexer) All() iter.Seq[lex.Token[Tok]] {
+	return func(yield func(lex.Token[Tok]) bool) {
+		for t, ok := l.Next(); ok && yield(t); t, ok = l.Next() {
+		}
 	}
 }
 
@@ -86,7 +90,7 @@ func lexStart(l *lexer) stateFn {
 	var r rune
 
 	l.Quiet(false)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case r == 0x9 || r == ' ':
 		goto s2
@@ -131,7 +135,7 @@ func lexStart(l *lexer) stateFn {
 s2:
 	l.Quiet(true)
 	l.Mark(2)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case r == 0x9 || r == ' ':
 		goto s2
@@ -143,7 +147,7 @@ s3:
 	goto done
 s4:
 	l.Quiet(false)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case 0x0 <= r && r <= 0x9 || 0xb <= r && r <= '!' || '#' <= r && r <= 0x10ffff:
 		goto s21
@@ -152,7 +156,7 @@ s4:
 s5:
 	l.Quiet(false)
 	l.Mark(1)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case 0x0 <= r && r <= 0x9 || 0xb <= r && r <= 0x10ffff:
 		goto s5
@@ -160,7 +164,7 @@ s5:
 	goto done
 s6:
 	l.Quiet(false)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case r == 'd':
 		goto s22
@@ -186,7 +190,7 @@ s10:
 	goto done
 s11:
 	l.Quiet(false)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case lex.In(ranges2, r):
 		goto s14
@@ -197,7 +201,7 @@ s11:
 s12:
 	l.Quiet(false)
 	l.Mark(20)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case lex.In(ranges3, r):
 		goto s14
@@ -214,7 +218,7 @@ s13:
 s14:
 	l.Quiet(false)
 	l.Mark(20)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case lex.In(ranges2, r):
 		goto s14
@@ -237,7 +241,7 @@ s17:
 s18:
 	l.Quiet(false)
 	l.Mark(20)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case lex.In(ranges4, r):
 		goto s14
@@ -257,7 +261,7 @@ s20:
 	goto done
 s21:
 	l.Quiet(false)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case 0x0 <= r && r <= 0x9 || 0xb <= r && r <= '!' || '#' <= r && r <= 0x10ffff:
 		goto s21
@@ -267,7 +271,7 @@ s21:
 	goto done
 s22:
 	l.Quiet(false)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case r == 'e':
 		goto s29
@@ -275,7 +279,7 @@ s22:
 	goto done
 s23:
 	l.Quiet(false)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case r == 0x9 || r == ' ':
 		goto s23
@@ -289,7 +293,7 @@ s24:
 	goto done
 s25:
 	l.Quiet(false)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case lex.In(ranges2, r):
 		goto s14
@@ -300,7 +304,7 @@ s25:
 s26:
 	l.Quiet(false)
 	l.Mark(20)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case lex.In(ranges3, r):
 		goto s14
@@ -313,7 +317,7 @@ s26:
 s27:
 	l.Quiet(false)
 	l.Mark(20)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case lex.In(ranges6, r):
 		goto s14
@@ -329,7 +333,7 @@ s28:
 	goto done
 s29:
 	l.Quiet(false)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case r == 'l':
 		goto s34
@@ -342,7 +346,7 @@ s30:
 s31:
 	l.Quiet(false)
 	l.Mark(20)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case r == '-':
 		goto s25
@@ -351,7 +355,7 @@ s31:
 s32:
 	l.Quiet(false)
 	l.Mark(6)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case lex.In(ranges2, r):
 		goto s14
@@ -362,7 +366,7 @@ s32:
 s33:
 	l.Quiet(false)
 	l.Mark(20)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case lex.In(ranges7, r):
 		goto s14
@@ -374,7 +378,7 @@ s33:
 	goto done
 s34:
 	l.Quiet(false)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case r == 'a':
 		goto s36
@@ -383,7 +387,7 @@ s34:
 s35:
 	l.Quiet(false)
 	l.Mark(10)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case lex.In(ranges2, r):
 		goto s14
@@ -393,7 +397,7 @@ s35:
 	goto done
 s36:
 	l.Quiet(false)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case r == 'y':
 		goto s37
@@ -406,9 +410,7 @@ s37:
 done:
 	switch l.Back() {
 	case 1:
-		if !l.Emit(TokComment, 0) {
-			return nil
-		}
+		l.Emit(TokComment, 0)
 
 		return lexStart
 	case 2:
@@ -416,112 +418,76 @@ done:
 
 		return lexStart
 	case 3:
-		if !l.Emit(TokNewline, 0) {
-			return nil
-		}
+		l.Emit(TokNewline, 0)
 
 		return lexStart
 	case 4:
-		if !l.Emit(TokOpen, 0) {
-			return nil
-		}
+		l.Emit(TokOpen, 0)
 
 		return lexPrelude
 	case 5:
-		if !l.Emit(TokDelay, 0) {
-			return nil
-		}
+		l.Emit(TokDelay, 0)
 
 		return lexStart
 	case 6:
-		if !l.Emit(TokDots, 0) {
-			return nil
-		}
+		l.Emit(TokDots, 0)
 
 		return lexStart
 	case 7:
-		if !l.Emit(TokArrow, 0) {
-			return nil
-		}
+		l.Emit(TokArrow, 0)
 
 		return lexStart
 	case 8:
-		if !l.Emit(TokColon, 0) {
-			return nil
-		}
+		l.Emit(TokColon, 0)
 
 		return lexStart
 	case 9:
 		l.Push(lexStart)
-		if !l.Emit(TokLbrace, 0) {
-			return nil
-		}
+		l.Emit(TokLbrace, 0)
 
 		return lexBlock
 	case 10:
-		if !l.Emit(TokWhen, 0) {
-			return nil
-		}
+		l.Emit(TokWhen, 0)
 
 		return lexCond
 	case 11:
-		if !l.Emit(TokBar, 0) {
-			return nil
-		}
+		l.Emit(TokBar, 0)
 
 		return lexStart
 	case 12:
-		if !l.Emit(TokLparen, 0) {
-			return nil
-		}
+		l.Emit(TokLparen, 0)
 
 		return lexStart
 	case 13:
-		if !l.Emit(TokRparen, 0) {
-			return nil
-		}
+		l.Emit(TokRparen, 0)
 
 		return lexStart
 	case 14:
-		if !l.Emit(TokStar, 0) {
-			return nil
-		}
+		l.Emit(TokStar, 0)
 
 		return lexStart
 	case 15:
-		if !l.Emit(TokPlus, 0) {
-			return nil
-		}
+		l.Emit(TokPlus, 0)
 
 		return lexStart
 	case 16:
-		if !l.Emit(TokOpt, 0) {
-			return nil
-		}
+		l.Emit(TokOpt, 0)
 
 		return lexStart
 	case 17:
-		if !l.Emit(TokSlash, 0) {
-			return nil
-		}
+		l.Emit(TokSlash, 0)
 
 		return lexStart
 	case 18:
-		if !l.Emit(TokMinus, 0) {
-			return nil
-		}
+		l.Emit(TokMinus, 0)
 
 		return lexStart
 	case 19:
-		if !l.Emit(TokKey, 0) {
-			return nil
-		}
+		l.Emit(TokKey, 0)
 
 		return lexStart
 	case 20:
-		if !l.Emit(TokWord, 0) {
-			return nil
-		}
+		l.Emit(TokWord, 0)
 
 		return lexStart
 	}
@@ -541,7 +507,7 @@ func lexCond(l *lexer) stateFn {
 	var r rune
 
 	l.Quiet(false)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case r == 0x9 || r == ' ':
 		goto s2
@@ -574,7 +540,7 @@ func lexCond(l *lexer) stateFn {
 s2:
 	l.Quiet(true)
 	l.Mark(2)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case r == 0x9 || r == ' ':
 		goto s2
@@ -587,7 +553,7 @@ s3:
 s4:
 	l.Quiet(false)
 	l.Mark(9)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case r == '=':
 		goto s15
@@ -595,7 +561,7 @@ s4:
 	goto done
 s5:
 	l.Quiet(false)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case 0x0 <= r && r <= 0x9 || 0xb <= r && r <= '!' || '#' <= r && r <= 0x10ffff:
 		goto s5
@@ -606,7 +572,7 @@ s5:
 s6:
 	l.Quiet(false)
 	l.Mark(1)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case 0x0 <= r && r <= 0x9 || 0xb <= r && r <= 0x10ffff:
 		goto s6
@@ -614,7 +580,7 @@ s6:
 	goto done
 s7:
 	l.Quiet(false)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case r == '&':
 		goto s17
@@ -622,7 +588,7 @@ s7:
 	goto done
 s8:
 	l.Quiet(false)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case 0x0 <= r && r <= 0x9 || 0xb <= r && r <= '&' || '(' <= r && r <= 0x10ffff:
 		goto s8
@@ -640,7 +606,7 @@ s10:
 	goto done
 s11:
 	l.Quiet(false)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case r == '=':
 		goto s18
@@ -649,7 +615,7 @@ s11:
 s12:
 	l.Quiet(false)
 	l.Mark(13)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case lex.In(ranges3, r):
 		goto s12
@@ -657,7 +623,7 @@ s12:
 	goto done
 s13:
 	l.Quiet(false)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case r == '|':
 		goto s19
@@ -690,9 +656,7 @@ s19:
 done:
 	switch l.Back() {
 	case 1:
-		if !l.Emit(TokComment, 0) {
-			return nil
-		}
+		l.Emit(TokComment, 0)
 
 		return lexCond
 	case 2:
@@ -700,69 +664,47 @@ done:
 
 		return lexCond
 	case 3:
-		if !l.Emit(TokNewline, 0) {
-			return nil
-		}
+		l.Emit(TokNewline, 0)
 
 		return lexStart
 	case 4:
-		if !l.Emit(TokEq, 0) {
-			return nil
-		}
+		l.Emit(TokEq, 0)
 
 		return lexCond
 	case 5:
-		if !l.Emit(TokNe, 0) {
-			return nil
-		}
+		l.Emit(TokNe, 0)
 
 		return lexCond
 	case 6:
-		if !l.Emit(TokMatch, 0) {
-			return nil
-		}
+		l.Emit(TokMatch, 0)
 
 		return lexCond
 	case 7:
-		if !l.Emit(TokAnd, 0) {
-			return nil
-		}
+		l.Emit(TokAnd, 0)
 
 		return lexCond
 	case 8:
-		if !l.Emit(TokOr, 0) {
-			return nil
-		}
+		l.Emit(TokOr, 0)
 
 		return lexCond
 	case 9:
-		if !l.Emit(TokNot, 0) {
-			return nil
-		}
+		l.Emit(TokNot, 0)
 
 		return lexCond
 	case 10:
-		if !l.Emit(TokLparen, 0) {
-			return nil
-		}
+		l.Emit(TokLparen, 0)
 
 		return lexCond
 	case 11:
-		if !l.Emit(TokRparen, 0) {
-			return nil
-		}
+		l.Emit(TokRparen, 0)
 
 		return lexCond
 	case 12:
-		if !l.Emit(TokString, 0) {
-			return nil
-		}
+		l.Emit(TokString, 0)
 
 		return lexCond
 	case 13:
-		if !l.Emit(TokIdent, 0) {
-			return nil
-		}
+		l.Emit(TokIdent, 0)
 
 		return lexCond
 	}
@@ -782,7 +724,7 @@ func lexPrelude(l *lexer) stateFn {
 	var r rune
 
 	l.Quiet(false)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case 0x0 <= r && r <= 0x9 || 0xb <= r && r <= '$' || '&' <= r && r <= 0x10ffff:
 		goto s2
@@ -794,7 +736,7 @@ func lexPrelude(l *lexer) stateFn {
 	goto done
 s2:
 	l.Quiet(false)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case 0x0 <= r && r <= 0x9 || 0xb <= r && r <= 0x10ffff:
 		goto s2
@@ -808,7 +750,7 @@ s3:
 	goto done
 s4:
 	l.Quiet(false)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case 0x0 <= r && r <= 0x9 || 0xb <= r && r <= '|' || '~' <= r && r <= 0x10ffff:
 		goto s2
@@ -821,7 +763,7 @@ s4:
 s5:
 	l.Quiet(false)
 	l.Mark(1)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case 0x0 <= r && r <= 0x8 || 0xb <= r && r <= 0x1f || '!' <= r && r <= 0x10ffff:
 		goto s2
@@ -838,15 +780,11 @@ s6:
 done:
 	switch l.Back() {
 	case 1:
-		if !l.Emit(TokClose, 0) {
-			return nil
-		}
+		l.Emit(TokClose, 0)
 
 		return lexStart
 	case 2:
-		if !l.Emit(TokText, 0) {
-			return nil
-		}
+		l.Emit(TokText, 0)
 
 		return lexPrelude
 	}
@@ -866,7 +804,7 @@ func lexBlock(l *lexer) stateFn {
 	var r rune
 
 	l.Quiet(false)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case lex.In(ranges9, r):
 		goto s2
@@ -883,7 +821,7 @@ func lexBlock(l *lexer) stateFn {
 s2:
 	l.Quiet(false)
 	l.Mark(5)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case lex.In(ranges9, r):
 		goto s2
@@ -892,7 +830,7 @@ s2:
 s3:
 	l.Quiet(false)
 	l.Mark(4)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case 0x0 <= r && r <= 0x9 || 0xb <= r && r <= 0x10ffff:
 		goto s3
@@ -900,7 +838,7 @@ s3:
 	goto done
 s4:
 	l.Quiet(false)
-	r = l.Next()
+	r = l.Step()
 	switch {
 	case 0x0 <= r && r <= '&' || '(' <= r && r <= 0x10ffff:
 		goto s4
@@ -924,9 +862,7 @@ done:
 	switch l.Back() {
 	case 1:
 		l.Push(lexBlock)
-		if !l.Emit(TokLbrace, 0) {
-			return nil
-		}
+		l.Emit(TokLbrace, 0)
 
 		return lexBlock
 	case 2:
@@ -936,27 +872,19 @@ done:
 			return nil
 		}
 
-		if !l.Emit(TokRbrace, 0) {
-			return nil
-		}
+		l.Emit(TokRbrace, 0)
 
 		return next
 	case 3:
-		if !l.Emit(TokText, 0) {
-			return nil
-		}
+		l.Emit(TokText, 0)
 
 		return lexBlock
 	case 4:
-		if !l.Emit(TokText, 0) {
-			return nil
-		}
+		l.Emit(TokText, 0)
 
 		return lexBlock
 	case 5:
-		if !l.Emit(TokText, 0) {
-			return nil
-		}
+		l.Emit(TokText, 0)
 
 		return lexBlock
 	}

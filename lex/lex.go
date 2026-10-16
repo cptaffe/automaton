@@ -79,7 +79,7 @@ type mark struct {
 
 func NewInput(r io.Reader) Input { return Input{r: r, at: Pos{Line: 1, Col: 1}} }
 
-func (in *Input) Next() rune {
+func (in *Input) Step() rune {
 	if in.read < len(in.buf) {
 		if b := in.buf[in.read]; b < utf8.RuneSelf {
 			in.read++
